@@ -19,10 +19,12 @@ interface GitHubState {
   loading: boolean;
   error: string | null;
   checkingAuth: boolean;
+  oauthLoading: boolean;
   authenticate: (token: string) => Promise<boolean>;
   logout: () => Promise<void>;
   checkAuthStatus: () => Promise<void>;
   clearError: () => void;
+  startOAuth: () => Promise<void>;
 }
 
 export const useGitHubStore = create<GitHubState>()(
@@ -33,6 +35,7 @@ export const useGitHubStore = create<GitHubState>()(
       loading: false,
       error: null,
       checkingAuth: false,
+      oauthLoading: false,
 
       authenticate: async (token: string) => {
         if (!token || token.trim() === '') {
@@ -117,6 +120,29 @@ export const useGitHubStore = create<GitHubState>()(
 
       clearError: () => {
         set({ error: null });
+      },
+
+      startOAuth: async () => {
+        set({ oauthLoading: true, error: null });
+        
+        try {
+          const user = await window.reef.github.startOAuth();
+          set({ 
+            isAuthenticated: true, 
+            user, 
+            oauthLoading: false,
+            error: null 
+          });
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'OAuth flow failed';
+          set({ 
+            isAuthenticated: false,
+            user: null,
+            oauthLoading: false,
+            error: errorMessage 
+          });
+          throw error;
+        }
       },
     }),
     {

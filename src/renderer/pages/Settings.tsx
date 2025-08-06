@@ -13,10 +13,12 @@ const Settings: React.FC = () => {
     loading,
     error,
     checkingAuth,
+    oauthLoading,
     authenticate,
     logout,
     checkAuthStatus,
     clearError,
+    startOAuth,
   } = useGitHubStore();
   
   const [token, setToken] = useState('');
@@ -24,6 +26,7 @@ const Settings: React.FC = () => {
   useEffect(() => {
     checkAuthStatus();
   }, [checkAuthStatus]);
+
 
   const handleAuthenticate = async () => {
     if (!token.trim()) return;
@@ -36,6 +39,14 @@ const Settings: React.FC = () => {
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleOAuth = async () => {
+    try {
+      await startOAuth();
+    } catch (error) {
+      console.error('OAuth start failed:', error);
+    }
   };
 
   const handleTokenChange = (newToken: string) => {
@@ -87,13 +98,15 @@ const Settings: React.FC = () => {
         <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
           <h4 className="text-white font-medium mb-2">Recommended: OAuth Authentication</h4>
           <p className="text-gray-400 text-sm mb-3">
-            Securely connect with GitHub using OAuth flow (coming soon)
+            Securely connect with GitHub using OAuth flow
           </p>
           <button
-            disabled
-            className="px-4 py-2 bg-gray-600 text-gray-400 rounded-lg cursor-not-allowed"
+            onClick={handleOAuth}
+            disabled={oauthLoading || loading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
           >
-            Connect GitHub Account (Coming Soon)
+            {oauthLoading && <Loader2 size={16} className="animate-spin" />}
+            <span>{oauthLoading ? 'Opening browser...' : 'Connect GitHub Account'}</span>
           </button>
         </div>
         

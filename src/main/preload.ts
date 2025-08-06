@@ -21,6 +21,7 @@ export interface ReefAPI {
     getUser: () => Promise<any>;
     getRepositories: () => Promise<any[]>;
     logout: () => Promise<boolean>;
+    startOAuth: () => Promise<any>;
   };
   ipc: {
     on: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => void;
@@ -52,6 +53,7 @@ const reefAPI: ReefAPI = {
     getUser: () => ipcRenderer.invoke('github-user'),
     getRepositories: () => ipcRenderer.invoke('github-repos'),
     logout: () => ipcRenderer.invoke('github-logout'),
+    startOAuth: () => ipcRenderer.invoke('github-oauth-start'),
   },
   ipc: {
     on: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => {
