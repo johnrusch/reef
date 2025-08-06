@@ -1,28 +1,26 @@
-import { ipcMain, shell } from 'electron';
+import { ipcMain, shell, dialog } from 'electron';
 import { Octokit } from '@octokit/rest';
 import Store from 'electron-store';
-import * as crypto from 'crypto';
-import * as CryptoJS from 'crypto-js';
-import { OAuthCallbackServer } from './oauthCallbackServer';
 
-interface OAuthState {
-  codeVerifier: string;
-  state: string;
+interface DeviceFlowState {
+  deviceCode: string;
+  userCode: string;
+  verificationUri: string;
+  expiresIn: number;
+  interval: number;
   timestamp: number;
 }
 
 class GitHubService {
   private octokit: Octokit | null = null;
   private store: Store;
-  private oauthState: OAuthState | null = null;
-  private callbackServer: OAuthCallbackServer;
-  private readonly CLIENT_ID = 'Ov23liCgCTZWtAJfCdRw';
-  private readonly REDIRECT_URI = 'http://localhost:3001/auth/github/callback';
+  private deviceFlowState: DeviceFlowState | null = null;
+  private pollingInterval: NodeJS.Timeout | null = null;
+  private readonly CLIENT_ID = '178c6fc778ccc68e1d6a';
   private readonly SCOPES = ['repo', 'user:email', 'workflow'];
 
   constructor() {
     this.store = new Store();
-    this.callbackServer = new OAuthCallbackServer();
     this.registerHandlers();
     this.initializeFromStore();
   }
@@ -34,51 +32,8 @@ class GitHubService {
     }
   }
 
-  private generateCodeVerifier(): string {
-    return CryptoJS.lib.WordArray.random(64).toString(CryptoJS.enc.Base64url);
-  }
-
-  private generateCodeChallenge(verifier: string): string {
-    return CryptoJS.SHA256(verifier).toString(CryptoJS.enc.Base64url);
-  }
-
-  private generateState(): string {
-    return crypto.randomBytes(32).toString('hex');
-  }
-
-  private startOAuthFlow(): string {
-    const codeVerifier = this.generateCodeVerifier();
-    const codeChallenge = this.generateCodeChallenge(codeVerifier);
-    const state = this.generateState();
-
-    this.oauthState = {
-      codeVerifier,
-      state,
-      timestamp: Date.now(),
-    };
-
-    const authUrl = new URL('https://github.com/login/oauth/authorize');
-    authUrl.searchParams.set('client_id', this.CLIENT_ID);
-    authUrl.searchParams.set('redirect_uri', this.REDIRECT_URI);
-    authUrl.searchParams.set('scope', this.SCOPES.join(' '));
-    authUrl.searchParams.set('state', state);
-    authUrl.searchParams.set('code_challenge', codeChallenge);
-    authUrl.searchParams.set('code_challenge_method', 'S256');
-
-    return authUrl.toString();
-  }
-
-  private async exchangeCodeForToken(code: string, state: string): Promise<string> {
-    if (!this.oauthState) {
-      throw new Error('No OAuth state found');
-    }
-
-    if (state !== this.oauthState.state) {
-      throw new Error('Invalid state parameter');
-    }
-
-    const tokenUrl = 'https://github.com/login/oauth/access_token';
-    const response = await fetch(tokenUrl, {
+  private async startDeviceFlow(): Promise<DeviceFlowState> {
+    const response = await fetch('https://github.com/login/device/code', {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
@@ -86,23 +41,74 @@ class GitHubService {
       },
       body: JSON.stringify({
         client_id: this.CLIENT_ID,
-        code,
-        redirect_uri: this.REDIRECT_URI,
-        code_verifier: this.oauthState.codeVerifier,
+        scope: this.SCOPES.join(' '),
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`Token exchange failed: ${response.statusText}`);
+      throw new Error(`Device flow initiation failed: ${response.statusText}`);
     }
 
     const data = await response.json();
-    if (data.error) {
-      throw new Error(`OAuth error: ${data.error_description || data.error}`);
+    
+    this.deviceFlowState = {
+      deviceCode: data.device_code,
+      userCode: data.user_code,
+      verificationUri: data.verification_uri,
+      expiresIn: data.expires_in,
+      interval: data.interval,
+      timestamp: Date.now(),
+    };
+
+    return this.deviceFlowState;
+  }
+
+  private async pollForToken(): Promise<string> {
+    if (!this.deviceFlowState) {
+      throw new Error('No device flow state found');
     }
 
-    this.oauthState = null;
+    const response = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        client_id: this.CLIENT_ID,
+        device_code: this.deviceFlowState.deviceCode,
+        grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Token polling failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.error) {
+      if (data.error === 'authorization_pending') {
+        return '';
+      } else if (data.error === 'slow_down') {
+        if (this.deviceFlowState) {
+          this.deviceFlowState.interval = (this.deviceFlowState.interval || 5) + 5;
+        }
+        return '';
+      } else {
+        throw new Error(`OAuth error: ${data.error_description || data.error}`);
+      }
+    }
+
     return data.access_token;
+  }
+
+  private stopPolling() {
+    if (this.pollingInterval) {
+      clearInterval(this.pollingInterval);
+      this.pollingInterval = null;
+    }
+    this.deviceFlowState = null;
   }
 
   private registerHandlers() {
@@ -242,33 +248,56 @@ class GitHubService {
 
     ipcMain.handle('github-oauth-start', async () => {
       try {
-        const authUrl = this.startOAuthFlow();
-        await shell.openExternal(authUrl);
+        const deviceFlow = await this.startDeviceFlow();
         
-        const result = await this.callbackServer.start();
+        await shell.openExternal(`${deviceFlow.verificationUri}?user_code=${deviceFlow.userCode}`);
         
-        if (result.error) {
-          throw new Error(`OAuth failed: ${result.error}`);
-        }
-        
-        if (result.code && result.state) {
-          const token = await this.exchangeCodeForToken(result.code, result.state);
+        dialog.showMessageBox({
+          type: 'info',
+          title: 'GitHub Authentication',
+          message: `Enter this code on GitHub: ${deviceFlow.userCode}`,
+          detail: 'A browser window has been opened. Please enter the code above to authorize Reef.',
+          buttons: ['OK'],
+        });
+
+        return new Promise((resolve, reject) => {
+          let attempts = 0;
+          const maxAttempts = Math.floor(deviceFlow.expiresIn / deviceFlow.interval);
           
-          this.octokit = new Octokit({ auth: token });
-          
-          const { data: user } = await this.octokit.users.getAuthenticated();
-          
-          this.store.set('github-token', token);
-          this.store.set('github-user', user);
-          this.store.set('github-auth-method', 'oauth');
-          
-          return user;
-        }
-        
-        throw new Error('OAuth flow incomplete');
+          this.pollingInterval = setInterval(async () => {
+            attempts++;
+            
+            if (attempts > maxAttempts) {
+              this.stopPolling();
+              reject(new Error('Authorization timeout'));
+              return;
+            }
+            
+            try {
+              const token = await this.pollForToken();
+              
+              if (token) {
+                this.stopPolling();
+                
+                this.octokit = new Octokit({ auth: token });
+                
+                const { data: user } = await this.octokit.users.getAuthenticated();
+                
+                this.store.set('github-token', token);
+                this.store.set('github-user', user);
+                this.store.set('github-auth-method', 'device');
+                
+                resolve(user);
+              }
+            } catch (error) {
+              this.stopPolling();
+              reject(error);
+            }
+          }, deviceFlow.interval * 1000);
+        });
       } catch (error) {
-        this.callbackServer.stop();
-        throw new Error(`Failed to complete OAuth flow: ${(error as Error).message}`);
+        this.stopPolling();
+        throw new Error(`Failed to complete device flow: ${(error as Error).message}`);
       }
     });
 
