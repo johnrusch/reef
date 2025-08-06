@@ -1,13 +1,28 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { GitBranch, FolderGit2, Settings, Grid3x3, Plus } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { useRepositoryStore } from '../stores/repositoryStore';
+import AddRepositoryModal from './AddRepositoryModal';
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
   const { workspaces, activeWorkspace } = useWorkspaceStore();
   const { repositories } = useRepositoryStore();
+  const [isAddRepoModalOpen, setIsAddRepoModalOpen] = useState(false);
+
+  // Listen for menu events
+  useEffect(() => {
+    const handleAddRepository = () => {
+      setIsAddRepoModalOpen(true);
+    };
+
+    window.reef.ipc.on('add-repository', handleAddRepository);
+
+    return () => {
+      window.reef.ipc.off('add-repository', handleAddRepository);
+    };
+  }, []);
 
   const navItems = [
     { path: '/', icon: Grid3x3, label: 'Dashboard' },
@@ -55,7 +70,7 @@ const Sidebar: React.FC = () => {
             </h3>
             <button
               className="text-gray-400 hover:text-white transition-colors"
-              onClick={() => console.log('Add repository')}
+              onClick={() => setIsAddRepoModalOpen(true)}
             >
               <Plus size={16} />
             </button>
@@ -88,6 +103,11 @@ const Sidebar: React.FC = () => {
           {repositories.length} repositories • {workspaces.length} workspaces
         </div>
       </div>
+
+      <AddRepositoryModal
+        isOpen={isAddRepoModalOpen}
+        onClose={() => setIsAddRepoModalOpen(false)}
+      />
     </div>
   );
 };

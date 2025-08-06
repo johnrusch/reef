@@ -12,6 +12,9 @@ export interface ReefAPI {
   app: {
     getVersion: () => Promise<string>;
   };
+  dialog: {
+    selectDirectory: () => Promise<string | null>;
+  };
   git: {
     executeCommand: (repoPath: string, command: string[]) => Promise<string>;
     getRepositoryStatus: (repoPath: string) => Promise<any>;
@@ -41,6 +44,9 @@ const reefAPI: ReefAPI = {
   },
   app: {
     getVersion: () => ipcRenderer.invoke('get-version'),
+  },
+  dialog: {
+    selectDirectory: () => ipcRenderer.invoke('select-directory'),
   },
   git: {
     executeCommand: (repoPath: string, command: string[]) =>
