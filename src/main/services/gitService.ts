@@ -131,6 +131,57 @@ class GitService {
         throw new Error(`Failed to clone repository: ${(error as Error).message}`);
       }
     });
+
+    ipcMain.handle('git-add', async (_, repoPath: string, files: string[]) => {
+      try {
+        const git = this.getGitInstance(repoPath);
+        await git.add(files);
+        return true;
+      } catch (error) {
+        throw new Error(`Failed to add files: ${(error as Error).message}`);
+      }
+    });
+
+    ipcMain.handle('git-reset', async (_, repoPath: string, files: string[]) => {
+      try {
+        const git = this.getGitInstance(repoPath);
+        await git.reset(files);
+        return true;
+      } catch (error) {
+        throw new Error(`Failed to reset files: ${(error as Error).message}`);
+      }
+    });
+
+    ipcMain.handle('git-diff', async (_, repoPath: string, file?: string) => {
+      try {
+        const git = this.getGitInstance(repoPath);
+        const args = file ? ['--', file] : [];
+        const diff = await git.diff(args);
+        return diff;
+      } catch (error) {
+        throw new Error(`Failed to get diff: ${(error as Error).message}`);
+      }
+    });
+
+    ipcMain.handle('git-create-branch', async (_, repoPath: string, branchName: string) => {
+      try {
+        const git = this.getGitInstance(repoPath);
+        await git.checkoutLocalBranch(branchName);
+        return true;
+      } catch (error) {
+        throw new Error(`Failed to create branch: ${(error as Error).message}`);
+      }
+    });
+
+    ipcMain.handle('git-delete-branch', async (_, repoPath: string, branchName: string) => {
+      try {
+        const git = this.getGitInstance(repoPath);
+        await git.deleteLocalBranch(branchName);
+        return true;
+      } catch (error) {
+        throw new Error(`Failed to delete branch: ${(error as Error).message}`);
+      }
+    });
   }
 }
 

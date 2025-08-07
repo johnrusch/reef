@@ -18,6 +18,18 @@ export interface ReefAPI {
   git: {
     executeCommand: (repoPath: string, command: string[]) => Promise<string>;
     getRepositoryStatus: (repoPath: string) => Promise<any>;
+    fetch: (repoPath: string) => Promise<boolean>;
+    pull: (repoPath: string) => Promise<any>;
+    push: (repoPath: string) => Promise<any>;
+    commit: (repoPath: string, message: string, files?: string[]) => Promise<any>;
+    getBranches: (repoPath: string) => Promise<any>;
+    checkout: (repoPath: string, branch: string) => Promise<boolean>;
+    getLog: (repoPath: string, options?: any) => Promise<any>;
+    add: (repoPath: string, files: string[]) => Promise<void>;
+    reset: (repoPath: string, files: string[]) => Promise<void>;
+    diff: (repoPath: string, file?: string) => Promise<string>;
+    createBranch: (repoPath: string, branchName: string) => Promise<void>;
+    deleteBranch: (repoPath: string, branchName: string) => Promise<void>;
   };
   github: {
     authenticate: (token: string) => Promise<boolean>;
@@ -53,6 +65,26 @@ const reefAPI: ReefAPI = {
       ipcRenderer.invoke('git-execute', repoPath, command),
     getRepositoryStatus: (repoPath: string) =>
       ipcRenderer.invoke('git-status', repoPath),
+    fetch: (repoPath: string) => ipcRenderer.invoke('git-fetch', repoPath),
+    pull: (repoPath: string) => ipcRenderer.invoke('git-pull', repoPath),
+    push: (repoPath: string) => ipcRenderer.invoke('git-push', repoPath),
+    commit: (repoPath: string, message: string, files?: string[]) =>
+      ipcRenderer.invoke('git-commit', repoPath, message, files),
+    getBranches: (repoPath: string) => ipcRenderer.invoke('git-branches', repoPath),
+    checkout: (repoPath: string, branch: string) =>
+      ipcRenderer.invoke('git-checkout', repoPath, branch),
+    getLog: (repoPath: string, options?: any) =>
+      ipcRenderer.invoke('git-log', repoPath, options),
+    add: (repoPath: string, files: string[]) =>
+      ipcRenderer.invoke('git-add', repoPath, files),
+    reset: (repoPath: string, files: string[]) =>
+      ipcRenderer.invoke('git-reset', repoPath, files),
+    diff: (repoPath: string, file?: string) =>
+      ipcRenderer.invoke('git-diff', repoPath, file),
+    createBranch: (repoPath: string, branchName: string) =>
+      ipcRenderer.invoke('git-create-branch', repoPath, branchName),
+    deleteBranch: (repoPath: string, branchName: string) =>
+      ipcRenderer.invoke('git-delete-branch', repoPath, branchName),
   },
   github: {
     authenticate: (token: string) => ipcRenderer.invoke('github-auth', token),
