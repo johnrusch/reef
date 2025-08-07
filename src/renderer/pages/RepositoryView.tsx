@@ -2,14 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useRepositoryStore } from '../stores/repositoryStore';
 import { useGitHubStore } from '../stores/githubStore';
-import { RepositoryOverview } from '../components/repository/RepositoryOverview';
-import { BranchPanel } from '../components/repository/BranchPanel';
-import { ChangesPanel } from '../components/repository/ChangesPanel';
-import { CommitHistory } from '../components/repository/CommitHistory';
-import { CommitInterface } from '../components/repository/CommitInterface';
-import { DiffViewer } from '../components/repository/DiffViewer';
-import { GitHubPanel } from '../components/repository/GitHubPanel';
-import { OperationsToolbar } from '../components/repository/OperationsToolbar';
+import { RepositoryTabs } from '../components/repository/RepositoryTabs';
+import { OperationsButtons } from '../components/repository/OperationsButtons';
+import { SyncStatusIndicator } from '../components/repository/SyncStatusIndicator';
+import { CommitWorkflowTab } from '../components/tabs/CommitWorkflowTab';
+import { RepositoryManagementTab } from '../components/tabs/RepositoryManagementTab';
+import { VisualMapTab } from '../components/tabs/VisualMapTab';
 import { Loader2 } from 'lucide-react';
 
 const RepositoryView: React.FC = () => {
@@ -17,6 +15,7 @@ const RepositoryView: React.FC = () => {
   const { 
     repositories, 
     detail,
+    activeTab,
     fetchRepositoryDetails,
     refreshStatus,
     switchBranch,
@@ -29,13 +28,13 @@ const RepositoryView: React.FC = () => {
     pullChanges,
     pushChanges,
     getDiff,
+    setActiveTab,
   } = useRepositoryStore();
   
   const { isAuthenticated } = useGitHubStore();
   
-  const [selectedDiffFile, setSelectedDiffFile] = useState<string | null>(null);
-  const [diffContent, setDiffContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [operationError, setOperationError] = useState<string | null>(null);
   
   const repository = repositories.find(r => r.id === id);
 
@@ -57,11 +56,26 @@ const RepositoryView: React.FC = () => {
     return undefined;
   }, [repository, refreshStatus]);
 
+  // Keyboard shortcuts for tab navigation
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key >= '1' && e.key <= '3') {
+        e.preventDefault();
+        const tabIndex = parseInt(e.key) - 1;
+        const tabs: ('commit' | 'management' | 'visualmap')[] = ['commit', 'management', 'visualmap'];
+        if (tabs[tabIndex]) {
+          setActiveTab(tabs[tabIndex]);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [setActiveTab]);
+
   const handleViewDiff = async (file: string) => {
-    if (!repository) return;
-    const diff = await getDiff(repository.path, file);
-    setDiffContent(diff);
-    setSelectedDiffFile(file);
+    if (!repository) return '';
+    return await getDiff(repository.path, file);
   };
 
   const handleStageFiles = async (files: string[]) => {
@@ -85,6 +99,36 @@ const RepositoryView: React.FC = () => {
     console.log('Discard changes not yet implemented');
   };
 
+  const handleFetch = async () => {
+    if (!repository) return;
+    try {
+      setOperationError(null);
+      await fetchRemote(repository.path);
+    } catch (error) {
+      setOperationError((error as Error).message);
+    }
+  };
+
+  const handlePull = async () => {
+    if (!repository) return;
+    try {
+      setOperationError(null);
+      await pullChanges(repository.path);
+    } catch (error) {
+      setOperationError((error as Error).message);
+    }
+  };
+
+  const handlePush = async () => {
+    if (!repository) return;
+    try {
+      setOperationError(null);
+      await pushChanges(repository.path);
+    } catch (error) {
+      setOperationError((error as Error).message);
+    }
+  };
+
   if (!repository) {
     return (
       <div className="p-6">
@@ -104,123 +148,80 @@ const RepositoryView: React.FC = () => {
     );
   }
 
-  // Transform git status files into the format expected by ChangesPanel
-  const transformFiles = () => {
-    if (!detail.gitStatus?.files) return [];
-    
-    return detail.gitStatus.files.map((file: any) => ({
-      path: file.path,
-      status: file.working_dir === 'M' ? 'modified' : 
-              file.working_dir === 'A' ? 'added' :
-              file.working_dir === 'D' ? 'deleted' :
-              file.working_dir === '?' ? 'untracked' : 'modified',
-      staged: file.index !== ' ' && file.index !== '?',
-    }));
-  };
-
-  // Transform branches for BranchPanel
-  const transformBranches = () => {
-    if (!detail.branches) return [];
-    
-    return detail.branches.map((branchName: string) => ({
-      name: branchName,
-      current: branchName === detail.currentBranch,
-    }));
-  };
-
-  // Transform commits for CommitHistory
-  const transformCommits = () => {
-    if (!detail.commits) return [];
-    
-    return detail.commits.map((commit: any) => ({
-      hash: commit.hash,
-      author: {
-        name: commit.author_name || 'Unknown',
-        email: commit.author_email || '',
-      },
-      date: commit.date,
-      message: commit.message,
-      refs: commit.refs,
-      body: commit.body,
-    }));
-  };
-
-  return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">{repository.name}</h2>
-      </div>
-
-      {/* Operations Toolbar */}
-      <OperationsToolbar
-        lastFetch={repository.lastFetch}
-        ahead={detail.gitStatus?.ahead || 0}
-        behind={detail.gitStatus?.behind || 0}
-        onFetch={() => fetchRemote(repository.path)}
-        onPull={() => pullChanges(repository.path)}
-        onPush={() => pushChanges(repository.path)}
-        onRefresh={() => refreshStatus(repository.path)}
-      />
-
-      {/* Repository Overview */}
-      <RepositoryOverview
-        repository={repository}
-        gitStatus={detail.gitStatus}
-        remoteInfo={detail.remoteInfo}
-      />
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Branches & Changes */}
-        <div className="space-y-6">
-          <BranchPanel
-            branches={transformBranches()}
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'commit':
+        return (
+          <CommitWorkflowTab
+            repository={repository}
+            gitStatus={detail.gitStatus}
+            branches={detail.branches}
+            commits={detail.commits}
+            onStageFiles={handleStageFiles}
+            onUnstageFiles={handleUnstageFiles}
+            onCommit={handleCommit}
+            onViewDiff={handleViewDiff}
+            onDiscardChanges={handleDiscardChanges}
+          />
+        );
+      
+      case 'management':
+        return (
+          <RepositoryManagementTab
+            branches={detail.branches}
             currentBranch={detail.currentBranch}
+            remotes={detail.remoteInfo?.remotes}
+            repoUrl={detail.remoteInfo?.url || repository.url}
+            isAuthenticated={isAuthenticated}
             onSwitchBranch={(branch) => switchBranch(repository.path, branch)}
             onCreateBranch={(name) => createBranch(repository.path, name)}
             onDeleteBranch={(name) => deleteBranch(repository.path, name)}
           />
-          
-          <ChangesPanel
-            files={transformFiles()}
-            onStageFiles={handleStageFiles}
-            onUnstageFiles={handleUnstageFiles}
-            onDiscardChanges={handleDiscardChanges}
-            onViewDiff={handleViewDiff}
+        );
+      
+      case 'visualmap':
+        return (
+          <VisualMapTab
+            repository={repository}
+            onNavigateToFile={(path) => console.log('Navigate to:', path)}
           />
-        </div>
+        );
+      
+      default:
+        return null;
+    }
+  };
 
-        {/* Middle Column - Commit Interface & History */}
-        <div className="space-y-6">
-          <CommitInterface
-            stagedCount={transformFiles().filter((f: any) => f.staged).length}
-            onCommit={handleCommit}
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header Bar */}
+      <div className="flex items-center justify-between px-6 py-3 bg-gray-900 border-b border-gray-700">
+        <h2 className="text-xl font-semibold text-white">{repository.name}</h2>
+        <div className="flex items-center space-x-4">
+          <OperationsButtons
+            onFetch={handleFetch}
+            onPull={handlePull}
+            onPush={handlePush}
+            ahead={detail.gitStatus?.ahead || 0}
+            behind={detail.gitStatus?.behind || 0}
           />
-          
-          <CommitHistory
-            commits={transformCommits()}
-            onViewCommit={(commit) => console.log('View commit:', commit)}
+          <SyncStatusIndicator
+            ahead={detail.gitStatus?.ahead || 0}
+            behind={detail.gitStatus?.behind || 0}
+            synced={detail.gitStatus?.ahead === 0 && detail.gitStatus?.behind === 0}
+            error={operationError}
           />
         </div>
+      </div>
 
-        {/* Right Column - GitHub & Diff */}
-        <div className="space-y-6">
-          {isAuthenticated && (
-            <GitHubPanel
-              repoUrl={repository.url}
-              onOpenInBrowser={(url) => window.open(url, '_blank')}
-            />
-          )}
-          
-          {selectedDiffFile && (
-            <DiffViewer
-              diff={diffContent}
-              fileName={selectedDiffFile}
-              onClose={() => setSelectedDiffFile(null)}
-            />
-          )}
-        </div>
+      {/* Tab Navigation and Content */}
+      <div className="flex-1 overflow-hidden">
+        <RepositoryTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        >
+          {renderTabContent()}
+        </RepositoryTabs>
       </div>
     </div>
   );

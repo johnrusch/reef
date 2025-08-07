@@ -182,6 +182,16 @@ class GitService {
         throw new Error(`Failed to delete branch: ${(error as Error).message}`);
       }
     });
+
+    ipcMain.handle('git-get-remotes', async (_, repoPath: string) => {
+      try {
+        const git = this.getGitInstance(repoPath);
+        const remotes = await git.getRemotes(true);
+        return remotes;
+      } catch (error) {
+        throw new Error(`Failed to get remotes: ${(error as Error).message}`);
+      }
+    });
   }
 }
 
