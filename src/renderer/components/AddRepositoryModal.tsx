@@ -160,13 +160,13 @@ const AddRepositoryModal: React.FC<AddRepositoryModalProps> = ({ isOpen, onClose
                     <div className="flex items-start space-x-3">
                       <GitBranch size={20} className="text-blue-400 mt-1" />
                       <div className="flex-1">
-                        <h3 className="font-semibold text-white">{repoDetails.name}</h3>
+                        <h3 className="font-semibold text-white">{repoDetails?.name || 'Unknown'}</h3>
                         <p className="text-sm text-gray-400 mt-1">{selectedPath}</p>
                         <div className="flex items-center space-x-4 mt-2">
                           <span className="text-xs text-gray-500">
-                            Branch: <span className="text-gray-300">{repoDetails.branch}</span>
+                            Branch: <span className="text-gray-300">{repoDetails?.branch || 'Unknown'}</span>
                           </span>
-                          {repoDetails.status && (
+                          {repoDetails?.status && (
                             <>
                               <span className="text-xs text-gray-500">
                                 Modified: <span className="text-yellow-400">{repoDetails.status.modified || 0}</span>
