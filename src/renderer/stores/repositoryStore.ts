@@ -10,6 +10,11 @@ interface RepositoryDetailState {
   remoteInfo: any | null;
 }
 
+interface TabPreferences {
+  lastActive?: Date;
+  state?: any;
+}
+
 interface RepositoryState {
   repositories: Repository[];
   selectedRepositories: string[];
@@ -18,6 +23,10 @@ interface RepositoryState {
   
   // Detail state for current repository
   detail: RepositoryDetailState;
+  
+  // Tab management
+  activeTab: 'commit' | 'management' | 'visualmap';
+  tabPreferences: Record<string, TabPreferences>;
   
   // Basic operations
   loadRepositories: () => Promise<void>;
@@ -44,6 +53,10 @@ interface RepositoryState {
   pushChanges: (repoPath: string) => Promise<void>;
   getCommitHistory: (repoPath: string, options?: any) => Promise<void>;
   getDiff: (repoPath: string, file?: string) => Promise<string>;
+  
+  // Tab methods
+  setActiveTab: (tab: 'commit' | 'management' | 'visualmap') => void;
+  saveTabState: (tab: string, state: any) => void;
 }
 
 export const useRepositoryStore = create<RepositoryState>()(
@@ -61,6 +74,9 @@ export const useRepositoryStore = create<RepositoryState>()(
         commits: [],
         remoteInfo: null,
       },
+      
+      activeTab: 'commit',
+      tabPreferences: {},
 
       loadRepositories: async () => {
         set({ isLoading: true, error: null });
@@ -145,11 +161,33 @@ export const useRepositoryStore = create<RepositoryState>()(
         if (!repository) return;
         
         try {
-          const [status, branches, commits] = await Promise.all([
+          const [status, branches, commits, remotes] = await Promise.all([
             window.reef.git.getRepositoryStatus(repository.path),
             window.reef.git.getBranches(repository.path),
             window.reef.git.getLog(repository.path, { maxCount: 100 }),
+            window.reef.git.getRemotes(repository.path).catch(() => []),
           ]);
+          
+          // Extract GitHub URL from remotes
+          let repoUrl = repository.url;
+          if (remotes && remotes.length > 0) {
+            const origin = remotes.find((r: any) => r.name === 'origin');
+            if (origin && origin.refs && origin.refs.fetch) {
+              // Convert git URL to GitHub URL
+              const gitUrl = origin.refs.fetch;
+              if (gitUrl.includes('github.com')) {
+                repoUrl = gitUrl
+                  .replace('git@github.com:', 'https://github.com/')
+                  .replace('.git', '')
+                  .replace('git:', 'https:');
+              }
+            }
+          }
+          
+          // Update repository URL if we found one
+          if (repoUrl && repoUrl !== repository.url) {
+            await get().updateRepository(id, { url: repoUrl });
+          }
           
           set({
             detail: {
@@ -157,7 +195,11 @@ export const useRepositoryStore = create<RepositoryState>()(
               branches: branches.all || [],
               currentBranch: branches.current || '',
               commits: commits.all || [],
-              remoteInfo: null,
+              remoteInfo: {
+                url: repoUrl,
+                connected: !!repoUrl,
+                remotes: remotes,
+              },
             },
           });
         } catch (error) {
@@ -271,6 +313,22 @@ export const useRepositoryStore = create<RepositoryState>()(
       
       getDiff: async (repoPath: string, file?: string) => {
         return await window.reef.git.diff(repoPath, file);
+      },
+      
+      setActiveTab: (tab: 'commit' | 'management' | 'visualmap') => {
+        set({ activeTab: tab });
+      },
+      
+      saveTabState: (tab: string, state: any) => {
+        set((prev) => ({
+          tabPreferences: {
+            ...prev.tabPreferences,
+            [tab]: {
+              lastActive: new Date(),
+              state,
+            },
+          },
+        }));
       },
     }),
     {
