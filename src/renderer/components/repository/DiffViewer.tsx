@@ -1,6 +1,13 @@
 import React, { useMemo } from 'react';
 import { X, Copy, FileText } from 'lucide-react';
 
+// Basic HTML entity escaping for security
+const escapeHtml = (text: string): string => {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+};
+
 interface DiffViewerProps {
   diff: string;
   fileName?: string;
@@ -29,8 +36,12 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, fileName, onClose 
         // Parse line numbers from hunk header
         const match = line.match(/@@ -(\d+),?\d* \+(\d+),?\d* @@/);
         if (match) {
-          oldLineNum = parseInt(match[1], 10);
-          newLineNum = parseInt(match[2], 10);
+          oldLineNum = parseInt(match[1], 10) || 1;
+          newLineNum = parseInt(match[2], 10) || 1;
+        } else {
+          // Reset to defaults if parsing fails
+          oldLineNum = 1;
+          newLineNum = 1;
         }
       } else if (line.startsWith('+')) {
         result.push({
@@ -155,12 +166,12 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, fileName, onClose 
                       <span className="select-none text-gray-600 pr-2">
                         {getLinePrefix(line.type)}
                       </span>
-                      <span>{line.content}</span>
+                      <span>{escapeHtml(line.content)}</span>
                     </pre>
                   </div>
                 </div>
               ) : (
-                <pre className="overflow-x-auto">{line.content}</pre>
+                <pre className="overflow-x-auto">{escapeHtml(line.content)}</pre>
               )}
             </div>
           ))}

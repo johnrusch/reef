@@ -32,9 +32,15 @@ export const CommitWorkflowTab: React.FC<CommitWorkflowTabProps> = ({
   const [isCommitPanelExpanded, setIsCommitPanelExpanded] = useState(false);
 
   const handleViewDiff = async (file: string) => {
-    const diff = await onViewDiff(file);
-    setSelectedDiffFile(file);
-    setDiffContent(diff);
+    try {
+      const diff = await onViewDiff(file);
+      setSelectedDiffFile(file);
+      setDiffContent(diff);
+    } catch (error) {
+      console.error('Failed to load diff:', error);
+      setSelectedDiffFile(file);
+      setDiffContent('Error loading diff. Please try again.');
+    }
   };
 
   const transformFiles = () => {
