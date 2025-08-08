@@ -109,9 +109,9 @@ export const CommitWorkflowTab: React.FC<CommitWorkflowTabProps> = ({
       </div>
 
       {/* Main Content Area */}
-      <div className="flex flex-1 overflow-hidden" style={{ width: '100%' }}>
+      <div className="flex flex-1 min-h-0 min-w-0" style={{ contain: 'layout' }}>
         {/* Left Panel (2/5 width) - Changes/History Toggle */}
-        <div className="w-2/5 border-r border-gray-700 flex flex-col flex-shrink-0">
+        <div className="w-2/5 border-r border-gray-700 flex flex-col flex-shrink-0 min-w-0">
           {/* Tab Switcher */}
           <div className="flex border-b border-gray-700">
             <button
@@ -137,7 +137,7 @@ export const CommitWorkflowTab: React.FC<CommitWorkflowTabProps> = ({
           </div>
 
           {/* Tab Content */}
-          <div className="flex-1 overflow-auto p-4">
+          <div className="flex-1 overflow-auto p-4 min-w-0">
             {leftPanelView === 'changes' ? (
               <EnhancedChangesPanel
                 files={files}
@@ -157,8 +157,8 @@ export const CommitWorkflowTab: React.FC<CommitWorkflowTabProps> = ({
         </div>
 
         {/* Right Panel (3/5 width) - Dedicated Diff Viewer */}
-        <div className="flex-1 flex flex-col overflow-hidden" style={{ maxWidth: '60%', minWidth: 0 }}>
-          <div className="h-full w-full p-4" style={{ overflow: 'hidden' }}>
+        <div className="w-3/5 flex flex-col min-w-0 overflow-hidden">
+          <div className="h-full p-4 overflow-hidden">
             {selectedDiffFile && diffContent ? (
               <DiffViewer
                 diff={diffContent}

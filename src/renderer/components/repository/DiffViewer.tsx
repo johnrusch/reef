@@ -109,7 +109,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, fileName, onClose 
   }
 
   return (
-    <div className="h-full w-full flex flex-col bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
+    <div className="h-full w-full flex flex-col bg-gray-900 rounded-lg border border-gray-700 overflow-hidden" style={{ contain: 'layout size' }}>
       {/* Header */}
       <div className="flex-shrink-0 bg-gray-800 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center space-x-2 min-w-0">
@@ -139,15 +139,14 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, fileName, onClose 
       </div>
 
       {/* Diff Content */}
-      <div className="flex-1 overflow-auto min-h-0" style={{ width: '100%' }}>
-        <div className="min-w-full">
+      <div className="flex-1 overflow-auto min-h-0" style={{ width: '100%', contain: 'size' }}>
+        <div className="w-full">
           {parsedDiff.map((line, index) => (
             <div
               key={index}
               className={`${getLineClassName(line.type)} ${
                 line.type === 'header' || line.type === 'hunk' ? 'px-4 py-1' : ''
               } font-mono text-xs`}
-              style={{ overflowX: 'auto' }}
             >
               {line.type !== 'header' && line.type !== 'hunk' ? (
                 <div className="flex">
@@ -161,8 +160,8 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, fileName, onClose 
                     </span>
                   </div>
                   {/* Line Content */}
-                  <div className="flex-1" style={{ minWidth: 0, overflowX: 'auto' }}>
-                    <pre className="inline">
+                  <div className="flex-1 overflow-x-auto">
+                    <pre className="inline whitespace-pre">
                       <span className="select-none text-gray-600 pr-2">
                         {getLinePrefix(line.type)}
                       </span>
@@ -171,7 +170,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, fileName, onClose 
                   </div>
                 </div>
               ) : (
-                <pre className="overflow-x-auto">{escapeHtml(line.content)}</pre>
+                <pre className="whitespace-pre overflow-x-auto">{escapeHtml(line.content)}</pre>
               )}
             </div>
           ))}
