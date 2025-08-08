@@ -36,6 +36,8 @@ export const BranchDropdown: React.FC<BranchDropdownProps> = ({
 
   // Close dropdown when clicking outside
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
@@ -45,21 +47,25 @@ export const BranchDropdown: React.FC<BranchDropdownProps> = ({
       }
     };
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      // Focus search input when dropdown opens
-      setTimeout(() => searchInputRef.current?.focus(), 100);
-    }
+    document.addEventListener('mousedown', handleClickOutside);
+    
+    // Focus search input when dropdown opens using requestAnimationFrame for better timing
+    const focusTimeout = requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      cancelAnimationFrame(focusTimeout);
     };
   }, [isOpen]);
 
   // Handle keyboard navigation
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === 'Escape') {
         setIsOpen(false);
         setShowCreateForm(false);
         setSearchQuery('');
@@ -67,9 +73,7 @@ export const BranchDropdown: React.FC<BranchDropdownProps> = ({
       }
     };
 
-    if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown);
-    }
+    document.addEventListener('keydown', handleKeyDown);
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
@@ -79,15 +83,19 @@ export const BranchDropdown: React.FC<BranchDropdownProps> = ({
   const normalizedBranches = useMemo(() => {
     return branches.map(b => {
       if (typeof b === 'string') {
+        const isRemote = b.startsWith('origin/') || b.includes('/origin/');
         return {
           name: b,
           current: b === currentBranch,
-          remote: b.includes('origin/'),
+          remote: isRemote,
         };
       }
+      // Ensure remote property is consistently set
+      const isRemote = b.remote || b.name.startsWith('origin/') || b.name.includes('/origin/');
       return {
         ...b,
         current: b.name === currentBranch,
+        remote: isRemote,
       };
     });
   }, [branches, currentBranch]);
@@ -98,20 +106,50 @@ export const BranchDropdown: React.FC<BranchDropdownProps> = ({
     );
 
     return {
-      localBranches: filtered.filter(b => !b.remote && !b.name.includes('origin/')),
-      remoteBranches: filtered.filter(b => b.remote || b.name.includes('origin/')),
+      localBranches: filtered.filter(b => !b.remote),
+      remoteBranches: filtered.filter(b => b.remote),
     };
   }, [normalizedBranches, searchQuery]);
 
+  // Validate branch name according to Git rules
+  const validateBranchName = (name: string): string | null => {
+    const trimmed = name.trim();
+    if (!trimmed) return 'Branch name cannot be empty';
+    
+    // Git branch name rules
+    if (trimmed.startsWith('.') || trimmed.startsWith('-')) {
+      return 'Branch name cannot start with . or -';
+    }
+    if (trimmed.endsWith('/') || trimmed.endsWith('.')) {
+      return 'Branch name cannot end with / or .';
+    }
+    if (/[\s~^:?*[\]@{]/.test(trimmed)) {
+      return 'Branch name contains invalid characters';
+    }
+    if (trimmed.includes('..') || trimmed.includes('//')) {
+      return 'Branch name cannot contain .. or //';
+    }
+    return null;
+  };
+
   const handleCreateBranch = async () => {
-    if (!newBranchName.trim()) return;
+    const trimmedName = newBranchName.trim();
+    const validationError = validateBranchName(trimmedName);
+    
+    if (validationError) {
+      alert(validationError); // Using alert for now, should be replaced with toast
+      return;
+    }
+    
     setLoading(true);
     try {
-      await onCreateBranch(newBranchName);
+      await onCreateBranch(trimmedName);
       setNewBranchName('');
       setShowCreateForm(false);
       setIsOpen(false);
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to create branch';
+      alert(`Error: ${message}`); // Using alert for now, should be replaced with toast
       console.error('Failed to create branch:', error);
     } finally {
       setLoading(false);
@@ -126,6 +164,8 @@ export const BranchDropdown: React.FC<BranchDropdownProps> = ({
       setIsOpen(false);
       setSearchQuery('');
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to switch branch';
+      alert(`Error: ${message}`); // Using alert for now, should be replaced with toast
       console.error('Failed to switch branch:', error);
     } finally {
       setLoading(false);
@@ -134,11 +174,15 @@ export const BranchDropdown: React.FC<BranchDropdownProps> = ({
 
   const handleDeleteBranch = async (branchName: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    // Using native confirm for now, should be replaced with a modal component
+    // eslint-disable-next-line no-restricted-globals
     if (confirm(`Are you sure you want to delete branch "${branchName}"?`)) {
       setLoading(true);
       try {
         await onDeleteBranch(branchName);
       } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to delete branch';
+        alert(`Error: ${message}`); // Using alert for now, should be replaced with toast
         console.error('Failed to delete branch:', error);
       } finally {
         setLoading(false);
@@ -147,8 +191,8 @@ export const BranchDropdown: React.FC<BranchDropdownProps> = ({
   };
 
   const renderBranch = (branch: Branch) => {
-    const isRemote = branch.remote || branch.name.includes('origin/');
-    const displayName = branch.name.replace('origin/', '');
+    const isRemote = branch.remote;
+    const displayName = branch.name.replace(/^origin\//, '');
     const isCurrent = branch.current || branch.name === currentBranch;
 
     return (
