@@ -7,7 +7,7 @@ export function truncatePath(path: string, maxLength: number = 35): string {
   
   // If filename alone is too long, truncate it with ellipsis at start
   if (filename.length >= maxLength - 3) {
-    return '...' + filename.substring(filename.length - (maxLength - 3));
+    return '...' + filename.substring(filename.length - maxLength + 3);
   }
   
   // For deeply nested paths, show the most relevant parts
@@ -18,7 +18,7 @@ export function truncatePath(path: string, maxLength: number = 35): string {
     // Simple case: one directory + filename
     const dir = parts[0];
     const availableForDir = maxLength - filename.length - 1; // -1 for '/'
-    if (dir.length <= availableForDir) {
+    if (availableForDir > 0 && dir.length <= availableForDir) {
       return dir + '/' + filename;
     } else {
       return '.../' + filename;
@@ -34,8 +34,8 @@ export function truncatePath(path: string, maxLength: number = 35): string {
     if (minRequired <= maxLength) {
       // We can show first + parent + filename
       return `${firstDir}/.../${parentDir}/${filename}`;
-    } else if (parentDir.length + filename.length + 5 <= maxLength) {
-      // We can at least show parent + filename
+    } else if (parentDir.length + filename.length + 4 <= maxLength) {
+      // We can at least show parent + filename (4 chars for '.../') 
       return `.../${parentDir}/${filename}`;
     } else {
       // Just show as much of the end as possible
