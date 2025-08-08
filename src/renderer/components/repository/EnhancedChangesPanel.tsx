@@ -8,6 +8,7 @@ import {
   FolderOpen,
   AlertCircle,
 } from 'lucide-react';
+import { truncatePath } from '@renderer/utils/pathUtils';
 
 interface FileChange {
   path: string;
@@ -105,16 +106,21 @@ export const EnhancedChangesPanel: React.FC<EnhancedChangesPanelProps> = ({
           isSelected ? 'bg-gray-800' : ''
         }`}
       >
-        <div className="flex items-center space-x-3 flex-1">
+        <div className="flex items-center space-x-3 flex-1 min-w-0">
           <input
             type="checkbox"
             checked={isSelected}
             onChange={() => toggleFileSelection(file.path)}
             className="w-4 h-4 text-blue-500 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
           />
-          <FileText className="w-4 h-4 text-gray-400" />
-          <div className="flex items-center space-x-2 flex-1">
-            <span className="text-sm text-gray-300 truncate">{file.path}</span>
+          <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          <div className="flex items-center space-x-2 flex-1 min-w-0">
+            <span 
+              className="text-sm text-gray-300 truncate block"
+              title={file.path}
+            >
+              {truncatePath(file.path, 35)}
+            </span>
             <span className={`text-xs font-medium ${getStatusColor(file.status)}`}>
               {getStatusLabel(file.status)}
             </span>
