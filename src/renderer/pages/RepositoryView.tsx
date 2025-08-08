@@ -5,6 +5,7 @@ import { useGitHubStore } from '../stores/githubStore';
 import { RepositoryTabs } from '../components/repository/RepositoryTabs';
 import { OperationsButtons } from '../components/repository/OperationsButtons';
 import { SyncStatusIndicator } from '../components/repository/SyncStatusIndicator';
+import { BranchDropdown } from '../components/repository/BranchDropdown';
 import { CommitWorkflowTab } from '../components/tabs/CommitWorkflowTab';
 import { RepositoryManagementTab } from '../components/tabs/RepositoryManagementTab';
 import { VisualMapTab } from '../components/tabs/VisualMapTab';
@@ -168,14 +169,8 @@ const RepositoryView: React.FC = () => {
       case 'management':
         return (
           <RepositoryManagementTab
-            branches={detail.branches}
-            currentBranch={detail.currentBranch}
-            remotes={detail.remoteInfo?.remotes}
             repoUrl={detail.remoteInfo?.url || repository.url}
             isAuthenticated={isAuthenticated}
-            onSwitchBranch={(branch) => switchBranch(repository.path, branch)}
-            onCreateBranch={(name) => createBranch(repository.path, name)}
-            onDeleteBranch={(name) => deleteBranch(repository.path, name)}
           />
         );
       
@@ -196,7 +191,18 @@ const RepositoryView: React.FC = () => {
     <div className="flex flex-col h-full">
       {/* Header Bar */}
       <div className="flex items-center justify-between px-6 py-3 bg-gray-900 border-b border-gray-700">
-        <h2 className="text-xl font-semibold text-white">{repository.name}</h2>
+        <div className="flex items-center space-x-4">
+          <h2 className="text-xl font-semibold text-white">{repository.name}</h2>
+          <div className="h-6 w-px bg-gray-700" />
+          <BranchDropdown
+            branches={detail.branches}
+            currentBranch={detail.currentBranch}
+            remotes={detail.remoteInfo?.remotes}
+            onSwitchBranch={(branch) => switchBranch(repository.path, branch)}
+            onCreateBranch={(name) => createBranch(repository.path, name)}
+            onDeleteBranch={(name) => deleteBranch(repository.path, name)}
+          />
+        </div>
         <div className="flex items-center space-x-4">
           <OperationsButtons
             onFetch={handleFetch}

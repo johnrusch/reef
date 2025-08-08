@@ -1,48 +1,20 @@
 import React from 'react';
-import { BranchTreeView } from '../repository/BranchTreeView';
 import { GitHubDashboard } from '../repository/GitHubDashboard';
 import { PullRequestsWidget } from '../repository/PullRequestsWidget';
 import { IssuesWidget } from '../repository/IssuesWidget';
 import { ActionsWidget } from '../repository/ActionsWidget';
 
 interface RepositoryManagementTabProps {
-  branches: any[];
-  currentBranch: string;
-  remotes?: any[];
   repoUrl?: string;
   isAuthenticated: boolean;
-  onSwitchBranch: (branch: string) => Promise<void>;
-  onCreateBranch: (name: string) => Promise<void>;
-  onDeleteBranch: (name: string) => Promise<void>;
 }
 
 export const RepositoryManagementTab: React.FC<RepositoryManagementTabProps> = ({
-  branches,
-  currentBranch,
-  remotes,
   repoUrl,
   isAuthenticated,
-  onSwitchBranch,
-  onCreateBranch,
-  onDeleteBranch,
 }) => {
   return (
-    <div className="grid grid-cols-10 gap-4 h-full p-6">
-      {/* Left Panel - Branches */}
-      <div className="col-span-3 overflow-auto">
-        <BranchTreeView
-          branches={branches}
-          currentBranch={currentBranch}
-          remotes={remotes}
-          searchable={true}
-          onSwitchBranch={onSwitchBranch}
-          onCreateBranch={onCreateBranch}
-          onDeleteBranch={onDeleteBranch}
-        />
-      </div>
-      
-      {/* Right Panel - GitHub Dashboard */}
-      <div className="col-span-7 overflow-auto">
+    <div className="h-full p-6 overflow-auto">
         {isAuthenticated ? (
           repoUrl ? (
             <GitHubDashboard repoUrl={repoUrl}>
@@ -77,7 +49,6 @@ export const RepositoryManagementTab: React.FC<RepositoryManagementTabProps> = (
             </p>
           </div>
         )}
-      </div>
     </div>
   );
 };
