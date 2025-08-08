@@ -123,20 +123,26 @@ export const EnhancedChangesPanel: React.FC<EnhancedChangesPanelProps> = ({
         <div className="flex items-center space-x-1">
           {onViewDiff && (
             <button
-              onClick={() => onViewDiff(file.path)}
-              className="p-1 hover:bg-gray-700 rounded transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewDiff(file.path);
+              }}
+              className="p-1 hover:bg-gray-700 rounded transition-colors group"
               title="View diff"
             >
-              <Eye className="w-4 h-4 text-gray-400" />
+              <Eye className="w-4 h-4 text-gray-400 group-hover:text-white" />
             </button>
           )}
           {onDiscardChanges && !file.staged && (
             <button
-              onClick={() => onDiscardChanges([file.path])}
-              className="p-1 hover:bg-gray-700 rounded transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDiscardChanges([file.path]);
+              }}
+              className="p-1 hover:bg-gray-700 rounded transition-colors group"
               title="Discard changes"
             >
-              <X className="w-4 h-4 text-gray-400" />
+              <X className="w-4 h-4 text-gray-400 group-hover:text-red-400" />
             </button>
           )}
         </div>

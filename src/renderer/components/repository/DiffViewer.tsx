@@ -1,6 +1,13 @@
 import React, { useMemo } from 'react';
 import { X, Copy, FileText } from 'lucide-react';
 
+// Basic HTML entity escaping for security
+const escapeHtml = (text: string): string => {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+};
+
 interface DiffViewerProps {
   diff: string;
   fileName?: string;
@@ -29,8 +36,12 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, fileName, onClose 
         // Parse line numbers from hunk header
         const match = line.match(/@@ -(\d+),?\d* \+(\d+),?\d* @@/);
         if (match) {
-          oldLineNum = parseInt(match[1], 10);
-          newLineNum = parseInt(match[2], 10);
+          oldLineNum = parseInt(match[1], 10) || 1;
+          newLineNum = parseInt(match[2], 10) || 1;
+        } else {
+          // Reset to defaults if parsing fails
+          oldLineNum = 1;
+          newLineNum = 1;
         }
       } else if (line.startsWith('+')) {
         result.push({
@@ -88,24 +99,26 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, fileName, onClose 
 
   if (!diff) {
     return (
-      <div className="bg-gray-900 rounded-lg border border-gray-700 p-8 text-center">
-        <FileText className="w-12 h-12 mx-auto mb-3 text-gray-600" />
-        <p className="text-gray-500">No changes to display</p>
+      <div className="flex-1 bg-gray-900 rounded-lg border border-gray-700 p-8 flex items-center justify-center">
+        <div className="text-center">
+          <FileText className="w-12 h-12 mx-auto mb-3 text-gray-600" />
+          <p className="text-gray-500">No changes to display</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
+    <div className="h-full w-full flex flex-col bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
       {/* Header */}
-      <div className="bg-gray-800 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <FileText className="w-4 h-4 text-gray-400" />
-          <span className="text-white font-medium">
+      <div className="flex-shrink-0 bg-gray-800 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center space-x-2 min-w-0">
+          <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          <span className="text-white font-medium truncate">
             {fileName || 'Diff View'}
           </span>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 flex-shrink-0">
           <button
             onClick={handleCopy}
             className="p-1.5 hover:bg-gray-700 rounded text-gray-400 hover:text-white transition-colors"
@@ -126,14 +139,15 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, fileName, onClose 
       </div>
 
       {/* Diff Content */}
-      <div className="overflow-x-auto">
-        <pre className="text-xs font-mono">
+      <div className="flex-1 overflow-auto min-h-0" style={{ width: '100%' }}>
+        <div className="min-w-full">
           {parsedDiff.map((line, index) => (
             <div
               key={index}
               className={`${getLineClassName(line.type)} ${
                 line.type === 'header' || line.type === 'hunk' ? 'px-4 py-1' : ''
-              }`}
+              } font-mono text-xs`}
+              style={{ overflowX: 'auto' }}
             >
               {line.type !== 'header' && line.type !== 'hunk' ? (
                 <div className="flex">
@@ -147,19 +161,21 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, fileName, onClose 
                     </span>
                   </div>
                   {/* Line Content */}
-                  <div className="flex-1">
-                    <span className="select-none text-gray-600 pr-2">
-                      {getLinePrefix(line.type)}
-                    </span>
-                    <span>{line.content}</span>
+                  <div className="flex-1" style={{ minWidth: 0, overflowX: 'auto' }}>
+                    <pre className="inline">
+                      <span className="select-none text-gray-600 pr-2">
+                        {getLinePrefix(line.type)}
+                      </span>
+                      <span>{escapeHtml(line.content)}</span>
+                    </pre>
                   </div>
                 </div>
               ) : (
-                <div>{line.content}</div>
+                <pre className="overflow-x-auto">{escapeHtml(line.content)}</pre>
               )}
             </div>
           ))}
-        </pre>
+        </div>
       </div>
     </div>
   );
