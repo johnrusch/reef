@@ -32,6 +32,14 @@
 }
 
 @layer utilities {
+  .draggable-region {
+    -webkit-app-region: drag;
+  }
+
+  .non-draggable {
+    -webkit-app-region: no-drag;
+  }
+
   .scrollbar-thin {
     scrollbar-width: thin;
   }
