@@ -4,6 +4,7 @@ import { GitBranch, FolderGit2, Settings, Grid3x3, Plus } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { useRepositoryStore } from '../stores/repositoryStore';
 import AddRepositoryModal from './AddRepositoryModal';
+import { isMacOS } from '../utils/platform';
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
@@ -32,7 +33,7 @@ const Sidebar: React.FC = () => {
 
   return (
     <div className="w-64 bg-gray-950 border-r border-gray-800 flex flex-col">
-      <div className="p-4 border-b border-gray-800">
+      <div className={`p-4 border-b border-gray-800 ${isMacOS() ? 'pt-10' : ''}`}>
         <h1 className="text-xl font-bold text-blue-400">Reef</h1>
         {activeWorkspace && (
           <p className="text-sm text-gray-400 mt-1">{activeWorkspace.name}</p>
