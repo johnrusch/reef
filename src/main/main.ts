@@ -5,6 +5,12 @@ import GitService from './services/gitService';
 import GitHubService from './services/githubService';
 import './services/diagramGeneratorService';
 import './services/contextExtractorService';
+// Phase 2 services
+import './services/cacheService';
+import './services/tokenCounterService';
+import './services/rateLimiterService';
+import './services/contextExtractorServiceV2';
+import './services/diagramGeneratorServiceV2';
 
 const __dirname = process.cwd();
 const isDev = process.env.NODE_ENV === 'development';
