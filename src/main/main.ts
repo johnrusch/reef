@@ -3,6 +3,8 @@ import * as path from 'path';
 import Store from 'electron-store';
 import GitService from './services/gitService';
 import GitHubService from './services/githubService';
+import './services/diagramGeneratorService';
+import './services/contextExtractorService';
 
 const __dirname = process.cwd();
 const isDev = process.env.NODE_ENV === 'development';
