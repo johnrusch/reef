@@ -215,13 +215,8 @@ class ContextExtractorService {
         const estimatedTokens = Math.ceil(stat.size / 4);
         
         if (currentTokens + estimatedTokens > maxTokens) {
-          if (file.priority === 'critical' && selected.length > 0) {
-            const lastOptional = selected.findIndex(f => f.priority === 'optional');
-            if (lastOptional !== -1) {
-              selected.splice(lastOptional, 1);
-              selected.push(file);
-            }
-          }
+          // Enforce absolute token limit - even critical files can't exceed it
+          // This prevents unexpected costs from large API requests
           break;
         }
         
@@ -263,26 +258,36 @@ class ContextExtractorService {
     try {
       const stat = await fs.stat(filePath);
       
-      // Calculate relative path from base (repository root) or directory
-      const relativePath = basePath 
-        ? path.relative(basePath, filePath)
-        : path.basename(filePath);
+      // Calculate relative path from base (repository root)
+      // If basePath not provided, use the parent directory as fallback
+      const effectiveBasePath = basePath || path.dirname(filePath);
+      const relativePath = path.relative(effectiveBasePath, filePath) || path.basename(filePath);
       
       // Skip files that are too large
       if (stat.size > this.MAX_FILE_SIZE) {
         // Read only the first chunk for large files
-        const fileHandle = await fs.open(filePath, 'r');
-        const buffer = Buffer.allocUnsafe(this.CHUNK_SIZE);
-        await fileHandle.read(buffer, 0, this.CHUNK_SIZE, 0);
-        await fileHandle.close();
-        
-        const content = buffer.toString('utf-8');
-        return {
-          path: relativePath,
-          content: content + '\n// ... file truncated (too large) ...',
-          size: this.CHUNK_SIZE,
-          priority: 'optional',
-        };
+        let fileHandle;
+        try {
+          fileHandle = await fs.open(filePath, 'r');
+          const buffer = Buffer.allocUnsafe(Math.min(this.CHUNK_SIZE, stat.size));
+          const { bytesRead } = await fileHandle.read(buffer, 0, buffer.length, 0);
+          
+          // Handle potential encoding issues with 'replace' option
+          const content = buffer.slice(0, bytesRead).toString('utf-8', 0, bytesRead);
+          return {
+            path: relativePath,
+            content: content + '\n// ... file truncated (too large) ...',
+            size: bytesRead,
+            priority: 'optional',
+          };
+        } catch (bufferError) {
+          console.error(`Error reading chunk from ${filePath}:`, bufferError);
+          return null;
+        } finally {
+          if (fileHandle) {
+            await fileHandle.close();
+          }
+        }
       }
       
       // For smaller files, read normally

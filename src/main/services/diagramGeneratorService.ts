@@ -64,9 +64,9 @@ class DiagramGeneratorService {
       const encrypted = safeStorage.encryptString(apiKey);
       this.store.set('anthropicApiKey', encrypted.toString('base64'));
     } else {
-      // Fallback to plain storage with warning
-      console.warn('Encryption not available, storing API key in plain text');
-      this.store.set('anthropicApiKey', apiKey);
+      // Refuse to store API key without encryption for security
+      console.error('Cannot store API key: Encryption not available');
+      throw new Error('Cannot store API key securely. Encryption is not available on this system.');
     }
     
     // Temporarily set API key for initialization

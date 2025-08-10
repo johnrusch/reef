@@ -31,17 +31,18 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
     try {
       setLoading(true);
       setError(null);
+      setZoom(1); // Reset zoom when generating new diagram
 
       if (!content || !content.includes('@startuml')) {
         throw new Error('Invalid PlantUML content');
       }
 
       const encoded = plantumlEncoder.encode(content);
-      // Use local server if configured, otherwise use self-hosted or public server
-      // Users should set PLANTUML_SERVER_URL to their own server for security
+      // Default to localhost for security - users should run their own PlantUML server
+      // docker run -d -p 8080:8080 plantuml/plantuml-server:jetty
       const serverUrl = localStorage.getItem('plantUmlServerUrl') || 
                        process.env.PLANTUML_SERVER_URL || 
-                       'https://www.plantuml.com/plantuml';
+                       'http://localhost:8080/plantuml';
       
       // Validate server URL to prevent injection attacks
       try {
@@ -75,6 +76,7 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
   const handleImageError = () => {
     setLoading(false);
     setImageUrl(''); // Clear the image URL on error
+    setZoom(1); // Reset zoom to default on error
     setError('Failed to load diagram. The PlantUML server may be unavailable.');
   };
 
