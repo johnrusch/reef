@@ -157,13 +157,15 @@ class CacheService {
       const result = stmt.get(...params) as DiagramCacheEntry | undefined;
       
       if (result) {
-        // Update access count and last accessed timestamp
+        // Use atomic operation to update access count and last accessed timestamp
+        // This prevents race conditions by doing the update in a single atomic operation
         const updateStmt = this.db.prepare(`
           UPDATE diagram_cache 
-          SET last_accessed = CURRENT_TIMESTAMP, access_count = access_count + 1 
-          WHERE id = ?
+          SET last_accessed = CURRENT_TIMESTAMP, 
+              access_count = access_count + 1 
+          WHERE id = ? AND repo_path = ? AND diagram_type = ?
         `);
-        updateStmt.run(result.id);
+        updateStmt.run(result.id, repoPath, diagramType);
         
         this.cacheHits++;
         console.log(`Cache hit for ${repoPath} - ${diagramType}`);
@@ -186,26 +188,30 @@ class CacheService {
     if (!this.db) return false;
     
     try {
-      const stmt = this.db.prepare(`
-        INSERT OR REPLACE INTO diagram_cache (
-          repo_path, repo_hash, diagram_type, diagram_content,
-          diagram_metadata, model_used, prompt_version, tokens_used,
-          generation_cost, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-      `);
+      // Use a transaction to ensure atomicity
+      const transaction = this.db.transaction(() => {
+        const stmt = this.db!.prepare(`
+          INSERT OR REPLACE INTO diagram_cache (
+            repo_path, repo_hash, diagram_type, diagram_content,
+            diagram_metadata, model_used, prompt_version, tokens_used,
+            generation_cost, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `);
+        
+        stmt.run(
+          entry.repo_path,
+          entry.repo_hash,
+          entry.diagram_type,
+          entry.diagram_content,
+          entry.diagram_metadata || null,
+          entry.model_used,
+          entry.prompt_version,
+          entry.tokens_used || null,
+          entry.generation_cost || null
+        );
+      });
       
-      stmt.run(
-        entry.repo_path,
-        entry.repo_hash,
-        entry.diagram_type,
-        entry.diagram_content,
-        entry.diagram_metadata || null,
-        entry.model_used,
-        entry.prompt_version,
-        entry.tokens_used || null,
-        entry.generation_cost || null
-      );
-      
+      transaction();
       console.log(`Cached diagram for ${entry.repo_path} - ${entry.diagram_type}`);
       return true;
     } catch (error) {

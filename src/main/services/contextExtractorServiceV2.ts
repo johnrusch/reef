@@ -324,11 +324,14 @@ class ContextExtractorServiceV2 {
     const files: string[] = [];
     
     try {
+      // Resolve base path once to establish boundary
+      const resolvedBase = path.resolve(dirPath);
       const entries = await fs.readdir(dirPath, { withFileTypes: true });
       
       for (const entry of entries) {
         // Security: Validate entry name to prevent path traversal
-        if (entry.name.includes('..') || entry.name.includes('~')) {
+        if (entry.name.includes('..') || entry.name.includes('~') || 
+            entry.name.startsWith('.') && entry.name !== '.gitignore' && entry.name !== '.env') {
           continue;
         }
         
@@ -336,9 +339,19 @@ class ContextExtractorServiceV2 {
         const relPath = path.join(relativePath, entry.name);
         
         // Security: Ensure the resolved path is still within the repository
-        const resolvedPath = path.resolve(fullPath);
-        const resolvedBase = path.resolve(dirPath);
-        if (!resolvedPath.startsWith(resolvedBase)) {
+        // Use realpath to resolve symlinks and check containment
+        try {
+          const realFullPath = await fs.realpath(fullPath);
+          const resolvedPath = path.resolve(realFullPath);
+          
+          // Must be within the repository root
+          if (!resolvedPath.startsWith(resolvedBase + path.sep) && resolvedPath !== resolvedBase) {
+            console.warn(`Path traversal attempt blocked: ${fullPath}`);
+            continue;
+          }
+        } catch (err) {
+          // If realpath fails (e.g., broken symlink), skip the file
+          console.warn(`Skipping inaccessible path: ${fullPath}`);
           continue;
         }
         
@@ -498,13 +511,18 @@ class ContextExtractorServiceV2 {
       
       // Handle large files with chunking
       if (stat.size > this.MAX_FILE_SIZE) {
-        let fileHandle;
+        let fileHandle: fs.FileHandle | undefined;
         try {
           fileHandle = await fs.open(filePath, 'r');
           const buffer = Buffer.allocUnsafe(Math.min(this.CHUNK_SIZE, stat.size));
           const { bytesRead } = await fileHandle.read(buffer, 0, buffer.length, 0);
           
           const content = buffer.slice(0, bytesRead).toString('utf-8', 0, bytesRead);
+          
+          // Ensure file handle is closed before returning
+          await fileHandle.close();
+          fileHandle = undefined;
+          
           return {
             path: relativePath,
             content: content + '\n// ... file truncated (too large) ...',
@@ -513,10 +531,23 @@ class ContextExtractorServiceV2 {
           };
         } catch (bufferError) {
           console.error(`Error reading chunk from ${filePath}:`, bufferError);
+          // Ensure file handle is closed in error case
+          if (fileHandle) {
+            try {
+              await fileHandle.close();
+            } catch (closeError) {
+              console.error(`Error closing file handle for ${filePath}:`, closeError);
+            }
+          }
           return null;
         } finally {
+          // Double-check file handle is closed
           if (fileHandle) {
-            await fileHandle.close();
+            try {
+              await fileHandle.close();
+            } catch (closeError) {
+              console.error(`Error closing file handle in finally for ${filePath}:`, closeError);
+            }
           }
         }
       }

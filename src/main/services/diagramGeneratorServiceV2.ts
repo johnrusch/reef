@@ -25,7 +25,6 @@ export interface EnhancedDiagramResult extends DiagramResult {
 
 class DiagramGeneratorServiceV2 {
   private anthropic: Anthropic | null = null;
-  private apiKey: string | undefined;
   private readonly TARGET_TOKENS = 15000;
   private store: Store;
   private readonly PROMPT_VERSION = '2.0.0'; // Track prompt version for cache invalidation
@@ -41,34 +40,32 @@ class DiagramGeneratorServiceV2 {
     const encryptedKey = this.store.get('anthropicApiKey') as string | undefined;
     if (encryptedKey && safeStorage.isEncryptionAvailable()) {
       try {
-        this.apiKey = safeStorage.decryptString(Buffer.from(encryptedKey, 'base64'));
-        this.initializeClient();
+        const decryptedKey = safeStorage.decryptString(Buffer.from(encryptedKey, 'base64'));
+        this.initializeClient(decryptedKey);
+        // Immediately clear from local variable
       } catch (error) {
         console.error('Failed to decrypt API key:', error);
       }
     } else if (process.env.ANTHROPIC_API_KEY) {
-      this.apiKey = process.env.ANTHROPIC_API_KEY;
-      this.initializeClient();
+      this.initializeClient(process.env.ANTHROPIC_API_KEY);
     }
   }
 
-  private initializeClient() {
-    if (!this.apiKey) {
+  private initializeClient(apiKey: string) {
+    if (!apiKey) {
       console.warn('Anthropic API key not found');
       return;
     }
 
     try {
       this.anthropic = new Anthropic({
-        apiKey: this.apiKey,
+        apiKey: apiKey,
       });
       console.log('Anthropic client initialized successfully');
-      // Clear API key from memory after successful initialization
-      this.apiKey = undefined;
+      // API key is not stored, only passed to Anthropic client
     } catch (error) {
       console.error('Failed to initialize Anthropic client:', error);
       this.anthropic = null;
-      this.apiKey = undefined;
     }
   }
 
@@ -87,9 +84,8 @@ class DiagramGeneratorServiceV2 {
       throw new Error('Cannot store API key securely. Encryption is not available on this system.');
     }
     
-    // Temporarily set API key for initialization
-    this.apiKey = apiKey;
-    this.initializeClient();
+    // Initialize client without storing the key in instance variable
+    this.initializeClient(apiKey);
   }
 
   public isConfigured(): boolean {
@@ -426,10 +422,26 @@ const diagramGeneratorServiceV2 = new DiagramGeneratorServiceV2();
 
 // IPC handlers for the enhanced diagram generator
 ipcMain.handle('diagram:generate-v2', async (_, repoPath: string, options: DiagramOptions & any) => {
+  // Input validation
+  if (!repoPath || typeof repoPath !== 'string') {
+    return { success: false, error: 'Invalid repository path' };
+  }
+  if (!options || typeof options !== 'object') {
+    return { success: false, error: 'Invalid options' };
+  }
+  if (options.type && !['component', 'class', 'sequence'].includes(options.type)) {
+    return { success: false, error: 'Invalid diagram type' };
+  }
+  
   return diagramGeneratorServiceV2.generateDiagramWithOptimization(repoPath, options);
 });
 
 ipcMain.handle('diagram:set-api-key-v2', async (_, apiKey: string) => {
+  // Input validation
+  if (!apiKey || typeof apiKey !== 'string') {
+    throw new Error('Invalid API key');
+  }
+  
   diagramGeneratorServiceV2.setApiKey(apiKey);
   return { success: true };
 });

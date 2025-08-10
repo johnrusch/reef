@@ -15,9 +15,10 @@ export interface QueuedRequest {
 }
 
 class RateLimiterService extends EventEmitter {
-  private readonly config: RateLimitConfig = {
+  private readonly config: RateLimitConfig & { maxQueueSize: number } = {
     maxRequests: 10,      // 10 requests
     windowMs: 60 * 1000,  // per minute
+    maxQueueSize: 100,    // Maximum queue size to prevent memory exhaustion
   };
 
   private requestHistory: number[] = [];
@@ -114,6 +115,13 @@ class RateLimiterService extends EventEmitter {
     priority: 'high' | 'normal' | 'low',
     timeout: number
   ): Promise<T> {
+    // Check queue size limit to prevent memory exhaustion
+    if (this.requestQueue.length >= this.config.maxQueueSize) {
+      return Promise.reject(new Error(
+        `Queue is full (${this.config.maxQueueSize} requests). Please try again later.`
+      ));
+    }
+
     return new Promise((resolve, reject) => {
       const queuedRequest: QueuedRequest = {
         id,
