@@ -79,7 +79,8 @@ class ContextExtractorService {
       let totalSize = 0;
 
       for (const file of selectedFiles) {
-        const content = await this.readFileContent(path.join(repoPath, file.path));
+        const fullPath = path.join(repoPath, file.path);
+        const content = await this.readFileContent(fullPath, repoPath);
         if (content) {
           fileContents.push(content);
           totalSize += content.size;
@@ -258,9 +259,14 @@ class ContextExtractorService {
     });
   }
 
-  private async readFileContent(filePath: string): Promise<FileContent | null> {
+  private async readFileContent(filePath: string, basePath?: string): Promise<FileContent | null> {
     try {
       const stat = await fs.stat(filePath);
+      
+      // Calculate relative path from base (repository root) or directory
+      const relativePath = basePath 
+        ? path.relative(basePath, filePath)
+        : path.basename(filePath);
       
       // Skip files that are too large
       if (stat.size > this.MAX_FILE_SIZE) {
@@ -272,7 +278,7 @@ class ContextExtractorService {
         
         const content = buffer.toString('utf-8');
         return {
-          path: path.relative(path.dirname(filePath), filePath),
+          path: relativePath,
           content: content + '\n// ... file truncated (too large) ...',
           size: this.CHUNK_SIZE,
           priority: 'optional',
@@ -284,7 +290,7 @@ class ContextExtractorService {
       const size = Buffer.byteLength(content, 'utf-8');
       
       return {
-        path: path.relative(path.dirname(filePath), filePath),
+        path: relativePath,
         content,
         size,
         priority: 'optional',

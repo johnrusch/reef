@@ -42,9 +42,14 @@ class DiagramGeneratorService {
         apiKey: this.apiKey,
       });
       console.log('Anthropic client initialized successfully');
+      // Clear API key from memory after successful initialization
+      // The Anthropic client stores it internally, we don't need our copy
+      this.apiKey = undefined;
     } catch (error) {
       console.error('Failed to initialize Anthropic client:', error);
       this.anthropic = null;
+      // Also clear on error for security
+      this.apiKey = undefined;
     }
   }
 
@@ -53,8 +58,6 @@ class DiagramGeneratorService {
     if (!apiKey || !apiKey.startsWith('sk-ant-')) {
       throw new Error('Invalid API key format');
     }
-    
-    this.apiKey = apiKey;
     
     // Store encrypted API key if encryption is available
     if (safeStorage.isEncryptionAvailable()) {
@@ -66,7 +69,10 @@ class DiagramGeneratorService {
       this.store.set('anthropicApiKey', apiKey);
     }
     
+    // Temporarily set API key for initialization
+    this.apiKey = apiKey;
     this.initializeClient();
+    // API key will be cleared from memory in initializeClient
   }
 
   public isConfigured(): boolean {
