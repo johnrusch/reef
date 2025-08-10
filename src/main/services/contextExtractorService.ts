@@ -1,25 +1,13 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ipcMain } from 'electron';
+import type { ExtractorOptions, ExtractionResult } from '../../shared/types/diagram';
 
 export interface FileContent {
   path: string;
   content: string;
   size: number;
   priority: 'critical' | 'important' | 'optional';
-}
-
-export interface ExtractorOptions {
-  maxTokens?: number;
-  includeTests?: boolean;
-  focusArea?: 'api' | 'database' | 'business-logic';
-}
-
-export interface ExtractionResult {
-  files: FileContent[];
-  totalSize: number;
-  estimatedTokens: number;
-  truncated: boolean;
 }
 
 class ContextExtractorService {
@@ -66,6 +54,7 @@ class ContextExtractorService {
   ];
 
   private readonly MAX_FILE_SIZE = 100000; // 100KB per file
+  private readonly CHUNK_SIZE = 10000; // 10KB chunks for reading
   private readonly DEFAULT_MAX_TOKENS = 15000;
 
   public async extractContext(
@@ -120,8 +109,20 @@ class ContextExtractorService {
       const entries = await fs.readdir(dirPath, { withFileTypes: true });
       
       for (const entry of entries) {
+        // Validate entry name to prevent path traversal
+        if (entry.name.includes('..') || entry.name.includes('~')) {
+          continue;
+        }
+        
         const fullPath = path.join(dirPath, entry.name);
         const relPath = path.join(relativePath, entry.name);
+        
+        // Ensure the resolved path is still within the repository
+        const resolvedPath = path.resolve(fullPath);
+        const resolvedBase = path.resolve(dirPath);
+        if (!resolvedPath.startsWith(resolvedBase)) {
+          continue;
+        }
         
         if (this.shouldExclude(relPath)) {
           continue;
@@ -209,7 +210,8 @@ class ContextExtractorService {
           continue;
         }
         
-        const estimatedTokens = this.estimateTokenCount(stat.size.toString());
+        // Estimate tokens based on file size (rough approximation: 1 char ≈ 0.25 tokens)
+        const estimatedTokens = Math.ceil(stat.size / 4);
         
         if (currentTokens + estimatedTokens > maxTokens) {
           if (file.priority === 'critical' && selected.length > 0) {
@@ -258,18 +260,28 @@ class ContextExtractorService {
 
   private async readFileContent(filePath: string): Promise<FileContent | null> {
     try {
-      const content = await fs.readFile(filePath, 'utf-8');
-      const size = Buffer.byteLength(content, 'utf-8');
+      const stat = await fs.stat(filePath);
       
-      if (size > this.MAX_FILE_SIZE) {
-        const truncated = content.substring(0, this.MAX_FILE_SIZE);
+      // Skip files that are too large
+      if (stat.size > this.MAX_FILE_SIZE) {
+        // Read only the first chunk for large files
+        const fileHandle = await fs.open(filePath, 'r');
+        const buffer = Buffer.allocUnsafe(this.CHUNK_SIZE);
+        await fileHandle.read(buffer, 0, this.CHUNK_SIZE, 0);
+        await fileHandle.close();
+        
+        const content = buffer.toString('utf-8');
         return {
           path: path.relative(path.dirname(filePath), filePath),
-          content: truncated + '\n// ... file truncated ...',
-          size: this.MAX_FILE_SIZE,
+          content: content + '\n// ... file truncated (too large) ...',
+          size: this.CHUNK_SIZE,
           priority: 'optional',
         };
       }
+      
+      // For smaller files, read normally
+      const content = await fs.readFile(filePath, 'utf-8');
+      const size = Buffer.byteLength(content, 'utf-8');
       
       return {
         path: path.relative(path.dirname(filePath), filePath),

@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
+import type { DiagramOptions, DiagramResult, ExtractorOptions, ExtractionResult } from '../shared/types/diagram';
 
 export interface ReefAPI {
   store: {
@@ -43,12 +44,12 @@ export interface ReefAPI {
     getWorkflowRuns: (owner: string, repo: string) => Promise<any>;
   };
   diagram: {
-    generate: (context: string, options: any) => Promise<any>;
-    setApiKey: (apiKey: string) => Promise<any>;
-    checkConfiguration: () => Promise<any>;
+    generate: (context: string, options: DiagramOptions) => Promise<DiagramResult>;
+    setApiKey: (apiKey: string) => Promise<{ success: boolean }>;
+    checkConfiguration: () => Promise<{ configured: boolean }>;
   };
   context: {
-    extract: (repoPath: string, options: any) => Promise<any>;
+    extract: (repoPath: string, options: ExtractorOptions) => Promise<ExtractionResult>;
   };
   ipc: {
     on: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => void;
@@ -112,12 +113,12 @@ const reefAPI: ReefAPI = {
     getWorkflowRuns: (owner: string, repo: string) => ipcRenderer.invoke('github-workflow-runs', owner, repo),
   },
   diagram: {
-    generate: (context: string, options: any) => ipcRenderer.invoke('diagram:generate', context, options),
+    generate: (context: string, options: DiagramOptions) => ipcRenderer.invoke('diagram:generate', context, options),
     setApiKey: (apiKey: string) => ipcRenderer.invoke('diagram:set-api-key', apiKey),
     checkConfiguration: () => ipcRenderer.invoke('diagram:check-configuration'),
   },
   context: {
-    extract: (repoPath: string, options: any) => ipcRenderer.invoke('context:extract', repoPath, options),
+    extract: (repoPath: string, options: ExtractorOptions) => ipcRenderer.invoke('context:extract', repoPath, options),
   },
   ipc: {
     on: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => {

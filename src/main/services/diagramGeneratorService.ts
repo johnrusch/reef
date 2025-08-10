@@ -1,30 +1,31 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { ipcMain } from 'electron';
-
-export interface DiagramOptions {
-  type: 'component' | 'class' | 'sequence';
-  detailLevel: 'overview' | 'detailed';
-  focusArea?: 'api' | 'database' | 'business-logic';
-}
-
-export interface DiagramResult {
-  success: boolean;
-  diagram?: string;
-  error?: string;
-  tokensUsed?: {
-    input: number;
-    output: number;
-  };
-}
+import { ipcMain, safeStorage } from 'electron';
+import Store from 'electron-store';
+import type { DiagramOptions, DiagramResult } from '../../shared/types/diagram';
 
 class DiagramGeneratorService {
   private anthropic: Anthropic | null = null;
   private apiKey: string | undefined;
   // private readonly MAX_TOKENS = 40000;
   private readonly TARGET_TOKENS = 15000;
+  private store: Store;
 
   constructor() {
-    this.apiKey = process.env.ANTHROPIC_API_KEY;
+    this.store = new Store();
+    // Try to load API key from secure storage first, then environment variable
+    const encryptedKey = this.store.get('anthropicApiKey') as string | undefined;
+    if (encryptedKey && safeStorage.isEncryptionAvailable()) {
+      try {
+        this.apiKey = safeStorage.decryptString(Buffer.from(encryptedKey, 'base64'));
+      } catch (error) {
+        console.error('Failed to decrypt API key:', error);
+      }
+    }
+    
+    if (!this.apiKey) {
+      this.apiKey = process.env.ANTHROPIC_API_KEY;
+    }
+    
     if (this.apiKey) {
       this.initializeClient();
     }
@@ -48,7 +49,23 @@ class DiagramGeneratorService {
   }
 
   public setApiKey(apiKey: string) {
+    // Validate API key format
+    if (!apiKey || !apiKey.startsWith('sk-ant-')) {
+      throw new Error('Invalid API key format');
+    }
+    
     this.apiKey = apiKey;
+    
+    // Store encrypted API key if encryption is available
+    if (safeStorage.isEncryptionAvailable()) {
+      const encrypted = safeStorage.encryptString(apiKey);
+      this.store.set('anthropicApiKey', encrypted.toString('base64'));
+    } else {
+      // Fallback to plain storage with warning
+      console.warn('Encryption not available, storing API key in plain text');
+      this.store.set('anthropicApiKey', apiKey);
+    }
+    
     this.initializeClient();
   }
 

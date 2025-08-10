@@ -37,7 +37,22 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
       }
 
       const encoded = plantumlEncoder.encode(content);
-      const serverUrl = process.env.PLANTUML_SERVER_URL || 'https://www.plantuml.com/plantuml';
+      // Use local server if configured, otherwise use self-hosted or public server
+      // Users should set PLANTUML_SERVER_URL to their own server for security
+      const serverUrl = localStorage.getItem('plantUmlServerUrl') || 
+                       process.env.PLANTUML_SERVER_URL || 
+                       'https://www.plantuml.com/plantuml';
+      
+      // Validate server URL to prevent injection attacks
+      try {
+        const urlObj = new URL(serverUrl);
+        if (!['http:', 'https:'].includes(urlObj.protocol)) {
+          throw new Error('Invalid PlantUML server protocol');
+        }
+      } catch {
+        throw new Error('Invalid PlantUML server URL');
+      }
+      
       const url = `${serverUrl}/svg/${encoded}`;
       
       setImageUrl(url);
@@ -59,6 +74,7 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
 
   const handleImageError = () => {
     setLoading(false);
+    setImageUrl(''); // Clear the image URL on error
     setError('Failed to load diagram. The PlantUML server may be unavailable.');
   };
 

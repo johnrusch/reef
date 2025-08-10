@@ -32,7 +32,7 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
     try {
       const result = await window.reef.diagram.checkConfiguration();
       setIsConfigured(result.configured);
-      if (!result.configured && !process.env.ANTHROPIC_API_KEY) {
+      if (!result.configured) {
         setShowApiKeyModal(true);
       }
     } catch (error) {
