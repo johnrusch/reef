@@ -31,6 +31,7 @@ export interface ReefAPI {
     createBranch: (repoPath: string, branchName: string) => Promise<void>;
     deleteBranch: (repoPath: string, branchName: string) => Promise<void>;
     getRemotes: (repoPath: string) => Promise<any>;
+    revertLines: (repoPath: string, fileName: string, lineChanges: any) => Promise<boolean>;
   };
   github: {
     authenticate: (token: string) => Promise<boolean>;
@@ -90,6 +91,8 @@ const reefAPI: ReefAPI = {
       ipcRenderer.invoke('git-delete-branch', repoPath, branchName),
     getRemotes: (repoPath: string) =>
       ipcRenderer.invoke('git-get-remotes', repoPath),
+    revertLines: (repoPath: string, fileName: string, lineChanges: any) =>
+      ipcRenderer.invoke('git-revert-lines', repoPath, fileName, lineChanges),
   },
   github: {
     authenticate: (token: string) => ipcRenderer.invoke('github-auth', token),

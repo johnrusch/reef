@@ -1,5 +1,7 @@
 import { ipcMain } from 'electron';
 import simpleGit, { SimpleGit } from 'simple-git';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 
 class GitService {
   private gitInstances: Map<string, SimpleGit> = new Map();
@@ -190,6 +192,49 @@ class GitService {
         return remotes;
       } catch (error) {
         throw new Error(`Failed to get remotes: ${(error as Error).message}`);
+      }
+    });
+
+    ipcMain.handle('git-revert-lines', async (_, repoPath: string, fileName: string, lineChanges: any) => {
+      try {
+        const filePath = path.join(repoPath, fileName);
+        const fileContent = await fs.readFile(filePath, 'utf-8');
+        const lines = fileContent.split('\n');
+        
+        // Group changes by type to handle them in the correct order
+        const additions = lineChanges.lines.filter((c: any) => c.type === 'add');
+        const removals = lineChanges.lines.filter((c: any) => c.type === 'remove');
+        
+        // First, remove all additions (in reverse order to maintain line numbers)
+        const sortedAdditions = [...additions].sort((a, b) => b.lineNumber - a.lineNumber);
+        for (const change of sortedAdditions) {
+          const lineIndex = change.lineNumber - 1;
+          // Find the line that matches the content
+          if (lines[lineIndex]?.trim() === change.content.trim()) {
+            lines.splice(lineIndex, 1);
+          } else {
+            // Search for the line if index doesn't match
+            const foundIndex = lines.findIndex(line => line.trim() === change.content.trim());
+            if (foundIndex !== -1) {
+              lines.splice(foundIndex, 1);
+            }
+          }
+        }
+        
+        // Then, restore all removals (in original order)
+        const sortedRemovals = [...removals].sort((a, b) => a.lineNumber - b.lineNumber);
+        for (const change of sortedRemovals) {
+          // For removals, we need to find the right position after additions have been removed
+          const lineIndex = Math.min(lines.length, Math.max(0, change.lineNumber - 1));
+          lines.splice(lineIndex, 0, change.content);
+        }
+        
+        // Write the modified content back to the file
+        await fs.writeFile(filePath, lines.join('\n'), 'utf-8');
+        
+        return true;
+      } catch (error) {
+        throw new Error(`Failed to revert lines: ${(error as Error).message}`);
       }
     });
   }

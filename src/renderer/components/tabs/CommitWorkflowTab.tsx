@@ -19,6 +19,7 @@ interface CommitWorkflowTabProps {
 }
 
 export const CommitWorkflowTab: React.FC<CommitWorkflowTabProps> = ({
+  repository,
   gitStatus,
   commits,
   onStageFiles,
@@ -41,6 +42,23 @@ export const CommitWorkflowTab: React.FC<CommitWorkflowTabProps> = ({
       console.error('Failed to load diff:', error);
       setSelectedDiffFile(file);
       setDiffContent('Error loading diff. Please try again.');
+    }
+  };
+
+  const handleRevertLines = async (lineChanges: any) => {
+    if (!repository?.path) return;
+    
+    try {
+      await window.reef.git.revertLines(repository.path, lineChanges.fileName, lineChanges);
+      // Refresh the diff after reverting
+      if (selectedDiffFile) {
+        const newDiff = await onViewDiff(selectedDiffFile);
+        setDiffContent(newDiff);
+      }
+    } catch (error) {
+      console.error('Failed to revert lines:', error);
+      // Show error to user
+      alert(`Failed to revert changes: ${error}`);
     }
   };
 
@@ -187,6 +205,8 @@ export const CommitWorkflowTab: React.FC<CommitWorkflowTabProps> = ({
                   setSelectedDiffFile(null);
                   setDiffContent('');
                 }}
+                onRevertLines={handleRevertLines}
+                repoPath={repository?.path}
               />
             ) : (
               <div className="h-full w-full flex items-center justify-center">
