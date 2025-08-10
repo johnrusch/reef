@@ -182,14 +182,26 @@ export const EnhancedChangesPanel: React.FC<EnhancedChangesPanelProps> = ({
             <div className="flex items-center space-x-2">
               {canStage ? (
                 <button
-                  onClick={() => onStageFiles(files.map(f => f.path))}
+                  onClick={() => {
+                    const filePaths = files.map(f => f.path);
+                    onStageFiles(filePaths);
+                    setSelectedFiles(new Set(filePaths));
+                  }}
                   className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded transition-colors"
                 >
                   Stage All
                 </button>
               ) : (
                 <button
-                  onClick={() => onUnstageFiles(files.map(f => f.path))}
+                  onClick={() => {
+                    const filePaths = files.map(f => f.path);
+                    onUnstageFiles(filePaths);
+                    setSelectedFiles(prev => {
+                      const newSet = new Set(prev);
+                      filePaths.forEach(path => newSet.delete(path));
+                      return newSet;
+                    });
+                  }}
                   className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
                 >
                   Unstage All
