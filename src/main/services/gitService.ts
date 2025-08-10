@@ -197,8 +197,22 @@ class GitService {
 
     ipcMain.handle('git-revert-lines', async (_, repoPath: string, fileName: string, lineChanges: any) => {
       try {
-        const filePath = path.join(repoPath, fileName);
-        const fileContent = await fs.readFile(filePath, 'utf-8');
+        // Validate fileName to prevent path traversal attacks
+        const normalizedFileName = path.normalize(fileName);
+        if (normalizedFileName.includes('..') || path.isAbsolute(normalizedFileName)) {
+          throw new Error('Invalid file name: path traversal attempt detected');
+        }
+        
+        const filePath = path.join(repoPath, normalizedFileName);
+        
+        // Ensure the resulting path is within the repository
+        const resolvedPath = path.resolve(filePath);
+        const resolvedRepoPath = path.resolve(repoPath);
+        if (!resolvedPath.startsWith(resolvedRepoPath)) {
+          throw new Error('Invalid file path: file is outside repository');
+        }
+        
+        const fileContent = await fs.readFile(resolvedPath, 'utf-8');
         const lines = fileContent.split('\n');
         
         // Group changes by type to handle them in the correct order
@@ -209,14 +223,23 @@ class GitService {
         const sortedAdditions = [...additions].sort((a, b) => b.lineNumber - a.lineNumber);
         for (const change of sortedAdditions) {
           const lineIndex = change.lineNumber - 1;
-          // Find the line that matches the content
-          if (lines[lineIndex]?.trim() === change.content.trim()) {
+          // Check exact match first (including whitespace)
+          if (lines[lineIndex] === change.content) {
+            lines.splice(lineIndex, 1);
+          } else if (lines[lineIndex]?.trim() === change.content.trim()) {
+            // Fall back to trimmed comparison if exact match fails
             lines.splice(lineIndex, 1);
           } else {
-            // Search for the line if index doesn't match
-            const foundIndex = lines.findIndex(line => line.trim() === change.content.trim());
+            // Last resort: search for the line (exact match)
+            const foundIndex = lines.findIndex(line => line === change.content);
             if (foundIndex !== -1) {
               lines.splice(foundIndex, 1);
+            } else {
+              // If still not found, try trimmed search as final fallback
+              const trimmedIndex = lines.findIndex(line => line.trim() === change.content.trim());
+              if (trimmedIndex !== -1) {
+                lines.splice(trimmedIndex, 1);
+              }
             }
           }
         }

@@ -34,6 +34,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, fileName, onClose,
     indices: number[];
     type: 'line' | 'hunk';
   }>({ open: false, lines: [], indices: [], type: 'line' });
+  const [isReverting, setIsReverting] = useState(false);
   const parsedDiff = useMemo(() => {
     const lines = diff.split('\n');
     const result: Array<{
@@ -56,15 +57,28 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, fileName, onClose,
       } else if (line.startsWith('@@')) {
         currentHunkIndex++;
         result.push({ type: 'hunk', content: line, hunkIndex: currentHunkIndex });
-        // Parse line numbers from hunk header
-        const match = line.match(/@@ -(\d+),?\d* \+(\d+),?\d* @@/);
+        // Parse line numbers from hunk header with better error handling
+        const match = line.match(/@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
         if (match) {
-          oldLineNum = parseInt(match[1], 10) || 1;
-          newLineNum = parseInt(match[2], 10) || 1;
+          const parsedOld = parseInt(match[1], 10);
+          const parsedNew = parseInt(match[2], 10);
+          // Validate parsed numbers
+          if (!isNaN(parsedOld) && parsedOld > 0) {
+            oldLineNum = parsedOld;
+          } else {
+            console.warn(`Invalid old line number in hunk header: ${line}`);
+            oldLineNum = 1;
+          }
+          if (!isNaN(parsedNew) && parsedNew > 0) {
+            newLineNum = parsedNew;
+          } else {
+            console.warn(`Invalid new line number in hunk header: ${line}`);
+            newLineNum = 1;
+          }
         } else {
-          // Reset to defaults if parsing fails
-          oldLineNum = 1;
-          newLineNum = 1;
+          console.warn(`Failed to parse hunk header: ${line}`);
+          // Keep previous line numbers instead of resetting to 1
+          // This provides better continuity if one hunk header fails to parse
         }
       } else if (line.startsWith('+')) {
         result.push({
@@ -106,7 +120,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, fileName, onClose,
   };
 
   const handleRevertLine = (index: number, line: any) => {
-    if (!onRevertLines || !fileName) return;
+    if (!onRevertLines || !fileName || isReverting) return;
     
     // If this is an addition, check if there's a preceding removal (modification case)
     if (line.type === 'add' && index > 0 && parsedDiff[index - 1].type === 'remove') {
@@ -129,7 +143,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, fileName, onClose,
   };
 
   const handleRevertHunk = (hunkIndex: number) => {
-    if (!onRevertLines || !fileName) return;
+    if (!onRevertLines || !fileName || isReverting) return;
     const hunkLines = parsedDiff.filter(
       (line) => line.hunkIndex === hunkIndex && (line.type === 'add' || line.type === 'remove')
     );
@@ -151,10 +165,12 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, fileName, onClose,
   };
 
   const confirmRevertAction = async () => {
-    if (!onRevertLines || !fileName) {
-      console.error('Missing onRevertLines handler or fileName');
+    if (!onRevertLines || !fileName || isReverting) {
+      console.error('Missing onRevertLines handler, fileName, or operation in progress');
       return;
     }
+    
+    setIsReverting(true);
     
     const lineChanges: LineRevertData = {
       fileName: fileName,
@@ -170,6 +186,8 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, fileName, onClose,
       setConfirmRevert({ open: false, lines: [], indices: [], type: 'line' });
     } catch (error) {
       console.error('Failed to revert lines:', error);
+    } finally {
+      setIsReverting(false);
     }
   };
 
@@ -325,13 +343,14 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, fileName, onClose,
       {/* Confirmation Dialog */}
       <ConfirmDialog
         open={confirmRevert.open}
-        onOpenChange={(open) => !open && setConfirmRevert({ ...confirmRevert, open: false })}
+        onOpenChange={(open) => !open && !isReverting && setConfirmRevert({ ...confirmRevert, open: false })}
         title={confirmRevert.type === 'hunk' ? 'Revert Hunk?' : 'Revert Line Change?'}
         description={getRevertDescription()}
-        confirmText="Revert"
+        confirmText={isReverting ? "Reverting..." : "Revert"}
         cancelText="Cancel"
         variant="danger"
         onConfirm={confirmRevertAction}
+        isLoading={isReverting}
       >
         <div className="font-mono text-xs space-y-1 max-h-40 overflow-y-auto">
           {confirmRevert.lines.map((line, idx) => (

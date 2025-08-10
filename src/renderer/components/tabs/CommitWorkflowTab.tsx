@@ -57,8 +57,8 @@ export const CommitWorkflowTab: React.FC<CommitWorkflowTabProps> = ({
       }
     } catch (error) {
       console.error('Failed to revert lines:', error);
-      // Show error to user
-      alert(`Failed to revert changes: ${error}`);
+      // TODO: Replace with proper error toast/notification component
+      // For now, just log the error - the DiffViewer handles errors internally
     }
   };
 
