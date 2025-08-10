@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { EnhancedChangesPanel } from '../repository/EnhancedChangesPanel';
 import { CommitComposer } from '../repository/CommitComposer';
 import { CommitHistory } from '../repository/CommitHistory';
@@ -109,55 +110,74 @@ export const CommitWorkflowTab: React.FC<CommitWorkflowTabProps> = ({
       </div>
 
       {/* Main Content Area */}
-      <div className="flex flex-1 min-h-0 min-w-0" style={{ contain: 'layout' }}>
-        {/* Left Panel (2/5 width) - Changes/History Toggle */}
-        <div className="w-2/5 border-r border-gray-700 flex flex-col flex-shrink-0 min-w-0">
-          {/* Tab Switcher */}
-          <div className="flex border-b border-gray-700">
-            <button
-              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-                leftPanelView === 'changes'
-                  ? 'text-white bg-gray-800 border-b-2 border-blue-500'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-700'
-              }`}
-              onClick={() => setLeftPanelView('changes')}
-            >
-              Changes
-            </button>
-            <button
-              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-                leftPanelView === 'history'
-                  ? 'text-white bg-gray-800 border-b-2 border-blue-500'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-700'
-              }`}
-              onClick={() => setLeftPanelView('history')}
-            >
-              History
-            </button>
-          </div>
+      <PanelGroup 
+        direction="horizontal" 
+        className="flex-1 min-h-0"
+        autoSaveId="commitWorkflowPanels"
+      >
+        {/* Left Panel - Changes/History Toggle */}
+        <Panel 
+          defaultSize={40} 
+          minSize={20} 
+          maxSize={80}
+          className="flex flex-col min-w-0"
+        >
+          <div className="flex flex-col h-full border-r border-gray-700">
+            {/* Tab Switcher */}
+            <div className="flex border-b border-gray-700">
+              <button
+                className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                  leftPanelView === 'changes'
+                    ? 'text-white bg-gray-800 border-b-2 border-blue-500'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                }`}
+                onClick={() => setLeftPanelView('changes')}
+              >
+                Changes
+              </button>
+              <button
+                className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                  leftPanelView === 'history'
+                    ? 'text-white bg-gray-800 border-b-2 border-blue-500'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                }`}
+                onClick={() => setLeftPanelView('history')}
+              >
+                History
+              </button>
+            </div>
 
-          {/* Tab Content */}
-          <div className="flex-1 overflow-auto p-4 min-w-0">
-            {leftPanelView === 'changes' ? (
-              <EnhancedChangesPanel
-                files={files}
-                supportsCategorization={true}
-                onStageFiles={onStageFiles}
-                onUnstageFiles={onUnstageFiles}
-                onDiscardChanges={onDiscardChanges}
-                onViewDiff={handleViewDiff}
-              />
-            ) : (
-              <CommitHistory
-                commits={transformCommits()}
-                onViewCommit={(commit) => console.log('View commit:', commit)}
-              />
-            )}
+            {/* Tab Content */}
+            <div className="flex-1 overflow-auto p-4 min-w-0">
+              {leftPanelView === 'changes' ? (
+                <EnhancedChangesPanel
+                  files={files}
+                  supportsCategorization={true}
+                  onStageFiles={onStageFiles}
+                  onUnstageFiles={onUnstageFiles}
+                  onDiscardChanges={onDiscardChanges}
+                  onViewDiff={handleViewDiff}
+                />
+              ) : (
+                <CommitHistory
+                  commits={transformCommits()}
+                  onViewCommit={(commit) => console.log('View commit:', commit)}
+                />
+              )}
+            </div>
           </div>
-        </div>
+        </Panel>
 
-        {/* Right Panel (3/5 width) - Dedicated Diff Viewer */}
-        <div className="w-3/5 flex flex-col min-w-0 overflow-hidden">
+        {/* Resize Handle */}
+        <PanelResizeHandle className="w-1 bg-gray-700 hover:bg-blue-500 transition-colors cursor-col-resize" />
+
+        {/* Right Panel - Dedicated Diff Viewer */}
+        <Panel 
+          defaultSize={60} 
+          minSize={20} 
+          maxSize={80}
+          className="flex flex-col min-w-0"
+        >
           <div className="h-full p-4 overflow-hidden">
             {selectedDiffFile && diffContent ? (
               <DiffViewer
@@ -179,8 +199,8 @@ export const CommitWorkflowTab: React.FC<CommitWorkflowTabProps> = ({
               </div>
             )}
           </div>
-        </div>
-      </div>
+        </Panel>
+      </PanelGroup>
     </div>
   );
 };
