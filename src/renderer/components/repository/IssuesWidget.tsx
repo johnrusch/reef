@@ -32,13 +32,17 @@ export const IssuesWidget: React.FC<IssuesWidgetProps> = ({
         setError(null);
         
         // Parse repository URL to extract owner and repo
-        const urlParts = repoUrl.replace('https://github.com/', '').split('/');
-        if (urlParts.length < 2) {
+        const match = repoUrl.match(/github\.com\/([^/]+)\/([^/?.#]+)/);
+        if (!match || match.length < 3) {
           throw new Error('Invalid repository URL');
         }
         
-        const owner = urlParts[0];
-        const repo = urlParts[1];
+        const owner = match[1];
+        const repo = match[2].replace(/\.git$/, ''); // Remove .git suffix if present
+        
+        if (!owner || !repo) {
+          throw new Error('Could not extract owner and repository from URL');
+        }
         
         // Fetch issues from GitHub API
         const issuesData = await window.reef.github.getIssues(owner, repo);
@@ -132,8 +136,12 @@ export const IssuesWidget: React.FC<IssuesWidgetProps> = ({
                           key={label.name}
                           className="px-1.5 py-0.5 text-xs rounded"
                           style={{
-                            backgroundColor: `#${label.color}20`,
-                            color: `#${label.color}`,
+                            backgroundColor: label.color && /^[0-9A-Fa-f]{6}$/.test(label.color) 
+                              ? `#${label.color}20` 
+                              : '#66666620',
+                            color: label.color && /^[0-9A-Fa-f]{6}$/.test(label.color)
+                              ? `#${label.color}`
+                              : '#666666',
                           }}
                         >
                           {label.name}

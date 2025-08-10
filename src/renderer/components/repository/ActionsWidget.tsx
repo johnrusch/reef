@@ -31,13 +31,17 @@ export const ActionsWidget: React.FC<ActionsWidgetProps> = ({
         setError(null);
         
         // Parse repository URL to extract owner and repo
-        const urlParts = repoUrl.replace('https://github.com/', '').split('/');
-        if (urlParts.length < 2) {
+        const match = repoUrl.match(/github\.com\/([^/]+)\/([^/?.#]+)/);
+        if (!match || match.length < 3) {
           throw new Error('Invalid repository URL');
         }
         
-        const owner = urlParts[0];
-        const repo = urlParts[1];
+        const owner = match[1];
+        const repo = match[2].replace(/\.git$/, ''); // Remove .git suffix if present
+        
+        if (!owner || !repo) {
+          throw new Error('Could not extract owner and repository from URL');
+        }
         
         // Fetch workflow runs from GitHub API
         const response = await window.reef.github.getWorkflowRuns(owner, repo);
