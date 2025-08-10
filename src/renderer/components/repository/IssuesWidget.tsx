@@ -26,19 +26,50 @@ export const IssuesWidget: React.FC<IssuesWidgetProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // In a real implementation, this would fetch from GitHub API
-    // For now, we'll simulate with mock data
     const fetchIssues = async () => {
       try {
         setLoading(true);
-        // Simulated API call
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Mock data
-        setIssues([]);
         setError(null);
+        
+        // Parse repository URL to extract owner and repo
+        const match = repoUrl.match(/github\.com\/([^/]+)\/([^/?.#]+)/);
+        if (!match || match.length < 3) {
+          throw new Error('Invalid repository URL');
+        }
+        
+        const owner = match[1];
+        const repo = match[2].replace(/\.git$/, ''); // Remove .git suffix if present
+        
+        if (!owner || !repo) {
+          throw new Error('Could not extract owner and repository from URL');
+        }
+        
+        // Fetch issues from GitHub API
+        const issuesData = await window.reef.github.getIssues(owner, repo);
+        
+        // Transform and limit the data
+        const transformedIssues = issuesData.slice(0, limit).map((issue: any) => ({
+          id: issue.id,
+          number: issue.number,
+          title: issue.title,
+          state: issue.state,
+          author: issue.user?.login || 'unknown',
+          created_at: issue.created_at,
+          html_url: issue.html_url,
+          labels: issue.labels?.map((label: any) => ({
+            name: label.name,
+            color: label.color
+          })) || []
+        }));
+        
+        setIssues(transformedIssues);
       } catch (err) {
-        setError('Failed to fetch issues');
+        console.error('Failed to fetch issues:', err);
+        if ((err as Error).message.includes('Not authenticated')) {
+          setError('Please authenticate with GitHub to view issues');
+        } else {
+          setError('Failed to fetch issues');
+        }
       } finally {
         setLoading(false);
       }
@@ -105,8 +136,12 @@ export const IssuesWidget: React.FC<IssuesWidgetProps> = ({
                           key={label.name}
                           className="px-1.5 py-0.5 text-xs rounded"
                           style={{
-                            backgroundColor: `#${label.color}20`,
-                            color: `#${label.color}`,
+                            backgroundColor: label.color && /^[0-9A-Fa-f]{6}$/.test(label.color) 
+                              ? `#${label.color}20` 
+                              : '#66666620',
+                            color: label.color && /^[0-9A-Fa-f]{6}$/.test(label.color)
+                              ? `#${label.color}`
+                              : '#666666',
                           }}
                         >
                           {label.name}
