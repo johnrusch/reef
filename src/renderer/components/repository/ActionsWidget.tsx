@@ -25,19 +25,43 @@ export const ActionsWidget: React.FC<ActionsWidgetProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // In a real implementation, this would fetch from GitHub API
-    // For now, we'll simulate with mock data
     const fetchWorkflowRuns = async () => {
       try {
         setLoading(true);
-        // Simulated API call
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Mock data
-        setWorkflowRuns([]);
         setError(null);
+        
+        // Parse repository URL to extract owner and repo
+        const urlParts = repoUrl.replace('https://github.com/', '').split('/');
+        if (urlParts.length < 2) {
+          throw new Error('Invalid repository URL');
+        }
+        
+        const owner = urlParts[0];
+        const repo = urlParts[1];
+        
+        // Fetch workflow runs from GitHub API
+        const response = await window.reef.github.getWorkflowRuns(owner, repo);
+        const runs = response.workflow_runs || [];
+        
+        // Transform the data
+        const transformedRuns = runs.map((run: any) => ({
+          id: run.id,
+          name: run.name || run.workflow_name || 'Workflow',
+          status: run.status,
+          conclusion: run.conclusion,
+          created_at: run.created_at,
+          html_url: run.html_url,
+          run_number: run.run_number
+        }));
+        
+        setWorkflowRuns(transformedRuns);
       } catch (err) {
-        setError('Failed to fetch workflow runs');
+        console.error('Failed to fetch workflow runs:', err);
+        if ((err as Error).message.includes('Not authenticated')) {
+          setError('Please authenticate with GitHub to view workflow runs');
+        } else {
+          setError('Failed to fetch workflow runs');
+        }
       } finally {
         setLoading(false);
       }

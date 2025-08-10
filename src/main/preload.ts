@@ -38,6 +38,8 @@ export interface ReefAPI {
     getRepositories: () => Promise<any[]>;
     logout: () => Promise<boolean>;
     startOAuth: () => Promise<any>;
+    getIssues: (owner: string, repo: string) => Promise<any[]>;
+    getWorkflowRuns: (owner: string, repo: string) => Promise<any>;
   };
   ipc: {
     on: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => void;
@@ -95,6 +97,8 @@ const reefAPI: ReefAPI = {
     getRepositories: () => ipcRenderer.invoke('github-repos'),
     logout: () => ipcRenderer.invoke('github-logout'),
     startOAuth: () => ipcRenderer.invoke('github-oauth-start'),
+    getIssues: (owner: string, repo: string) => ipcRenderer.invoke('github-issues', owner, repo),
+    getWorkflowRuns: (owner: string, repo: string) => ipcRenderer.invoke('github-workflow-runs', owner, repo),
   },
   ipc: {
     on: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => {
