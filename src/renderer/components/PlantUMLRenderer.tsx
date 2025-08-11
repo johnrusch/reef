@@ -49,10 +49,13 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
           } else {
             console.log('Java not installed, falling back to server mode');
             setUseLocalGeneration(false);
+            // Notify user about fallback
+            console.warn('⚠️ Java not detected - falling back to server-based rendering');
           }
         } catch (error) {
           console.error('Local PlantUML generation failed:', error);
           setUseLocalGeneration(false);
+          console.warn('⚠️ Local generation failed - falling back to server-based rendering');
         }
       }
 
@@ -130,9 +133,18 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
   };
 
   const usePublicServer = () => {
-    localStorage.setItem('plantUmlServerUrl', 'https://www.plantuml.com/plantuml');
-    setUseLocalGeneration(false);
-    generateDiagram();
+    const confirmed = window.confirm(
+      '⚠️ Security Warning\n\n' +
+      'Using the public PlantUML server will send your diagram data to plantuml.com.\n\n' +
+      'This may expose your code architecture to third parties.\n\n' +
+      'Are you sure you want to continue?'
+    );
+    
+    if (confirmed) {
+      localStorage.setItem('plantUmlServerUrl', 'https://www.plantuml.com/plantuml');
+      setUseLocalGeneration(false);
+      generateDiagram();
+    }
   };
 
   const installJava = () => {
