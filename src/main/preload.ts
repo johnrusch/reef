@@ -51,6 +51,10 @@ export interface ReefAPI {
   context: {
     extract: (repoPath: string, options: ExtractorOptions) => Promise<ExtractionResult>;
   };
+  plantuml: {
+    generateSVG: (plantUmlText: string) => Promise<string>;
+    checkJava: () => Promise<boolean>;
+  };
   ipc: {
     on: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => void;
     off: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => void;
@@ -119,6 +123,10 @@ const reefAPI: ReefAPI = {
   },
   context: {
     extract: (repoPath: string, options: ExtractorOptions) => ipcRenderer.invoke('context:extract', repoPath, options),
+  },
+  plantuml: {
+    generateSVG: (plantUmlText: string) => ipcRenderer.invoke('plantuml:generate-svg', plantUmlText),
+    checkJava: () => ipcRenderer.invoke('plantuml:check-java'),
   },
   ipc: {
     on: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => {

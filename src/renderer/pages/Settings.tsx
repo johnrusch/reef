@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Github, Key, Bell, Palette, Loader2 } from 'lucide-react';
+import { Github, Key, Bell, Palette, Loader2, Sparkles } from 'lucide-react';
 import { useGitHubStore } from '../stores/githubStore';
 import TokenInput from '../components/github/TokenInput';
 import AuthenticationStatus from '../components/github/AuthenticationStatus';
 import UserProfile from '../components/github/UserProfile';
 import TokenInstructions from '../components/github/TokenInstructions';
+import { DiagramSettings } from '../components/DiagramSettings/DiagramSettings';
 
 const Settings: React.FC = () => {
   const {
@@ -201,6 +202,15 @@ const Settings: React.FC = () => {
           <p className="text-gray-400 mb-6">Configure GitHub personal access tokens and manage credentials</p>
           
           {renderAuthenticationSection()}
+        </div>
+
+        <div className="bg-gray-900 rounded-lg border border-gray-700 p-6">
+          <div className="flex items-center space-x-3 mb-4">
+            <Sparkles className="text-purple-500" size={24} />
+            <h3 className="text-lg font-semibold text-white">AI Diagram Generation</h3>
+          </div>
+          <p className="text-gray-400 mb-6">Configure settings for AI-powered architectural diagrams</p>
+          <DiagramSettings />
         </div>
 
         <div className="bg-gray-900 rounded-lg border border-gray-700 p-6">

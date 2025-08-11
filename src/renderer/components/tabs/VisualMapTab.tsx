@@ -1,28 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { Map, FileCode, GitBranch, FolderTree, Settings, Play, AlertCircle, Key } from 'lucide-react';
-import { PlantUMLRenderer } from '../PlantUMLRenderer';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Map, FileCode, GitBranch, FolderTree, Settings, Play, AlertCircle, Key, FileText } from 'lucide-react';
+import plantumlEncoder from 'plantuml-encoder';
+import { DiagramViewer, DiagramMetadata, DiagramType, DetailLevel, FocusArea, ModelType } from '../DiagramViewer/DiagramViewer';
 
 interface VisualMapTabProps {
   repository: any;
   onNavigateToFile?: (path: string) => void;
 }
 
-type DiagramType = 'component' | 'class' | 'sequence';
-type DetailLevel = 'overview' | 'detailed';
-type FocusArea = 'api' | 'database' | 'business-logic' | undefined;
-
 export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
   const [isConfigured, setIsConfigured] = useState<boolean>(false);
   const [apiKey, setApiKey] = useState<string>('');
   const [showApiKeyModal, setShowApiKeyModal] = useState<boolean>(false);
   const [diagram, setDiagram] = useState<string>('');
-  const [metadata, setMetadata] = useState<any>(null);
+  const [metadata, setMetadata] = useState<DiagramMetadata | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [showChanges, setShowChanges] = useState<boolean>(false);
+  const [changedFiles, setChangedFiles] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<'settings' | 'diagram' | 'tree'>('settings');
   
   const [diagramType, setDiagramType] = useState<DiagramType>('component');
   const [detailLevel, setDetailLevel] = useState<DetailLevel>('overview');
-  const [focusArea, setFocusArea] = useState<FocusArea>(undefined);
+  const [focusArea, setFocusArea] = useState<FocusArea | undefined>(undefined);
+  const [modelType, setModelType] = useState<ModelType>('haiku');
 
   useEffect(() => {
     checkConfiguration();
@@ -57,7 +58,43 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
     }
   };
 
-  const generateDiagram = async () => {
+  const detectChangedFiles = useCallback(async () => {
+    try {
+      const status = await window.reef.git.getRepositoryStatus(repository.path);
+      
+      // Handle the status object structure
+      const changed = [];
+      
+      // The status object might have files property or direct arrays
+      if (status.files) {
+        // If status has a files array
+        changed.push(...status.files.filter((f: any) => f.working_dir !== ' ').map((f: any) => f.path));
+      } else {
+        // If status has individual arrays
+        if (Array.isArray(status.modified)) changed.push(...status.modified);
+        if (Array.isArray(status.not_added)) changed.push(...status.not_added);
+        if (Array.isArray(status.created)) changed.push(...status.created);
+      }
+      
+      setChangedFiles(changed);
+    } catch (error) {
+      console.error('Failed to get changed files:', error);
+      setChangedFiles([]);
+    }
+  }, [repository]);
+
+  useEffect(() => {
+    if (repository && viewMode === 'diagram') {
+      detectChangedFiles();
+    }
+  }, [repository, viewMode, detectChangedFiles]);
+
+  const generateDiagram = async (options?: {
+    type?: DiagramType;
+    detailLevel?: DetailLevel;
+    focusArea?: FocusArea;
+    model?: ModelType;
+  }) => {
     if (!repository) {
       setError('No repository selected');
       return;
@@ -66,31 +103,68 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
     setIsGenerating(true);
     setError(null);
 
+    const finalOptions = {
+      type: options?.type || diagramType,
+      detailLevel: options?.detailLevel || detailLevel,
+      focusArea: options?.focusArea !== undefined ? options.focusArea : focusArea,
+      model: options?.model || modelType,
+    };
+
     try {
+      const startTime = Date.now();
+      
+      // Map FocusArea for context extraction (API doesn't support 'auth' yet)
+      const extractFocusArea = finalOptions.focusArea === 'auth' ? 'business-logic' : finalOptions.focusArea;
+      
       const extractResult = await window.reef.context.extract(repository.path, {
-        maxTokens: 15000,
+        maxTokens: finalOptions.model === 'opus' ? 30000 : finalOptions.model === 'sonnet' ? 20000 : 15000,
         includeTests: false,
-        focusArea,
+        focusArea: extractFocusArea as 'api' | 'database' | 'business-logic' | undefined,
       });
 
       if (!extractResult.formattedContext) {
         throw new Error('No context extracted from repository');
       }
 
+      // Map DetailLevel to the expected format for the API
+      const apiDetailLevel = finalOptions.detailLevel === 'architectural' ? 'detailed' : finalOptions.detailLevel;
+      
+      // Map FocusArea to the expected format for the API (exclude 'auth' as it's not supported in the API yet)
+      const apiFocusArea = finalOptions.focusArea === 'auth' ? 'business-logic' : finalOptions.focusArea;
+      
       const result = await window.reef.diagram.generate(extractResult.formattedContext, {
-        type: diagramType,
-        detailLevel,
-        focusArea,
+        type: finalOptions.type,
+        detailLevel: apiDetailLevel as 'overview' | 'detailed',
+        focusArea: apiFocusArea as 'api' | 'database' | 'business-logic' | undefined,
       });
+
+      const generationTime = Date.now() - startTime;
 
       if (result.success && result.diagram) {
         setDiagram(result.diagram);
-        setMetadata({
+        
+        const estimatedCost = calculateEstimatedCost(
+          result.tokensUsed,
+          finalOptions.model
+        );
+        
+        const newMetadata: DiagramMetadata = {
           tokensUsed: result.tokensUsed,
           generatedAt: new Date().toISOString(),
-          diagramType,
+          diagramType: finalOptions.type,
+          detailLevel: finalOptions.detailLevel,
+          focusArea: finalOptions.focusArea,
           repository: repository.name,
-        });
+          model: finalOptions.model,
+          generationTime,
+          estimatedCost,
+          cached: false,
+          lastUpdated: new Date().toISOString(),
+        };
+        
+        setMetadata(newMetadata);
+        setViewMode('diagram');
+        await detectChangedFiles();
       } else {
         throw new Error(result.error || 'Failed to generate diagram');
       }
@@ -100,6 +174,39 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const calculateEstimatedCost = (
+    tokens: { input: number; output: number } | undefined,
+    model: ModelType
+  ): number => {
+    if (!tokens) return 0;
+    
+    const costs = {
+      haiku: { input: 0.25, output: 1.25 },
+      sonnet: { input: 3, output: 15 },
+      opus: { input: 15, output: 75 },
+    };
+    
+    const modelCost = costs[model];
+    const inputCost = (tokens.input / 1000000) * modelCost.input;
+    const outputCost = (tokens.output / 1000000) * modelCost.output;
+    
+    return inputCost + outputCost;
+  };
+
+  const handleExport = (format: 'svg' | 'png') => {
+    if (!diagram) return;
+    
+    const encoded = plantumlEncoder.encode(diagram);
+    const serverUrl = localStorage.getItem('plantUmlServerUrl') || 
+                     'http://localhost:8080/plantuml';
+    
+    const url = `${serverUrl}/${format}/${encoded}`;
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${repository.name}-${metadata?.diagramType || 'diagram'}-${Date.now()}.${format}`;
+    link.click();
   };
 
   if (showApiKeyModal) {
@@ -158,36 +265,20 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
     );
   }
 
-  if (diagram) {
+  if (viewMode === 'diagram' && diagram && metadata) {
     return (
-      <div className="flex flex-col h-full">
-        <div className="flex items-center justify-between p-4 border-b border-gray-700 bg-gray-800">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setDiagram('')}
-              className="text-sm text-gray-400 hover:text-gray-300"
-            >
-              ← Back to Settings
-            </button>
-            <span className="text-sm text-gray-500">
-              {repository?.name} / {diagramType} diagram
-            </span>
-          </div>
-          
-          <button
-            onClick={generateDiagram}
-            disabled={isGenerating}
-            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 rounded text-sm font-medium transition-colors flex items-center gap-2"
-          >
-            <Play className="w-4 h-4" />
-            Regenerate
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-hidden">
-          <PlantUMLRenderer content={diagram} metadata={metadata} />
-        </div>
-      </div>
+      <DiagramViewer
+        repository={repository}
+        diagram={diagram}
+        metadata={metadata}
+        isGenerating={isGenerating}
+        error={error}
+        changedFiles={changedFiles}
+        onRegenerateDiagram={generateDiagram}
+        onExport={handleExport}
+        onShowChanges={setShowChanges}
+        showChanges={showChanges}
+      />
     );
   }
 
@@ -257,7 +348,7 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
               <label className="block text-sm font-medium text-gray-400 mb-2">
                 Detail Level
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   onClick={() => setDetailLevel('overview')}
                   className={`px-3 py-2 rounded text-sm transition-colors ${
@@ -267,6 +358,16 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
                   }`}
                 >
                   Overview
+                </button>
+                <button
+                  onClick={() => setDetailLevel('architectural')}
+                  className={`px-3 py-2 rounded text-sm transition-colors ${
+                    detailLevel === 'architectural'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                  }`}
+                >
+                  Architectural
                 </button>
                 <button
                   onClick={() => setDetailLevel('detailed')}
@@ -285,7 +386,7 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
               <label className="block text-sm font-medium text-gray-400 mb-2">
                 Focus Area (Optional)
               </label>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-5 gap-2">
                 <button
                   onClick={() => setFocusArea(undefined)}
                   className={`px-3 py-2 rounded text-sm transition-colors ${
@@ -326,6 +427,63 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
                 >
                   Business Logic
                 </button>
+                <button
+                  onClick={() => setFocusArea('auth')}
+                  className={`px-3 py-2 rounded text-sm transition-colors ${
+                    focusArea === 'auth'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                  }`}
+                >
+                  Auth
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-2">
+                AI Model
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => setModelType('haiku')}
+                  className={`px-3 py-2 rounded text-sm transition-colors ${
+                    modelType === 'haiku'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                  }`}
+                >
+                  <div>
+                    <div className="font-medium">Haiku</div>
+                    <div className="text-xs opacity-75">Fast & Cheap</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setModelType('sonnet')}
+                  className={`px-3 py-2 rounded text-sm transition-colors ${
+                    modelType === 'sonnet'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                  }`}
+                >
+                  <div>
+                    <div className="font-medium">Sonnet</div>
+                    <div className="text-xs opacity-75">Balanced</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setModelType('opus')}
+                  className={`px-3 py-2 rounded text-sm transition-colors ${
+                    modelType === 'opus'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                  }`}
+                >
+                  <div>
+                    <div className="font-medium">Opus</div>
+                    <div className="text-xs opacity-75">Most Capable</div>
+                  </div>
+                </button>
               </div>
             </div>
           </div>
@@ -353,7 +511,7 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
             </div>
 
             <button
-              onClick={generateDiagram}
+              onClick={() => generateDiagram()}
               disabled={!isConfigured || isGenerating || !repository}
               className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 rounded text-sm font-medium transition-colors flex items-center gap-2"
             >
@@ -370,6 +528,17 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
               )}
             </button>
           </div>
+        </div>
+
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            onClick={() => setViewMode('tree')}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-colors"
+          >
+            <FileText className="w-4 h-4" />
+            Traditional File Tree
+          </button>
+          <span className="text-xs text-gray-500">or generate an AI-powered diagram</span>
         </div>
 
         <div className="grid grid-cols-3 gap-4">
