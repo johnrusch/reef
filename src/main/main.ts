@@ -13,6 +13,7 @@ import './services/contextExtractorServiceV2';
 import './services/diagramGeneratorServiceV2';
 // Import for side effects - registers IPC handlers
 import './services/plantUmlService';
+import './services/diagramSettingsService';
 
 const __dirname = process.cwd();
 const isDev = process.env.NODE_ENV === 'development';

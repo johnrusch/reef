@@ -1,6 +1,18 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 import type { DiagramOptions, DiagramResult, ExtractorOptions, ExtractionResult } from '../shared/types/diagram';
 
+export interface DiagramSettings {
+  defaultModel: 'haiku' | 'sonnet' | 'opus';
+  autoGenerateOnLoad: boolean;
+  defaultDiagramType: 'component' | 'class' | 'sequence';
+  defaultDetailLevel: 'overview' | 'architectural' | 'detailed';
+  excludedPatterns: string[];
+  plantUmlServerUrl: string;
+  maxTokenBudget: number;
+  cacheEnabled: boolean;
+  cacheDuration: number;
+}
+
 export interface ReefAPI {
   store: {
     get: (key: string) => Promise<any>;
@@ -54,6 +66,11 @@ export interface ReefAPI {
   plantuml: {
     generateSVG: (plantUmlText: string) => Promise<string>;
     checkJava: () => Promise<boolean>;
+  };
+  diagramSettings: {
+    get: () => Promise<DiagramSettings>;
+    set: (settings: DiagramSettings) => Promise<void>;
+    reset: () => Promise<void>;
   };
   ipc: {
     on: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => void;
@@ -127,6 +144,11 @@ const reefAPI: ReefAPI = {
   plantuml: {
     generateSVG: (plantUmlText: string) => ipcRenderer.invoke('plantuml:generate-svg', plantUmlText),
     checkJava: () => ipcRenderer.invoke('plantuml:check-java'),
+  },
+  diagramSettings: {
+    get: () => ipcRenderer.invoke('diagram-settings:get'),
+    set: (settings: DiagramSettings) => ipcRenderer.invoke('diagram-settings:set', settings),
+    reset: () => ipcRenderer.invoke('diagram-settings:reset'),
   },
   ipc: {
     on: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => {

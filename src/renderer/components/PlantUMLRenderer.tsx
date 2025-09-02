@@ -25,6 +25,7 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [zoom, setZoom] = useState<number>(1);
   const [useLocalGeneration, setUseLocalGeneration] = useState<boolean>(true);
+  const [fallbackNotification, setFallbackNotification] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const generateDiagram = useCallback(async () => {
@@ -50,11 +51,13 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
             console.log('Java not installed, falling back to server mode');
             setUseLocalGeneration(false);
             // Notify user about fallback
+            setFallbackNotification('⚠️ Java not detected - attempting server-based rendering');
             console.warn('⚠️ Java not detected - falling back to server-based rendering');
           }
         } catch (error) {
           console.error('Local PlantUML generation failed:', error);
           setUseLocalGeneration(false);
+          setFallbackNotification('⚠️ Local generation failed - attempting server-based rendering');
           console.warn('⚠️ Local generation failed - falling back to server-based rendering');
         }
       }
@@ -62,8 +65,18 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
       // Fallback to server-based rendering
       const encoded = plantumlEncoder.encode(content);
       
-      // Check for configured server
+      // Check for configured server - try secure storage first, fallback to localStorage
       let serverUrl = localStorage.getItem('plantUmlServerUrl');
+      
+      // Try to get from secure storage if not in localStorage
+      if (!serverUrl) {
+        try {
+          const settings = await window.reef.diagramSettings.get();
+          serverUrl = settings.plantUmlServerUrl;
+        } catch (error) {
+          console.error('Failed to load diagram settings:', error);
+        }
+      }
       
       if (!serverUrl) {
         setError(
@@ -88,13 +101,18 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
       const svg = await response.text();
       setSvgContent(svg);
       setLoading(false);
+      
+      // Clear fallback notification on successful server rendering
+      if (fallbackNotification) {
+        setTimeout(() => setFallbackNotification(null), 5000);
+      }
 
     } catch (err) {
       console.error('Error generating PlantUML diagram:', err);
       setError(err instanceof Error ? err.message : 'Failed to generate diagram');
       setLoading(false);
     }
-  }, [content, useLocalGeneration]);
+  }, [content, useLocalGeneration, fallbackNotification]);
 
   useEffect(() => {
     generateDiagram();
@@ -153,6 +171,18 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
 
   return (
     <div className={`plantuml-renderer flex flex-col h-full ${className}`}>
+      {fallbackNotification && (
+        <div className="notification-bar px-3 py-2 bg-yellow-600/20 border-b border-yellow-600/30 flex items-center justify-between">
+          <span className="text-xs text-yellow-400">{fallbackNotification}</span>
+          <button
+            onClick={() => setFallbackNotification(null)}
+            className="text-yellow-400 hover:text-yellow-300 text-xs underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+      
       <div className="toolbar flex items-center justify-between p-2 border-b border-gray-700 bg-gray-800">
         <div className="flex items-center gap-2">
           <button

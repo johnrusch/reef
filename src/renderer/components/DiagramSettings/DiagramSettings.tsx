@@ -40,14 +40,13 @@ export const DiagramSettings: React.FC<DiagramSettingsProps> = ({ onSettingsChan
 
   const loadSettings = async () => {
     try {
-      // TODO: Implement settings API
-      // const stored = await window.reef.settings.getDiagramSettings();
-      // if (stored) {
-      //   setSettings(stored);
-      // }
-      const storedString = localStorage.getItem('diagramSettings');
-      if (storedString) {
-        setSettings(JSON.parse(storedString));
+      const stored = await window.reef.diagramSettings.get();
+      if (stored) {
+        setSettings(stored);
+        // Also update localStorage for PlantUMLRenderer compatibility
+        if (stored.plantUmlServerUrl) {
+          localStorage.setItem('plantUmlServerUrl', stored.plantUmlServerUrl);
+        }
       }
     } catch (error) {
       console.error('Failed to load diagram settings:', error);
@@ -56,9 +55,13 @@ export const DiagramSettings: React.FC<DiagramSettingsProps> = ({ onSettingsChan
 
   const saveSettings = async (newSettings: DiagramSettings) => {
     try {
-      // TODO: Implement settings API
-      // await window.reef.settings.setDiagramSettings(newSettings);
-      localStorage.setItem('diagramSettings', JSON.stringify(newSettings));
+      await window.reef.diagramSettings.set(newSettings);
+      // Also update localStorage for PlantUMLRenderer compatibility
+      if (newSettings.plantUmlServerUrl) {
+        localStorage.setItem('plantUmlServerUrl', newSettings.plantUmlServerUrl);
+      } else {
+        localStorage.removeItem('plantUmlServerUrl');
+      }
       setSettings(newSettings);
       onSettingsChange?.(newSettings);
     } catch (error) {

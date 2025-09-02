@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - node-plantuml doesn't have types
 import plantuml from 'node-plantuml';
 
@@ -38,6 +39,31 @@ class PlantUMLService {
       throw new Error('PlantUML text exceeds maximum size limit (1MB)');
     }
     
+    // Additional validation for common PlantUML syntax patterns
+    const validPatterns = [
+      '@startuml', '@enduml', 'class', 'interface', 'enum', 'abstract',
+      'participant', 'actor', 'usecase', 'component', 'node', 'database',
+      'entity', 'control', 'boundary', '-->', '<--', ':|', '..>', '<..',
+      'title', 'note', 'package', 'namespace', 'skinparam', '!define'
+    ];
+    
+    // Check if input contains at least one valid PlantUML keyword/pattern
+    const hasValidPattern = validPatterns.some(pattern => 
+      plantUmlText.toLowerCase().includes(pattern.toLowerCase())
+    );
+    
+    if (!hasValidPattern) {
+      throw new Error('PlantUML text does not appear to contain valid PlantUML syntax');
+    }
+    
+    // Sanitize against potential command injection (defensive check)
+    const dangerousPatterns = ['!include', '!includeurl', '!import'];
+    for (const pattern of dangerousPatterns) {
+      if (plantUmlText.toLowerCase().includes(pattern)) {
+        throw new Error(`Security: PlantUML text contains potentially dangerous directive: ${pattern}`);
+      }
+    }
+    
     return new Promise((resolve, reject) => {
       const gen = plantuml.generate(plantUmlText, { format: 'svg' });
       const chunks: Buffer[] = [];
@@ -69,6 +95,7 @@ class PlantUMLService {
   }
 
   private async checkJavaInstalled(): Promise<boolean> {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { spawn } = require('child_process');
     return new Promise((resolve) => {
       const javaCheck = spawn('java', ['-version']);
