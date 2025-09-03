@@ -11,6 +11,9 @@ import './services/tokenCounterService';
 import './services/rateLimiterService';
 import './services/contextExtractorServiceV2';
 import './services/diagramGeneratorServiceV2';
+// Import for side effects - registers IPC handlers
+import './services/plantUmlService';
+import './services/diagramSettingsService';
 
 const __dirname = process.cwd();
 const isDev = process.env.NODE_ENV === 'development';
@@ -232,7 +235,9 @@ function createMenu() {
   Menu.setApplicationMenu(menu);
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(async () => {
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -257,6 +262,7 @@ ipcMain.handle('set-store', (_, key: string, value: any) => {
 ipcMain.handle('delete-store', (_, key: string) => {
   store.delete(key);
 });
+
 
 ipcMain.handle('get-platform', () => {
   return process.platform;

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import plantumlEncoder from 'plantuml-encoder';
 import { AlertCircle, Loader2, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import plantumlEncoder from 'plantuml-encoder';
 
 interface PlantUMLRendererProps {
   content: string;
@@ -20,65 +20,103 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
   metadata,
   className = '',
 }) => {
-  const [imageUrl, setImageUrl] = useState<string>('');
+  const [svgContent, setSvgContent] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [zoom, setZoom] = useState<number>(1);
+  const [useLocalGeneration, setUseLocalGeneration] = useState<boolean>(true);
+  const [fallbackNotification, setFallbackNotification] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
 
-  const generateDiagramUrl = useCallback(() => {
+  const generateDiagram = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      setZoom(1); // Reset zoom when generating new diagram
+      setZoom(1);
 
       if (!content || !content.includes('@startuml')) {
         throw new Error('Invalid PlantUML content');
       }
 
-      const encoded = plantumlEncoder.encode(content);
-      // Default to localhost for security - users should run their own PlantUML server
-      // docker run -d -p 8080:8080 plantuml/plantuml-server:jetty
-      const serverUrl = localStorage.getItem('plantUmlServerUrl') || 
-                       process.env.PLANTUML_SERVER_URL || 
-                       'http://localhost:8080/plantuml';
-      
-      // Validate server URL to prevent injection attacks
-      try {
-        const urlObj = new URL(serverUrl);
-        if (!['http:', 'https:'].includes(urlObj.protocol)) {
-          throw new Error('Invalid PlantUML server protocol');
+      // Try local generation first (requires Java)
+      if (useLocalGeneration) {
+        try {
+          const hasJava = await window.reef.plantuml.checkJava();
+          if (hasJava) {
+            const svg = await window.reef.plantuml.generateSVG(content);
+            setSvgContent(svg);
+            setLoading(false);
+            return;
+          } else {
+            console.log('Java not installed, falling back to server mode');
+            setUseLocalGeneration(false);
+            // Notify user about fallback
+            setFallbackNotification('⚠️ Java not detected - attempting server-based rendering');
+            console.warn('⚠️ Java not detected - falling back to server-based rendering');
+          }
+        } catch (error) {
+          console.error('Local PlantUML generation failed:', error);
+          setUseLocalGeneration(false);
+          setFallbackNotification('⚠️ Local generation failed - attempting server-based rendering');
+          console.warn('⚠️ Local generation failed - falling back to server-based rendering');
         }
-      } catch {
-        throw new Error('Invalid PlantUML server URL');
+      }
+
+      // Fallback to server-based rendering
+      const encoded = plantumlEncoder.encode(content);
+      
+      // Check for configured server - try secure storage first, fallback to localStorage
+      let serverUrl = localStorage.getItem('plantUmlServerUrl');
+      
+      // Try to get from secure storage if not in localStorage
+      if (!serverUrl) {
+        try {
+          const settings = await window.reef.diagramSettings.get();
+          serverUrl = settings.plantUmlServerUrl;
+        } catch (error) {
+          console.error('Failed to load diagram settings:', error);
+        }
       }
       
+      if (!serverUrl) {
+        setError(
+          'PlantUML rendering requires either:\n' +
+          '1. Java installed for local rendering (recommended)\n' +
+          '2. Configure a PlantUML server in settings\n' +
+          '3. Use the public server (less secure)'
+        );
+        setLoading(false);
+        return;
+      }
+
+      // Generate URL for server-based rendering
       const url = `${serverUrl}/svg/${encoded}`;
       
-      setImageUrl(url);
+      // Fetch the SVG from the server
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch diagram: ${response.statusText}`);
+      }
+      
+      const svg = await response.text();
+      setSvgContent(svg);
+      setLoading(false);
+      
+      // Clear fallback notification on successful server rendering
+      if (fallbackNotification) {
+        setTimeout(() => setFallbackNotification(null), 5000);
+      }
+
     } catch (err) {
       console.error('Error generating PlantUML diagram:', err);
       setError(err instanceof Error ? err.message : 'Failed to generate diagram');
       setLoading(false);
     }
-  }, [content]);
+  }, [content, useLocalGeneration, fallbackNotification]);
 
   useEffect(() => {
-    generateDiagramUrl();
-  }, [generateDiagramUrl]);
-
-  const handleImageLoad = () => {
-    setLoading(false);
-    setError(null);
-  };
-
-  const handleImageError = () => {
-    setLoading(false);
-    setImageUrl(''); // Clear the image URL on error
-    setZoom(1); // Reset zoom to default on error
-    setError('Failed to load diagram. The PlantUML server may be unavailable.');
-  };
+    generateDiagram();
+  }, [generateDiagram]);
 
   const handleZoomIn = () => {
     setZoom(prev => Math.min(prev + 0.25, 3));
@@ -90,17 +128,20 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
 
   const handleReset = () => {
     setZoom(1);
-    if (containerRef.current && imageRef.current) {
+    if (containerRef.current) {
       containerRef.current.scrollTop = 0;
       containerRef.current.scrollLeft = 0;
     }
   };
 
   const downloadDiagram = () => {
+    const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = imageUrl;
+    link.href = url;
     link.download = `diagram-${Date.now()}.svg`;
     link.click();
+    URL.revokeObjectURL(url);
   };
 
   const copyPlantUMLCode = () => {
@@ -109,8 +150,39 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
     });
   };
 
+  const usePublicServer = () => {
+    const confirmed = window.confirm(
+      '⚠️ Security Warning\n\n' +
+      'Using the public PlantUML server will send your diagram data to plantuml.com.\n\n' +
+      'This may expose your code architecture to third parties.\n\n' +
+      'Are you sure you want to continue?'
+    );
+    
+    if (confirmed) {
+      localStorage.setItem('plantUmlServerUrl', 'https://www.plantuml.com/plantuml');
+      setUseLocalGeneration(false);
+      generateDiagram();
+    }
+  };
+
+  const installJava = () => {
+    window.open('https://www.java.com/download/', '_blank');
+  };
+
   return (
     <div className={`plantuml-renderer flex flex-col h-full ${className}`}>
+      {fallbackNotification && (
+        <div className="notification-bar px-3 py-2 bg-yellow-600/20 border-b border-yellow-600/30 flex items-center justify-between">
+          <span className="text-xs text-yellow-400">{fallbackNotification}</span>
+          <button
+            onClick={() => setFallbackNotification(null)}
+            className="text-yellow-400 hover:text-yellow-300 text-xs underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+      
       <div className="toolbar flex items-center justify-between p-2 border-b border-gray-700 bg-gray-800">
         <div className="flex items-center gap-2">
           <button
@@ -152,7 +224,7 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
           <button
             onClick={downloadDiagram}
             className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 transition-colors"
-            disabled={!imageUrl || loading || !!error}
+            disabled={!svgContent || loading || !!error}
           >
             Download SVG
           </button>
@@ -175,20 +247,43 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
 
         {error && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="flex flex-col items-center gap-2 p-4">
+            <div className="flex flex-col items-center gap-2 p-4 max-w-md">
               <AlertCircle className="w-8 h-8 text-red-500" />
-              <span className="text-sm text-red-400">{error}</span>
-              <button
-                onClick={generateDiagramUrl}
-                className="mt-2 px-3 py-1 text-xs rounded bg-blue-600 hover:bg-blue-700 transition-colors"
-              >
-                Retry
-              </button>
+              <span className="text-sm text-red-400 whitespace-pre-line text-center">{error}</span>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={generateDiagram}
+                  className="px-3 py-1 text-xs rounded bg-blue-600 hover:bg-blue-700 transition-colors"
+                >
+                  Retry
+                </button>
+                {error.includes('Java') && (
+                  <button
+                    onClick={installJava}
+                    className="px-3 py-1 text-xs rounded bg-green-600 hover:bg-green-700 transition-colors"
+                  >
+                    Install Java
+                  </button>
+                )}
+                {error.includes('Configure') && (
+                  <button
+                    onClick={usePublicServer}
+                    className="px-3 py-1 text-xs rounded bg-yellow-600 hover:bg-yellow-700 transition-colors"
+                  >
+                    Use Public Server
+                  </button>
+                )}
+              </div>
+              {error.includes('Configure') && (
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  Note: Using the public server will send your diagram data to plantuml.com
+                </p>
+              )}
             </div>
           </div>
         )}
 
-        {imageUrl && !error && (
+        {svgContent && !error && (
           <div
             className="diagram-wrapper p-8"
             style={{
@@ -198,17 +293,8 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
               minHeight: '100%',
               minWidth: '100%',
             }}
-          >
-            <img
-              ref={imageRef}
-              src={imageUrl}
-              alt="PlantUML Diagram"
-              onLoad={handleImageLoad}
-              onError={handleImageError}
-              className="max-w-none"
-              style={{ display: loading ? 'none' : 'block' }}
-            />
-          </div>
+            dangerouslySetInnerHTML={{ __html: svgContent }}
+          />
         )}
       </div>
 
