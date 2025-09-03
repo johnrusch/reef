@@ -157,8 +157,49 @@ class GitService {
     ipcMain.handle('git-diff', async (_, repoPath: string, file?: string) => {
       try {
         const git = this.getGitInstance(repoPath);
-        const args = file ? ['--', file] : [];
-        const diff = await git.diff(args);
+        
+        if (file) {
+          // First try to get the standard diff
+          const args = ['--', file];
+          const standardDiff = await git.diff(args);
+          
+          // If diff is empty, check if it's a new/untracked file
+          if (!standardDiff || standardDiff.length === 0) {
+            const status = await git.status();
+            const fileStatus = status.files.find(f => f.path === file);
+            
+            if (fileStatus && (fileStatus.index === '?' || fileStatus.index === 'A')) {
+              // For new/untracked files, show the entire file as additions
+              const filePath = path.join(repoPath, file);
+              try {
+                const content = await fs.readFile(filePath, 'utf-8');
+                const lines = content.split('\n');
+                
+                // Create a unified diff format for the new file
+                const diff = [
+                  `diff --git a/${file} b/${file}`,
+                  `new file mode 100644`,
+                  `index 0000000..0000000`,
+                  `--- /dev/null`,
+                  `+++ b/${file}`,
+                  `@@ -0,0 +1,${lines.length} @@`,
+                  ...lines.map(line => `+${line}`)
+                ].join('\n');
+                
+                return diff;
+              } catch (readError) {
+                // If we can't read the file, return a message
+                return `Unable to read new file: ${file}`;
+              }
+            }
+          }
+          
+          // Return the standard diff if it exists
+          return standardDiff;
+        }
+        
+        // For general diff (no specific file)
+        const diff = await git.diff();
         return diff;
       } catch (error) {
         throw new Error(`Failed to get diff: ${(error as Error).message}`);

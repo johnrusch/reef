@@ -2,7 +2,7 @@
   "name": "reef",
   "version": "0.1.0",
   "description": "A powerful multi-repository GitHub desktop client",
-  "main": "dist/main/main.js",
+  "main": "dist/main/main/main.js",
   "scripts": {
     "dev": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",
     "dev:main": "tsc -w -p tsconfig.main.json",

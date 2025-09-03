@@ -15,7 +15,7 @@ import './services/diagramGeneratorServiceV2';
 import './services/plantUmlService';
 import './services/diagramSettingsService';
 
-const __dirname = process.cwd();
+const appPath = app.getAppPath();
 const isDev = process.env.NODE_ENV === 'development';
 
 const store = new Store();
@@ -33,7 +33,7 @@ function createWindow() {
     minWidth: 1000,
     minHeight: 600,
     webPreferences: {
-      preload: path.join(__dirname, 'dist/preload/preload.js'),
+      preload: path.join(appPath, 'dist/preload/preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
     },
@@ -50,7 +50,7 @@ function createWindow() {
     mainWindow.loadURL('http://localhost:3000');
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, 'dist/renderer/index.html'));
+    mainWindow.loadFile(path.join(appPath, 'dist/renderer/index.html'));
   }
 
   mainWindow.on('closed', () => {
