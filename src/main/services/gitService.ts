@@ -170,9 +170,24 @@ class GitService {
             
             if (fileStatus && (fileStatus.index === '?' || fileStatus.index === 'A')) {
               // For new/untracked files, show the entire file as additions
-              const filePath = path.join(repoPath, file);
+              
+              // Validate file path to prevent path traversal attacks
+              const normalizedFile = path.normalize(file);
+              if (normalizedFile.includes('..') || path.isAbsolute(normalizedFile)) {
+                throw new Error('Invalid file name: path traversal attempt detected');
+              }
+              
+              const filePath = path.join(repoPath, normalizedFile);
+              
+              // Ensure the resulting path is within the repository
+              const resolvedPath = path.resolve(filePath);
+              const resolvedRepoPath = path.resolve(repoPath);
+              if (!resolvedPath.startsWith(resolvedRepoPath)) {
+                throw new Error('Invalid file path: file is outside repository');
+              }
+              
               try {
-                const content = await fs.readFile(filePath, 'utf-8');
+                const content = await fs.readFile(resolvedPath, 'utf-8');
                 const lines = content.split('\n');
                 
                 // Create a unified diff format for the new file
@@ -188,8 +203,8 @@ class GitService {
                 
                 return diff;
               } catch (readError) {
-                // If we can't read the file, return a message
-                return `Unable to read new file: ${file}`;
+                // Return a generic error message to avoid leaking file system info
+                return 'Unable to read file contents';
               }
             }
           }
