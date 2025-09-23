@@ -134,7 +134,7 @@ describe('IPC Communication Mocking', () => {
     (global as any).ipcRenderer = mockIpcRenderer;
 
     try {
-      const { EventService } = from '@renderer/services/EventService';
+      const { EventService } = await import('@renderer/services/EventService');
       const eventService = new EventService();
       
       eventService.onRepositoryStatusChange((status) => {

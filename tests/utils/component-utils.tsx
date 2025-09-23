@@ -316,7 +316,7 @@ export const waitUtils = {
 // Mock utilities for components
 export const mockUtils = {
   // Mock React hooks
-  mockUseState: <T>(initialValue: T) => {
+  mockUseState: <T,>(initialValue: T) => {
     const setState = vi.fn();
     return [initialValue, setState] as const;
   },
@@ -325,16 +325,16 @@ export const mockUtils = {
     return vi.fn();
   },
 
-  mockUseCallback: <T extends (...args: any[]) => any>(callback: T) => {
+  mockUseCallback: <T extends (...args: any[]) => any,>(callback: T) => {
     return vi.fn(callback);
   },
 
-  mockUseMemo: <T>(value: T) => {
+  mockUseMemo: <T,>(value: T) => {
     return value;
   },
 
   // Mock component props
-  createMockProps: <T extends Record<string, any>>(defaults: T, overrides: Partial<T> = {}): T => {
+  createMockProps: <T extends Record<string, any>,>(defaults: T, overrides: Partial<T> = {}): T => {
     return { ...defaults, ...overrides };
   },
 
@@ -352,7 +352,7 @@ export const mockUtils = {
   }),
 
   // Mock refs
-  createMockRef: <T>(current: T | null = null) => ({
+  createMockRef: <T,>(current: T | null = null) => ({
     current,
   }),
 };
