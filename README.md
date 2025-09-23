@@ -88,6 +88,15 @@ reef/
 - `npm run lint` - Run ESLint
 - `npm run typecheck` - Run TypeScript type checking
 
+### Testing Scripts
+
+- `npm test` - Run all tests (unit, integration, and E2E)
+- `npm run test:unit` - Run unit tests only (fast feedback for development)
+- `npm run test:integration` - Run integration tests
+- `npm run test:e2e` - Run end-to-end tests with Playwright
+- `npm run test:watch` - Run tests in watch mode for development
+- `npm run test:coverage` - Generate coverage report
+
 ### Technologies Used
 
 - **Electron** - Cross-platform desktop application framework
@@ -98,6 +107,57 @@ reef/
 - **Zustand** - State management
 - **simple-git** - Git operations
 - **Octokit** - GitHub API client
+
+## Testing
+
+Reef has a comprehensive testing framework designed for Electron applications:
+
+### Test Types
+
+- **Unit Tests**: Individual components and services (`tests/unit/`)
+- **Integration Tests**: IPC communication and API interactions (`tests/integration/`)
+- **End-to-End Tests**: Complete user workflows (`tests/e2e/`)
+
+### Testing Tools
+
+- **Vitest**: Primary test runner with TypeScript support
+- **@testing-library/react**: React component testing utilities
+- **Playwright**: End-to-end testing framework for Electron
+- **MSW**: API mocking for GitHub integration tests
+- **c8**: Code coverage reporting
+
+### Quick Start
+
+```bash
+# Run all tests
+npm test
+
+# Development testing (fast feedback)
+npm run test:unit
+
+# Watch mode for active development
+npm run test:watch
+
+# Generate coverage report
+npm run test:coverage
+```
+
+### Coverage Requirements
+
+- Overall coverage: 80% minimum
+- Critical services: 85-90% coverage
+- Testing utilities: 90% coverage
+
+Coverage reports are generated in multiple formats (HTML, JSON, LCOV) and integrated with CI/CD.
+
+### Pre-commit Testing
+
+The project uses Husky hooks to automatically run:
+- ESLint and TypeScript checks
+- Unit tests before commits
+- Full test suite before pushes to main branches
+
+For detailed testing guidance, see [docs/testing.md](docs/testing.md).
 
 ## Configuration
 

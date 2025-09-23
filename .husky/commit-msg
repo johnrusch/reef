@@ -1,0 +1,106 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Get the commit message file
+commit_file="$1"
+commit_msg=$(cat "$commit_file")
+
+echo "📝 Checking commit message format..."
+
+# Check if commit message follows conventional commits format
+if ! echo "$commit_msg" | grep -qE "^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?: .{1,}"; then
+  echo "❌ Commit message does not follow conventional commits format!"
+  echo ""
+  echo "Your commit message:"
+  echo "  $commit_msg"
+  echo ""
+  echo "Expected format:"
+  echo "  type(scope): description"
+  echo ""
+  echo "Types:"
+  echo "  feat:     A new feature"
+  echo "  fix:      A bug fix"
+  echo "  docs:     Documentation changes"
+  echo "  style:    Code style changes (formatting, etc.)"
+  echo "  refactor: Code refactoring"
+  echo "  test:     Adding or updating tests"
+  echo "  chore:    Maintenance tasks"
+  echo "  perf:     Performance improvements"
+  echo "  ci:       CI/CD changes"
+  echo "  build:    Build system changes"
+  echo "  revert:   Reverting a previous commit"
+  echo ""
+  echo "Examples:"
+  echo "  feat(auth): add user login functionality"
+  echo "  fix(git): resolve merge conflict handling"
+  echo "  docs: update testing documentation"
+  echo "  test(api): add integration tests for GitHub service"
+  echo ""
+  exit 1
+fi
+
+# Check commit message length
+first_line=$(echo "$commit_msg" | head -n1)
+if [ ${#first_line} -gt 100 ]; then
+  echo "⚠️  Warning: Commit message first line is longer than 100 characters (${#first_line})"
+  echo "   Consider making it more concise"
+fi
+
+if [ ${#first_line} -gt 72 ]; then
+  echo "ℹ️  Info: Commit message first line is longer than 72 characters (${#first_line})"
+  echo "   This may not display well in some Git tools"
+fi
+
+# Check for capitalization
+type_part=$(echo "$first_line" | cut -d':' -f1)
+description_part=$(echo "$first_line" | cut -d':' -f2- | sed 's/^ *//')
+
+if echo "$description_part" | grep -q "^[A-Z]"; then
+  echo "ℹ️  Info: Consider starting the description with a lowercase letter"
+  echo "   Current: $description_part"
+  echo "   Suggested: $(echo "$description_part" | sed 's/^./\L&/')"
+fi
+
+# Check for period at the end
+if echo "$first_line" | grep -q "\.$"; then
+  echo "ℹ️  Info: Consider removing the period at the end of the commit message"
+fi
+
+# Check for common mistakes
+if echo "$commit_msg" | grep -qi "fix typo"; then
+  echo "ℹ️  Suggestion: Instead of 'fix typo', consider:"
+  echo "   docs: correct spelling in user guide"
+  echo "   fix(ui): correct button label text"
+fi
+
+if echo "$commit_msg" | grep -qi "update"; then
+  echo "ℹ️  Suggestion: 'update' is generic. Consider more specific types:"
+  echo "   feat: add new feature"
+  echo "   fix: resolve issue"
+  echo "   docs: improve documentation"
+  echo "   refactor: restructure code"
+fi
+
+# Check for WIP commits
+if echo "$commit_msg" | grep -qi "wip\|work in progress"; then
+  echo "⚠️  Warning: WIP (Work In Progress) commit detected"
+  echo "   Consider completing the work before committing or use draft commits"
+fi
+
+# Check for merge commit messages
+if echo "$commit_msg" | grep -q "^Merge"; then
+  echo "ℹ️  Info: Merge commit detected - conventional commit format not required"
+  exit 0
+fi
+
+# Check for co-authored commits
+if echo "$commit_msg" | grep -q "Co-authored-by:"; then
+  echo "✅ Co-authored commit detected"
+fi
+
+echo "✅ Commit message format is valid!"
+
+# Optional: Add automatic formatting suggestions
+if command -v commitizen >/dev/null 2>&1; then
+  echo "💡 Tip: Use 'npx cz' for guided commit message creation"
+fi
