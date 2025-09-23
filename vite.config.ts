@@ -19,7 +19,7 @@ export default defineConfig({
               fileName: () => 'main.js'
             },
             rollupOptions: {
-              external: ['electron', 'electron-store', '@octokit/rest', 'simple-git'],
+              external: ['electron', 'electron-store', '@octokit/rest', 'simple-git', 'tiktoken'],
               output: {
                 format: 'cjs'
               }
@@ -62,6 +62,12 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist/renderer',
+    rollupOptions: {
+      external: ['tiktoken'], // Exclude tiktoken from renderer bundle
+    },
+  },
+  optimizeDeps: {
+    exclude: ['tiktoken'], // Exclude from pre-bundling
   },
   server: {
     port: 3000,

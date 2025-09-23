@@ -13,7 +13,13 @@
     "build:electron": "electron-builder",
     "start": "electron .",
     "lint": "eslint . --ext .ts,.tsx",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "concurrently \"vitest run --config vitest.config.ts\" \"vitest run --config vitest.config.main.ts\"",
+    "test:integration": "vitest run --config vitest.config.ts tests/integration",
+    "test:e2e": "playwright test",
+    "test:watch": "vitest --config vitest.config.ts",
+    "test:coverage": "concurrently \"vitest run --coverage --config vitest.config.ts\" \"vitest run --coverage --config vitest.config.main.ts\""
   },
   "keywords": [
     "github",
@@ -26,6 +32,10 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^20.11.5",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
@@ -33,17 +43,22 @@
     "@typescript-eslint/parser": "^6.19.0",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
+    "c8": "^10.1.3",
     "concurrently": "^8.2.2",
-    "electron": "^28.1.3",
+    "electron": "^38.1.2",
     "electron-builder": "^24.9.1",
     "eslint": "^8.56.0",
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
+    "jsdom": "^26.1.0",
+    "msw": "^2.11.3",
+    "playwright": "^1.55.0",
     "postcss": "^8.4.33",
     "typescript": "^5.3.3",
-    "vite": "^5.0.11",
+    "vite": "^6.3.6",
     "vite-plugin-electron": "^0.15.5",
-    "vite-plugin-electron-renderer": "^0.14.5"
+    "vite-plugin-electron-renderer": "^0.14.5",
+    "vitest": "^3.2.4"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.59.0",
