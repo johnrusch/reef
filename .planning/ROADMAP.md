@@ -30,12 +30,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. User can generate C4 Code diagram showing class-level implementation details
   5. System shows coverage percentage indicating how much of codebase was analyzed within token limits
   6. Generated diagrams use valid C4-PlantUML syntax and render without errors
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
-- [ ] 01-03: TBD
+- [ ] 01-01-PLAN.md — Upgrade dependencies and fix PlantUML security (ts-morph, SDK v0.78.0, C4 includes whitelist)
+- [ ] 01-02-PLAN.md — Create C4 type system and ts-morph static analyzer (deterministic code extraction)
+- [ ] 01-03-PLAN.md — Implement C4 generation engine (all 4 levels with hybrid static+AI approach)
 
 ### Phase 2: Automatic Regeneration
 **Goal**: Diagrams automatically stay current with codebase changes through intelligent cache invalidation
