@@ -297,10 +297,14 @@ class DiagramGeneratorServiceV2 {
     options: DiagramOptions,
     repoType?: any
   ): string {
-    const diagramTypeInstructions = {
+    const diagramTypeInstructions: Record<DiagramOptions['type'], string> = {
       component: 'Create a component diagram showing the high-level architecture and main components of the system.',
       class: 'Create a class diagram showing the main classes, their relationships, and key methods/properties.',
       sequence: 'Create a sequence diagram showing the flow of operations for the main use cases.',
+      'c4-context': 'Create a C4 Context diagram showing the system in its environment with users and external systems.',
+      'c4-container': 'Create a C4 Container diagram showing the high-level technology choices and deployable units.',
+      'c4-component': 'Create a C4 Component diagram showing the logical groupings within a container.',
+      'c4-code': 'Create a C4 Code diagram showing implementation-level class structures.',
     };
 
     const detailInstructions = {

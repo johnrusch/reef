@@ -1,7 +1,12 @@
 export interface DiagramOptions {
-  type: 'component' | 'class' | 'sequence';
+  type: 'component' | 'class' | 'sequence' | 'c4-context' | 'c4-container' | 'c4-component' | 'c4-code';
   detailLevel: 'overview' | 'detailed';
   focusArea?: 'api' | 'database' | 'business-logic';
+  /**
+   * Element ID for drill-down navigation (optional)
+   * When specified, generates a focused diagram centered on this element
+   */
+  elementId?: string;
 }
 
 export interface DiagramResult {
@@ -11,6 +16,15 @@ export interface DiagramResult {
   tokensUsed?: {
     input: number;
     output: number;
+  };
+  /**
+   * Analysis coverage statistics (optional)
+   * Useful for understanding how much of the codebase was analyzed
+   */
+  coverage?: {
+    analyzedFiles: number;
+    totalFiles: number;
+    percentage: number;
   };
 }
 
