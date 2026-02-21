@@ -41,11 +41,11 @@ Requirements for C4 diagram feature release. Each maps to roadmap phases.
 
 ### Infrastructure
 
-- [ ] **INFRA-01**: System integrates ts-morph library for TypeScript static analysis
+- [x] **INFRA-01**: System integrates ts-morph library for TypeScript static analysis
 - [ ] **INFRA-02**: System uses ts-morph to extract classes, functions, and dependencies
-- [ ] **INFRA-03**: System upgrades @anthropic-ai/sdk to v0.78.0
-- [ ] **INFRA-04**: System verifies PlantUML server supports C4-PlantUML library
-- [ ] **INFRA-05**: System generates proper C4-PlantUML include statements in diagram code
+- [x] **INFRA-03**: System upgrades @anthropic-ai/sdk to v0.78.0
+- [x] **INFRA-04**: System verifies PlantUML server supports C4-PlantUML library
+- [x] **INFRA-05**: System generates proper C4-PlantUML include statements in diagram code
 - [ ] **INFRA-06**: System maintains consistent element IDs across C4 hierarchy levels for navigation
 - [ ] **INFRA-07**: System tracks parent-child relationships between C4 diagram elements
 
@@ -110,11 +110,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UPDATE-05 | Phase 1 | Pending |
 | UPDATE-06 | Phase 2 | Pending |
 | UPDATE-07 | Phase 2 | Pending |
-| INFRA-01 | Phase 1 | Pending |
+| INFRA-01 | Phase 1 | Complete (01-01) |
 | INFRA-02 | Phase 1 | Pending |
-| INFRA-03 | Phase 1 | Pending |
-| INFRA-04 | Phase 1 | Pending |
-| INFRA-05 | Phase 1 | Pending |
+| INFRA-03 | Phase 1 | Complete (01-01) |
+| INFRA-04 | Phase 1 | Complete (01-01) |
+| INFRA-05 | Phase 1 | Complete (01-01) |
 | INFRA-06 | Phase 3 | Pending |
 | INFRA-07 | Phase 3 | Pending |
 

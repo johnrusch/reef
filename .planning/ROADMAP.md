@@ -33,7 +33,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Upgrade dependencies and fix PlantUML security (ts-morph, SDK v0.78.0, C4 includes whitelist)
+- [x] 01-01-PLAN.md — Upgrade dependencies and fix PlantUML security (ts-morph, SDK v0.78.0, C4 includes whitelist)
 - [ ] 01-02-PLAN.md — Create C4 type system and ts-morph static analyzer (deterministic code extraction)
 - [ ] 01-03-PLAN.md — Implement C4 generation engine (all 4 levels with hybrid static+AI approach)
 
@@ -93,7 +93,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. C4 Foundation | 0/3 | Not started | - |
+| 1. C4 Foundation | 1/3 | In progress | - |
 | 2. Automatic Regeneration | 0/2 | Not started | - |
 | 3. Hierarchy Navigation | 0/3 | Not started | - |
 | 4. Polish & Advanced Features | 0/2 | Not started | - |
