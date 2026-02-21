@@ -87,13 +87,42 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (empty - will be populated by roadmapper) | | |
+| C4GEN-01 | Phase 1 | Pending |
+| C4GEN-02 | Phase 1 | Pending |
+| C4GEN-03 | Phase 1 | Pending |
+| C4GEN-04 | Phase 1 | Pending |
+| C4GEN-05 | Phase 1 | Pending |
+| C4GEN-06 | Phase 1 | Pending |
+| C4GEN-07 | Phase 1 | Pending |
+| C4GEN-08 | Phase 1 | Pending |
+| NAV-01 | Phase 3 | Pending |
+| NAV-02 | Phase 3 | Pending |
+| NAV-03 | Phase 3 | Pending |
+| NAV-04 | Phase 3 | Pending |
+| NAV-05 | Phase 3 | Pending |
+| NAV-06 | Phase 3 | Pending |
+| NAV-07 | Phase 4 | Pending |
+| NAV-08 | Phase 3 | Pending |
+| UPDATE-01 | Phase 2 | Pending |
+| UPDATE-02 | Phase 2 | Pending |
+| UPDATE-03 | Phase 2 | Pending |
+| UPDATE-04 | Phase 2 | Pending |
+| UPDATE-05 | Phase 1 | Pending |
+| UPDATE-06 | Phase 2 | Pending |
+| UPDATE-07 | Phase 2 | Pending |
+| INFRA-01 | Phase 1 | Pending |
+| INFRA-02 | Phase 1 | Pending |
+| INFRA-03 | Phase 1 | Pending |
+| INFRA-04 | Phase 1 | Pending |
+| INFRA-05 | Phase 1 | Pending |
+| INFRA-06 | Phase 3 | Pending |
+| INFRA-07 | Phase 3 | Pending |
 
 **Coverage:**
-- v1 requirements: 27 total
-- Mapped to phases: (pending roadmap creation)
-- Unmapped: (pending roadmap creation)
+- v1 requirements: 30 total
+- Mapped to phases: 30/30 (100%)
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-21*
-*Last updated: 2026-02-21 after initial definition*
+*Last updated: 2026-02-21 after roadmap creation*
