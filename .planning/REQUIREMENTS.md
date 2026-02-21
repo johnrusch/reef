@@ -9,14 +9,14 @@ Requirements for C4 diagram feature release. Each maps to roadmap phases.
 
 ### C4 Generation
 
-- [ ] **C4GEN-01**: System generates C4 Context diagram showing system in its environment with external dependencies
-- [ ] **C4GEN-02**: System generates C4 Container diagram showing high-level tech stack (apps, databases, services)
-- [ ] **C4GEN-03**: System generates C4 Component diagram showing components within each container
-- [ ] **C4GEN-04**: System generates C4 Code diagram showing class-level implementation details
+- [x] **C4GEN-01**: System generates C4 Context diagram showing system in its environment with external dependencies
+- [x] **C4GEN-02**: System generates C4 Container diagram showing high-level tech stack (apps, databases, services)
+- [x] **C4GEN-03**: System generates C4 Component diagram showing components within each container
+- [x] **C4GEN-04**: System generates C4 Code diagram showing class-level implementation details
 - [x] **C4GEN-05**: System uses hybrid approach combining static code analysis (ts-morph) with AI enrichment
 - [x] **C4GEN-06**: System validates C4 abstraction levels to prevent Container/Component confusion
-- [ ] **C4GEN-07**: System generates C4-PlantUML syntax compatible with PlantUML rendering
-- [ ] **C4GEN-08**: System includes element metadata (technology choices, relationships, descriptions) in diagrams
+- [x] **C4GEN-07**: System generates C4-PlantUML syntax compatible with PlantUML rendering
+- [x] **C4GEN-08**: System includes element metadata (technology choices, relationships, descriptions) in diagrams
 
 ### Navigation & Hierarchy
 
@@ -35,7 +35,7 @@ Requirements for C4 diagram feature release. Each maps to roadmap phases.
 - [ ] **UPDATE-02**: System shows visual indicator when diagram is potentially stale due to file changes
 - [ ] **UPDATE-03**: System automatically regenerates diagrams when user confirms file changes
 - [ ] **UPDATE-04**: User can manually trigger diagram regeneration at any time
-- [ ] **UPDATE-05**: System implements level-aware caching (Context cached longer, Code cached shorter)
+- [x] **UPDATE-05**: System implements level-aware caching (Context cached longer, Code cached shorter)
 - [ ] **UPDATE-06**: System invalidates cache intelligently based on changed files and C4 level
 - [ ] **UPDATE-07**: System reuses cached diagrams when codebase hasn't changed to avoid API costs
 
@@ -87,14 +87,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| C4GEN-01 | Phase 1 | Pending |
-| C4GEN-02 | Phase 1 | Pending |
-| C4GEN-03 | Phase 1 | Pending |
-| C4GEN-04 | Phase 1 | Pending |
+| C4GEN-01 | Phase 1 | Complete |
+| C4GEN-02 | Phase 1 | Complete |
+| C4GEN-03 | Phase 1 | Complete |
+| C4GEN-04 | Phase 1 | Complete |
 | C4GEN-05 | Phase 1 | Complete |
 | C4GEN-06 | Phase 1 | Complete |
-| C4GEN-07 | Phase 1 | Pending |
-| C4GEN-08 | Phase 1 | Pending |
+| C4GEN-07 | Phase 1 | Complete |
+| C4GEN-08 | Phase 1 | Complete |
 | NAV-01 | Phase 3 | Pending |
 | NAV-02 | Phase 3 | Pending |
 | NAV-03 | Phase 3 | Pending |
@@ -107,7 +107,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UPDATE-02 | Phase 2 | Pending |
 | UPDATE-03 | Phase 2 | Pending |
 | UPDATE-04 | Phase 2 | Pending |
-| UPDATE-05 | Phase 1 | Pending |
+| UPDATE-05 | Phase 1 | Complete |
 | UPDATE-06 | Phase 2 | Pending |
 | UPDATE-07 | Phase 2 | Pending |
 | INFRA-01 | Phase 1 | Complete (01-01) |
