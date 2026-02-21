@@ -18,6 +18,7 @@ import { C4PlantUMLGenerator } from './c4PlantUMLGenerator';
 import { C4CacheService } from './c4CacheService';
 import type { C4Level } from './types/c4Types';
 import type { DiagramResult } from '../../../shared/types/diagram';
+import type { AnalysisResult } from './types/analysisTypes';
 
 export class C4AnalyzerService {
   private staticAnalyzer: StaticAnalyzerService;
@@ -135,7 +136,7 @@ export class C4AnalyzerService {
   private generatePlantUML(
     level: C4Level,
     enrichedData: string,
-    staticData: any,
+    staticData: AnalysisResult,
     elementId?: string
   ): string {
     switch (level) {
