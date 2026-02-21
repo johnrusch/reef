@@ -13,8 +13,8 @@ Requirements for C4 diagram feature release. Each maps to roadmap phases.
 - [ ] **C4GEN-02**: System generates C4 Container diagram showing high-level tech stack (apps, databases, services)
 - [ ] **C4GEN-03**: System generates C4 Component diagram showing components within each container
 - [ ] **C4GEN-04**: System generates C4 Code diagram showing class-level implementation details
-- [ ] **C4GEN-05**: System uses hybrid approach combining static code analysis (ts-morph) with AI enrichment
-- [ ] **C4GEN-06**: System validates C4 abstraction levels to prevent Container/Component confusion
+- [x] **C4GEN-05**: System uses hybrid approach combining static code analysis (ts-morph) with AI enrichment
+- [x] **C4GEN-06**: System validates C4 abstraction levels to prevent Container/Component confusion
 - [ ] **C4GEN-07**: System generates C4-PlantUML syntax compatible with PlantUML rendering
 - [ ] **C4GEN-08**: System includes element metadata (technology choices, relationships, descriptions) in diagrams
 
@@ -42,7 +42,7 @@ Requirements for C4 diagram feature release. Each maps to roadmap phases.
 ### Infrastructure
 
 - [x] **INFRA-01**: System integrates ts-morph library for TypeScript static analysis
-- [ ] **INFRA-02**: System uses ts-morph to extract classes, functions, and dependencies
+- [x] **INFRA-02**: System uses ts-morph to extract classes, functions, and dependencies
 - [x] **INFRA-03**: System upgrades @anthropic-ai/sdk to v0.78.0
 - [x] **INFRA-04**: System verifies PlantUML server supports C4-PlantUML library
 - [x] **INFRA-05**: System generates proper C4-PlantUML include statements in diagram code
@@ -91,8 +91,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | C4GEN-02 | Phase 1 | Pending |
 | C4GEN-03 | Phase 1 | Pending |
 | C4GEN-04 | Phase 1 | Pending |
-| C4GEN-05 | Phase 1 | Pending |
-| C4GEN-06 | Phase 1 | Pending |
+| C4GEN-05 | Phase 1 | Complete |
+| C4GEN-06 | Phase 1 | Complete |
 | C4GEN-07 | Phase 1 | Pending |
 | C4GEN-08 | Phase 1 | Pending |
 | NAV-01 | Phase 3 | Pending |
@@ -111,7 +111,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UPDATE-06 | Phase 2 | Pending |
 | UPDATE-07 | Phase 2 | Pending |
 | INFRA-01 | Phase 1 | Complete (01-01) |
-| INFRA-02 | Phase 1 | Pending |
+| INFRA-02 | Phase 1 | Complete |
 | INFRA-03 | Phase 1 | Complete (01-01) |
 | INFRA-04 | Phase 1 | Complete (01-01) |
 | INFRA-05 | Phase 1 | Complete (01-01) |
