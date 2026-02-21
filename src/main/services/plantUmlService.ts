@@ -56,11 +56,23 @@ class PlantUMLService {
       throw new Error('PlantUML text does not appear to contain valid PlantUML syntax');
     }
     
-    // Sanitize against potential command injection (defensive check)
-    const dangerousPatterns = ['!include', '!includeurl', '!import'];
-    for (const pattern of dangerousPatterns) {
-      if (plantUmlText.toLowerCase().includes(pattern)) {
-        throw new Error(`Security: PlantUML text contains potentially dangerous directive: ${pattern}`);
+    // Sanitize against potential command injection with C4-PlantUML whitelist
+    // C4-PlantUML is from the official plantuml-stdlib organization and is safe to include
+    // This enables C4 Context, Container, Component, and Deployment diagrams
+    const includePattern = /!(include|includeurl|import)\s+(.+)/gi;
+    const matches = plantUmlText.matchAll(includePattern);
+
+    const c4Whitelist = [
+      'https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/',
+      '<C4/'
+    ];
+
+    for (const match of matches) {
+      const includePath = match[2].trim();
+      const isWhitelisted = c4Whitelist.some(allowed => includePath.startsWith(allowed));
+
+      if (!isWhitelisted) {
+        throw new Error(`Security: PlantUML text contains non-whitelisted include: ${match[1]} ${includePath}`);
       }
     }
     
