@@ -2,10 +2,14 @@ import Anthropic from '@anthropic-ai/sdk';
 import { ipcMain, safeStorage } from 'electron';
 import Store from 'electron-store';
 import type { DiagramOptions, DiagramResult } from '../../shared/types/diagram';
+import { C4AnalyzerService } from './c4/c4AnalyzerService';
+import { getDiagramLevel } from './c4/types/c4Types';
+import type { C4Level } from './c4/types/c4Types';
 
 class DiagramGeneratorService {
   private anthropic: Anthropic | null = null;
   private apiKey: string | undefined;
+  private c4Analyzer: C4AnalyzerService | null = null;
   // private readonly MAX_TOKENS = 40000;
   private readonly TARGET_TOKENS = 15000;
   private store: Store;
@@ -42,12 +46,18 @@ class DiagramGeneratorService {
         apiKey: this.apiKey,
       });
       console.log('Anthropic client initialized successfully');
+
+      // Initialize C4 analyzer with the same API key
+      this.c4Analyzer = new C4AnalyzerService(this.apiKey);
+      console.log('C4 analyzer initialized successfully');
+
       // Clear API key from memory after successful initialization
       // The Anthropic client stores it internally, we don't need our copy
       this.apiKey = undefined;
     } catch (error) {
       console.error('Failed to initialize Anthropic client:', error);
       this.anthropic = null;
+      this.c4Analyzer = null;
       // Also clear on error for security
       this.apiKey = undefined;
     }
@@ -83,6 +93,20 @@ class DiagramGeneratorService {
     context: string,
     options: DiagramOptions
   ): Promise<DiagramResult> {
+    // Handle C4 diagram types with C4AnalyzerService
+    if (options.type.startsWith('c4-')) {
+      if (!this.c4Analyzer) {
+        return {
+          success: false,
+          error: 'C4 analyzer not configured. Please set ANTHROPIC_API_KEY.',
+        };
+      }
+
+      const level = getDiagramLevel(options.type as any) as C4Level;
+      return await this.c4Analyzer.generateC4Diagram(context, level, options.elementId);
+    }
+
+    // Handle traditional UML diagram types
     if (!this.anthropic) {
       return {
         success: false,
