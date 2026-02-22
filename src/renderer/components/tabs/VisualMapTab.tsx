@@ -20,7 +20,7 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
   const [changedFiles, setChangedFiles] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'settings' | 'diagram' | 'tree'>('settings');
   
-  const [diagramType, setDiagramType] = useState<DiagramType>('component');
+  const [diagramType, setDiagramType] = useState<DiagramType>('c4-context');
   const [detailLevel, setDetailLevel] = useState<DetailLevel>('overview');
   const [focusArea, setFocusArea] = useState<FocusArea | undefined>(undefined);
   const [modelType, setModelType] = useState<ModelType>('haiku');
@@ -308,38 +308,60 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-2">
-                Diagram Type
+                C4 Architecture Level
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 <button
-                  onClick={() => setDiagramType('component')}
+                  onClick={() => setDiagramType('c4-context')}
                   className={`px-3 py-2 rounded text-sm transition-colors ${
-                    diagramType === 'component'
+                    diagramType === 'c4-context'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
                   }`}
                 >
-                  Component
+                  <div>
+                    <div className="font-medium">Context</div>
+                    <div className="text-xs opacity-75">System boundaries</div>
+                  </div>
                 </button>
                 <button
-                  onClick={() => setDiagramType('class')}
+                  onClick={() => setDiagramType('c4-container')}
                   className={`px-3 py-2 rounded text-sm transition-colors ${
-                    diagramType === 'class'
+                    diagramType === 'c4-container'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
                   }`}
                 >
-                  Class
+                  <div>
+                    <div className="font-medium">Container</div>
+                    <div className="text-xs opacity-75">Deployable units</div>
+                  </div>
                 </button>
                 <button
-                  onClick={() => setDiagramType('sequence')}
+                  onClick={() => setDiagramType('c4-component')}
                   className={`px-3 py-2 rounded text-sm transition-colors ${
-                    diagramType === 'sequence'
+                    diagramType === 'c4-component'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
                   }`}
                 >
-                  Sequence
+                  <div>
+                    <div className="font-medium">Component</div>
+                    <div className="text-xs opacity-75">Code structure</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setDiagramType('c4-code')}
+                  className={`px-3 py-2 rounded text-sm transition-colors ${
+                    diagramType === 'c4-code'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                  }`}
+                >
+                  <div>
+                    <div className="font-medium">Code</div>
+                    <div className="text-xs opacity-75">Class details</div>
+                  </div>
                 </button>
               </div>
             </div>

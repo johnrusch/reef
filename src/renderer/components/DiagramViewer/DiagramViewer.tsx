@@ -4,7 +4,7 @@ import { DiagramControls } from './DiagramControls';
 import { DiagramInfo } from './DiagramInfo';
 import { Loader2, AlertCircle } from 'lucide-react';
 
-export type DiagramType = 'component' | 'class' | 'sequence';
+export type DiagramType = 'component' | 'class' | 'sequence' | 'c4-context' | 'c4-container' | 'c4-component' | 'c4-code';
 export type DetailLevel = 'overview' | 'architectural' | 'detailed';
 export type FocusArea = 'api' | 'database' | 'business-logic' | 'auth' | undefined;
 export type ModelType = 'haiku' | 'sonnet' | 'opus';
