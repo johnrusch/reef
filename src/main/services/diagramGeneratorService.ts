@@ -90,7 +90,7 @@ class DiagramGeneratorService {
   }
 
   public async generateDiagram(
-    context: string,
+    contextOrPath: string,
     options: DiagramOptions
   ): Promise<DiagramResult> {
     // Handle C4 diagram types with C4AnalyzerService
@@ -102,8 +102,10 @@ class DiagramGeneratorService {
         };
       }
 
+      // For C4 diagrams, we expect a repository path, not pre-formatted context
+      // The C4 analyzer does its own static analysis using ts-morph
       const level = getDiagramLevel(options.type as any) as C4Level;
-      return await this.c4Analyzer.generateC4Diagram(context, level, options.elementId);
+      return await this.c4Analyzer.generateC4Diagram(contextOrPath, level, options.elementId);
     }
 
     // Handle traditional UML diagram types
@@ -115,7 +117,7 @@ class DiagramGeneratorService {
     }
 
     try {
-      const prompt = this.buildPrompt(context, options);
+      const prompt = this.buildPrompt(contextOrPath, options);
       
       const response = await this.anthropic.messages.create({
         model: 'claude-3-haiku-20240307',

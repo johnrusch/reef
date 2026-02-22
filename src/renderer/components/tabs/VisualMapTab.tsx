@@ -112,31 +112,44 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
 
     try {
       const startTime = Date.now();
-      
-      // Map FocusArea for context extraction (API doesn't support 'auth' yet)
-      const extractFocusArea = finalOptions.focusArea === 'auth' ? 'business-logic' : finalOptions.focusArea;
-      
-      const extractResult = await window.reef.context.extract(repository.path, {
-        maxTokens: finalOptions.model === 'opus' ? 30000 : finalOptions.model === 'sonnet' ? 20000 : 15000,
-        includeTests: false,
-        focusArea: extractFocusArea as 'api' | 'database' | 'business-logic' | undefined,
-      });
-
-      if (!extractResult.formattedContext) {
-        throw new Error('No context extracted from repository');
-      }
 
       // Map DetailLevel to the expected format for the API
       const apiDetailLevel = finalOptions.detailLevel === 'architectural' ? 'detailed' : finalOptions.detailLevel;
-      
+
       // Map FocusArea to the expected format for the API (exclude 'auth' as it's not supported in the API yet)
       const apiFocusArea = finalOptions.focusArea === 'auth' ? 'business-logic' : finalOptions.focusArea;
-      
-      const result = await window.reef.diagram.generate(extractResult.formattedContext, {
-        type: finalOptions.type,
-        detailLevel: apiDetailLevel as 'overview' | 'detailed',
-        focusArea: apiFocusArea as 'api' | 'database' | 'business-logic' | undefined,
-      });
+
+      let result;
+
+      // C4 diagrams use static analysis and don't need pre-extracted context
+      // They analyze the repository directly using ts-morph
+      if (finalOptions.type.startsWith('c4-')) {
+        result = await window.reef.diagram.generate(repository.path, {
+          type: finalOptions.type,
+          detailLevel: apiDetailLevel as 'overview' | 'detailed',
+          focusArea: apiFocusArea as 'api' | 'database' | 'business-logic' | undefined,
+        });
+      } else {
+        // Traditional UML diagrams use pre-extracted context
+        // Map FocusArea for context extraction (API doesn't support 'auth' yet)
+        const extractFocusArea = finalOptions.focusArea === 'auth' ? 'business-logic' : finalOptions.focusArea;
+
+        const extractResult = await window.reef.context.extract(repository.path, {
+          maxTokens: finalOptions.model === 'opus' ? 30000 : finalOptions.model === 'sonnet' ? 20000 : 15000,
+          includeTests: false,
+          focusArea: extractFocusArea as 'api' | 'database' | 'business-logic' | undefined,
+        });
+
+        if (!extractResult.formattedContext) {
+          throw new Error('No context extracted from repository');
+        }
+
+        result = await window.reef.diagram.generate(extractResult.formattedContext, {
+          type: finalOptions.type,
+          detailLevel: apiDetailLevel as 'overview' | 'detailed',
+          focusArea: apiFocusArea as 'api' | 'database' | 'business-logic' | undefined,
+        });
+      }
 
       const generationTime = Date.now() - startTime;
 
