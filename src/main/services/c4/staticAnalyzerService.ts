@@ -42,18 +42,37 @@ export class StaticAnalyzerService {
       // Add source files selectively based on patterns
       const includePatterns = options.includePatterns || ['src/**/*.{ts,tsx}'];
 
-      // Add files matching include patterns
+      // Add files matching include patterns with error handling
       for (const pattern of includePatterns) {
-        project.addSourceFilesAtPaths(join(repoPath, pattern));
+        try {
+          const fullPattern = join(repoPath, pattern);
+          project.addSourceFilesAtPaths(fullPattern);
+        } catch (error) {
+          console.warn(`Failed to add files for pattern ${pattern}:`, error);
+          // Continue with other patterns
+        }
       }
 
       // If tests should be included, add them
       if (options.includeTests) {
-        project.addSourceFilesAtPaths(join(repoPath, 'tests/**/*.{ts,tsx}'));
+        try {
+          project.addSourceFilesAtPaths(join(repoPath, 'tests/**/*.{ts,tsx}'));
+        } catch (error) {
+          console.warn('Failed to add test files:', error);
+        }
       }
 
-      // Get all source files
-      const sourceFiles = project.getSourceFiles();
+      // Get all source files and filter out invalid paths
+      const allSourceFiles = project.getSourceFiles();
+      const sourceFiles = allSourceFiles.filter(file => {
+        const filePath = file.getFilePath();
+        // Filter out files with invalid paths or extremely long names
+        if (filePath.length > 500 || filePath.includes('===') || filePath.includes('ADDITIONAL CONTEXT')) {
+          console.warn(`Skipping file with invalid path: ${filePath.substring(0, 100)}...`);
+          return false;
+        }
+        return true;
+      });
       const totalFiles = sourceFiles.length;
 
       // Apply max files limit if specified
