@@ -57,7 +57,7 @@ export interface ReefAPI {
   };
   diagram: {
     generate: (context: string, options: DiagramOptions) => Promise<DiagramResult>;
-    setApiKey: (apiKey: string) => Promise<{ success: boolean }>;
+    setApiKey: (apiKey: string) => Promise<{ success: boolean; error?: string }>;
     checkConfiguration: () => Promise<{ configured: boolean }>;
   };
   context: {

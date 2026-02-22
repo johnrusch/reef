@@ -35,10 +35,10 @@ class DiagramGeneratorService {
     }
   }
 
-  private initializeClient() {
+  private initializeClient(): { success: boolean; error?: string } {
     if (!this.apiKey) {
       console.warn('Anthropic API key not found in environment variables');
-      return;
+      return { success: false, error: 'No API key provided' };
     }
 
     try {
@@ -54,21 +54,28 @@ class DiagramGeneratorService {
       // Clear API key from memory after successful initialization
       // The Anthropic client stores it internally, we don't need our copy
       this.apiKey = undefined;
+
+      return { success: true };
     } catch (error) {
       console.error('Failed to initialize Anthropic client:', error);
       this.anthropic = null;
       this.c4Analyzer = null;
       // Also clear on error for security
       this.apiKey = undefined;
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to initialize API client'
+      };
     }
   }
 
-  public setApiKey(apiKey: string) {
+  public setApiKey(apiKey: string): { success: boolean; error?: string } {
     // Validate API key format
     if (!apiKey || !apiKey.startsWith('sk-ant-')) {
-      throw new Error('Invalid API key format');
+      return { success: false, error: 'Invalid API key format' };
     }
-    
+
     // Store encrypted API key if encryption is available
     if (safeStorage.isEncryptionAvailable()) {
       const encrypted = safeStorage.encryptString(apiKey);
@@ -76,13 +83,15 @@ class DiagramGeneratorService {
     } else {
       // Refuse to store API key without encryption for security
       console.error('Cannot store API key: Encryption not available');
-      throw new Error('Cannot store API key securely. Encryption is not available on this system.');
+      return { success: false, error: 'Cannot store API key securely. Encryption is not available on this system.' };
     }
-    
+
     // Temporarily set API key for initialization
     this.apiKey = apiKey;
-    this.initializeClient();
+    const initResult = this.initializeClient();
     // API key will be cleared from memory in initializeClient
+
+    return initResult;
   }
 
   public isConfigured(): boolean {
@@ -291,8 +300,7 @@ ipcMain.handle('diagram:generate', async (_, context: string, options: DiagramOp
 });
 
 ipcMain.handle('diagram:set-api-key', async (_, apiKey: string) => {
-  diagramGeneratorService.setApiKey(apiKey);
-  return { success: true };
+  return diagramGeneratorService.setApiKey(apiKey);
 });
 
 ipcMain.handle('diagram:check-configuration', async () => {

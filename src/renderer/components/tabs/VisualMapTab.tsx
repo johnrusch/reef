@@ -48,10 +48,14 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
     }
 
     try {
-      await window.reef.diagram.setApiKey(apiKey);
-      setIsConfigured(true);
-      setShowApiKeyModal(false);
-      setError(null);
+      const result = await window.reef.diagram.setApiKey(apiKey);
+      if (result.success) {
+        setIsConfigured(true);
+        setShowApiKeyModal(false);
+        setError(null);
+      } else {
+        setError(result.error || 'Failed to set API key');
+      }
     } catch (error) {
       setError('Failed to set API key');
       console.error('Failed to set API key:', error);
