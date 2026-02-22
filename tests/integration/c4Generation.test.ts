@@ -146,7 +146,7 @@ export default function App() {
     expect(result.diagram).toBeDefined();
     expect(result.diagram).toContain('@startuml');
     expect(result.diagram).toContain('@enduml');
-    expect(result.diagram).toContain('C4_Context.puml');
+    expect(result.diagram).toContain('!include <C4/C4_Context>');
     expect(result.diagram).toContain('System(reef,');
     expect(result.diagram).toContain('Person(user,');
     expect(result.diagram).toContain('SHOW_LEGEND()');
@@ -159,7 +159,7 @@ export default function App() {
     expect(result.diagram).toBeDefined();
     expect(result.diagram).toContain('@startuml');
     expect(result.diagram).toContain('@enduml');
-    expect(result.diagram).toContain('C4_Container.puml');
+    expect(result.diagram).toContain('!include <C4/C4_Container>');
     expect(result.diagram).toContain('Container(Main_Process,');
     expect(result.diagram).toContain('Container(Renderer_Process,');
     expect(result.diagram).toContain('System_Boundary(reef,');
@@ -172,7 +172,7 @@ export default function App() {
     expect(result.diagram).toBeDefined();
     expect(result.diagram).toContain('@startuml');
     expect(result.diagram).toContain('@enduml');
-    expect(result.diagram).toContain('C4_Component.puml');
+    expect(result.diagram).toContain('!include <C4/C4_Component>');
     expect(result.diagram).toContain('Container_Boundary(');
     expect(result.diagram).toContain('Component(');
   });
@@ -227,11 +227,11 @@ app.on('ready', () => {
     // but the cache should have been invalidated
   });
 
-  it('includes C4-PlantUML include statements', async () => {
+  it('includes C4-PlantUML stdlib include statements', async () => {
     const result = await analyzer.generateC4Diagram(testRepoPath, 'context');
 
     expect(result.success).toBe(true);
-    expect(result.diagram).toContain('!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml');
+    expect(result.diagram).toContain('!include <C4/C4_Context>');
   });
 
   it('reports coverage statistics', async () => {

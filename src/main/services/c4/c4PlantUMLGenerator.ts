@@ -20,9 +20,9 @@ export class C4PlantUMLGenerator {
   generateContextDiagram(_enrichedData: string, staticData: AnalysisResult): string {
     const lines: string[] = [];
 
-    // Add C4-PlantUML include
+    // Add C4-PlantUML include from stdlib (bundled with PlantUML JAR)
     lines.push('@startuml');
-    lines.push('!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml');
+    lines.push('!include <C4/C4_Context>');
     lines.push('');
 
     // Add title
@@ -72,9 +72,9 @@ export class C4PlantUMLGenerator {
   generateContainerDiagram(_enrichedData: string, staticData: AnalysisResult): string {
     const lines: string[] = [];
 
-    // Add C4-PlantUML include
+    // Add C4-PlantUML include from stdlib (bundled with PlantUML JAR)
     lines.push('@startuml');
-    lines.push('!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml');
+    lines.push('!include <C4/C4_Container>');
     lines.push('');
 
     // Add title
@@ -155,9 +155,9 @@ export class C4PlantUMLGenerator {
   ): string {
     const lines: string[] = [];
 
-    // Add C4-PlantUML include
+    // Add C4-PlantUML include from stdlib (bundled with PlantUML JAR)
     lines.push('@startuml');
-    lines.push('!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml');
+    lines.push('!include <C4/C4_Component>');
     lines.push('');
 
     // Add title
