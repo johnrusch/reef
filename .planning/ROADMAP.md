@@ -53,7 +53,7 @@ Plans:
 
 Plans:
 - [x] 02-01-PLAN.md — Create FileWatcherService with chokidar and extend C4CacheService with timestamp persistence
-- [ ] 02-02-PLAN.md — Implement StalenessBadge UI, IPC integration, and Force Regenerate controls
+- [x] 02-02-PLAN.md — Implement StalenessBadge UI, IPC integration, and Force Regenerate controls
 
 ### Phase 3: Hierarchy Navigation
 **Goal**: Users can navigate C4 hierarchy through clickable elements drilling from Context down to Code level
@@ -66,12 +66,11 @@ Plans:
   4. User sees breadcrumb trail showing current position in C4 hierarchy (e.g., "Context > API Container > Auth Component")
   5. User can click breadcrumbs to navigate back up hierarchy levels
   6. Diagram elements show visual indicators (hover effects, cursor changes) when clickable for drill-down
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
-- [ ] 03-03: TBD
+- [ ] 03-01-PLAN.md — Create navigation Zustand store and accessible breadcrumb component
+- [ ] 03-02-PLAN.md — Implement SVG click detection and hover indicators for drill-down
 
 ### Phase 4: Polish & Advanced Features
 **Goal**: Users experience polished navigation with keyboard shortcuts, quick search, and optimized performance
@@ -97,5 +96,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. C4 Foundation | 5/5 | Complete   | 2026-02-23 |
 | 2. Automatic Regeneration | 2/2 | Complete   | 2026-02-23 |
-| 3. Hierarchy Navigation | 0/3 | Not started | - |
+| 3. Hierarchy Navigation | 0/2 | Not started | - |
 | 4. Polish & Advanced Features | 0/2 | Not started | - |
