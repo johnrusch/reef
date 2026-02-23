@@ -23,8 +23,8 @@ Requirements for C4 diagram feature release. Each maps to roadmap phases.
 - [ ] **NAV-01**: User can click diagram elements to drill down from Context to Container level
 - [ ] **NAV-02**: User can click diagram elements to drill down from Container to Component level
 - [ ] **NAV-03**: User can click diagram elements to drill down from Component to Code level
-- [ ] **NAV-04**: User sees breadcrumb trail showing current position in C4 hierarchy
-- [ ] **NAV-05**: User can click breadcrumbs to navigate back up hierarchy levels
+- [x] **NAV-04**: User sees breadcrumb trail showing current position in C4 hierarchy
+- [x] **NAV-05**: User can click breadcrumbs to navigate back up hierarchy levels
 - [x] **NAV-06**: User can switch between C4 levels using level selector controls
 - [ ] **NAV-07**: User can use keyboard shortcuts to navigate diagram (fullscreen toggle, zoom, regenerate)
 - [ ] **NAV-08**: Diagram elements show visual indicators when clickable for drill-down
@@ -46,8 +46,8 @@ Requirements for C4 diagram feature release. Each maps to roadmap phases.
 - [x] **INFRA-03**: System upgrades @anthropic-ai/sdk to v0.78.0
 - [x] **INFRA-04**: System verifies PlantUML server supports C4-PlantUML library
 - [x] **INFRA-05**: System generates proper C4-PlantUML include statements in diagram code
-- [ ] **INFRA-06**: System maintains consistent element IDs across C4 hierarchy levels for navigation
-- [ ] **INFRA-07**: System tracks parent-child relationships between C4 diagram elements
+- [x] **INFRA-06**: System maintains consistent element IDs across C4 hierarchy levels for navigation
+- [x] **INFRA-07**: System tracks parent-child relationships between C4 diagram elements
 
 ## v2 Requirements
 
@@ -98,8 +98,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NAV-01 | Phase 3 | Pending |
 | NAV-02 | Phase 3 | Pending |
 | NAV-03 | Phase 3 | Pending |
-| NAV-04 | Phase 3 | Pending |
-| NAV-05 | Phase 3 | Pending |
+| NAV-04 | Phase 3 | Complete |
+| NAV-05 | Phase 3 | Complete |
 | NAV-06 | Phase 1 | Complete (01-04) |
 | NAV-07 | Phase 4 | Pending |
 | NAV-08 | Phase 3 | Pending |
@@ -115,8 +115,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-03 | Phase 1 | Complete (01-01) |
 | INFRA-04 | Phase 1 | Complete (01-01) |
 | INFRA-05 | Phase 1 | Complete (01-01) |
-| INFRA-06 | Phase 3 | Pending |
-| INFRA-07 | Phase 3 | Pending |
+| INFRA-06 | Phase 3 | Complete |
+| INFRA-07 | Phase 3 | Complete |
 
 **Coverage:**
 - v1 requirements: 30 total
