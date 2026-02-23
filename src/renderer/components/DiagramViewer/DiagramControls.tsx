@@ -14,6 +14,7 @@ interface DiagramControlsProps {
   onFocusAreaChange: (area: FocusArea | undefined) => void;
   onShowChangesToggle?: (enabled: boolean) => void;
   onRegenerate: () => void;
+  onForceRegenerate?: () => void;
 }
 
 export const DiagramControls: React.FC<DiagramControlsProps> = ({
@@ -28,6 +29,7 @@ export const DiagramControls: React.FC<DiagramControlsProps> = ({
   onFocusAreaChange,
   onShowChangesToggle,
   onRegenerate,
+  onForceRegenerate,
 }) => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
@@ -175,6 +177,18 @@ export const DiagramControls: React.FC<DiagramControlsProps> = ({
             <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
             Regenerate
           </button>
+
+          {onForceRegenerate && (
+            <button
+              onClick={onForceRegenerate}
+              disabled={isGenerating}
+              className="flex items-center gap-2 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 rounded text-sm font-medium transition-colors"
+              title="Force regenerate diagram (ignore cache)"
+            >
+              <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+              Force Regenerate
+            </button>
+          )}
         </div>
       </div>
 

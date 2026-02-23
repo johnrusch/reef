@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { DiagramPanel } from './DiagramPanel';
 import { DiagramControls } from './DiagramControls';
 import { DiagramInfo } from './DiagramInfo';
+import { StalenessBadge } from './StalenessBadge';
 import { Loader2, AlertCircle } from 'lucide-react';
 
 export type DiagramType = 'component' | 'class' | 'sequence' | 'c4-context' | 'c4-container' | 'c4-component' | 'c4-code';
@@ -64,6 +65,8 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
   });
 
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isStale, setIsStale] = useState(false);
+  const [isRegeneratingFromBadge, setIsRegeneratingFromBadge] = useState(false);
 
   const handleControlChange = (updates: Partial<typeof currentOptions>) => {
     setCurrentOptions(prev => ({ ...prev, ...updates }));
@@ -73,6 +76,72 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
     if (isGenerating) return;
     await onRegenerateDiagram(currentOptions);
   }, [isGenerating, currentOptions, onRegenerateDiagram]);
+
+  const handleRegenerateFromBadge = useCallback(async () => {
+    setIsRegeneratingFromBadge(true);
+    setIsStale(false); // Optimistic UI update
+
+    try {
+      await onRegenerateDiagram({ ...currentOptions });
+    } catch (error) {
+      // Restore stale state on error
+      setIsStale(true);
+      console.error('Regeneration failed:', error);
+    } finally {
+      setIsRegeneratingFromBadge(false);
+    }
+  }, [currentOptions, onRegenerateDiagram]);
+
+  const handleForceRegenerate = useCallback(async () => {
+    await onRegenerateDiagram({ ...currentOptions });
+  }, [currentOptions, onRegenerateDiagram]);
+
+  // Subscribe to staleness events from main process
+  useEffect(() => {
+    const handleStaleEvent = (_event: any, data: { repoPath: string; level: string }) => {
+      // Check if this event is for current diagram
+      const currentLevel = currentOptions.type.replace('c4-', '');
+      if (data.level === currentLevel) {
+        setIsStale(true);
+      }
+    };
+
+    window.reef.ipc.on('diagram:stale', handleStaleEvent);
+
+    return () => {
+      window.reef.ipc.off('diagram:stale', handleStaleEvent);
+    };
+  }, [currentOptions.type]);
+
+  // Start/stop file watcher when diagram type changes
+  useEffect(() => {
+    // Only watch for C4 diagram types
+    if (!currentOptions.type.startsWith('c4-')) return;
+
+    const level = currentOptions.type.replace('c4-', '');
+    const repoPath = _repository?.path;
+
+    if (!repoPath) return;
+
+    // Start watching
+    window.reef.fileWatcher.start(repoPath, level);
+
+    // Check staleness on mount
+    window.reef.fileWatcher.checkStaleness(repoPath, level).then(stale => {
+      if (stale) setIsStale(true);
+    });
+
+    return () => {
+      window.reef.fileWatcher.stop(repoPath, level);
+    };
+  }, [currentOptions.type, _repository?.path]);
+
+  // Clear staleness when diagram is regenerated
+  useEffect(() => {
+    if (metadata.generatedAt) {
+      setIsStale(false);
+    }
+  }, [metadata.generatedAt]);
 
   useEffect(() => {
     const handleKeyboardShortcuts = (e: KeyboardEvent) => {
@@ -137,6 +206,11 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
         onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
         onExport={onExport}
       />
+      <StalenessBadge
+        isStale={isStale}
+        isRegenerating={isRegeneratingFromBadge || isGenerating}
+        onClick={handleRegenerateFromBadge}
+      />
       {isGenerating && (
         <div className="absolute inset-0 bg-gray-900/75 flex items-center justify-center z-50">
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 shadow-xl">
@@ -175,6 +249,7 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
         onFocusAreaChange={(focusArea) => handleControlChange({ focusArea })}
         onShowChangesToggle={onShowChanges}
         onRegenerate={handleRegenerate}
+        onForceRegenerate={handleForceRegenerate}
       />
       
       <div className="flex flex-1 overflow-hidden">

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Info, Clock, DollarSign, Zap, Database, RefreshCw, GitBranch } from 'lucide-react';
+import React, { useState } from 'react';
+import { Info, Clock, DollarSign, Zap, Database, RefreshCw, GitBranch, Trash2 } from 'lucide-react';
 import type { DiagramMetadata } from './DiagramViewer';
 
 interface DiagramInfoProps {
@@ -13,6 +13,23 @@ export const DiagramInfo: React.FC<DiagramInfoProps> = ({
   changedFilesCount = 0,
   onRefreshFromCache,
 }) => {
+  const [isClearingCache, setIsClearingCache] = useState(false);
+
+  const handleClearCache = async () => {
+    setIsClearingCache(true);
+    try {
+      const result = await window.reef.cache.clearAll();
+      if (result.success) {
+        console.log('Cache cleared successfully');
+        // Optionally show a notification
+      }
+    } catch (error) {
+      console.error('Failed to clear cache:', error);
+    } finally {
+      setIsClearingCache(false);
+    }
+  };
+
   const getModelDisplayName = (model: string): string => {
     const modelNames = {
       'haiku': 'Claude 3 Haiku',
@@ -157,6 +174,18 @@ export const DiagramInfo: React.FC<DiagramInfoProps> = ({
             </button>
           </div>
         )}
+
+        <div className="border-t border-gray-700 pt-3">
+          <button
+            onClick={handleClearCache}
+            disabled={isClearingCache}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-red-600/20 hover:bg-red-600/30 disabled:opacity-50 rounded text-sm transition-colors text-red-400"
+            title="Clear all cached diagrams (troubleshooting)"
+          >
+            <Trash2 className="w-4 h-4" />
+            {isClearingCache ? 'Clearing...' : 'Clear Cache'}
+          </button>
+        </div>
 
         <div className="border-t border-gray-700 pt-3">
           <div className="space-y-2">
