@@ -74,3 +74,52 @@
     transform: rotate(360deg);
   }
 }
+
+/* C4 Diagram Click Navigation
+ * Visual indicators for clickable diagram elements
+ * PlantUML generates SVG with elements having IDs like "elem_reef_main"
+ */
+
+/* Base styles for clickable diagram containers */
+.diagram-wrapper.clickable {
+  /* No global cursor - handled per-element */
+}
+
+/* Target elements with IDs (PlantUML generated) */
+.diagram-wrapper.clickable svg [id]:not([id^="_"]):not([id="svg_root"]) {
+  cursor: pointer;
+  transition: opacity 0.15s ease, filter 0.15s ease;
+}
+
+/* Hover effect - subtle brightness increase and opacity change */
+.diagram-wrapper.clickable svg [id]:not([id^="_"]):not([id="svg_root"]):hover {
+  opacity: 0.85;
+  filter: brightness(1.15);
+}
+
+/* Specifically target C4 element groups (PlantUML wraps in <g> with elem_ prefix) */
+.diagram-wrapper.clickable svg g[id^="elem_"] {
+  cursor: pointer;
+}
+
+.diagram-wrapper.clickable svg g[id^="elem_"]:hover rect,
+.diagram-wrapper.clickable svg g[id^="elem_"]:hover path,
+.diagram-wrapper.clickable svg g[id^="elem_"]:hover polygon {
+  filter: brightness(1.1);
+}
+
+/* Text elements within clickable groups should also show pointer */
+.diagram-wrapper.clickable svg g[id^="elem_"] text {
+  cursor: pointer;
+}
+
+/* Disable hover effects during diagram generation */
+.diagram-wrapper:not(.clickable) svg [id] {
+  cursor: default;
+}
+
+/* Focus indicator for keyboard navigation (Phase 4) */
+.diagram-wrapper.clickable svg [id]:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
