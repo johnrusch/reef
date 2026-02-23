@@ -4,7 +4,7 @@ import type { DiagramOptions, DiagramResult, ExtractorOptions, ExtractionResult 
 export interface DiagramSettings {
   defaultModel: 'haiku' | 'sonnet' | 'opus';
   autoGenerateOnLoad: boolean;
-  defaultDiagramType: 'component' | 'class' | 'sequence';
+  defaultDiagramType: 'component' | 'class' | 'sequence' | 'c4-context' | 'c4-container' | 'c4-component' | 'c4-code';
   defaultDetailLevel: 'overview' | 'architectural' | 'detailed';
   excludedPatterns: string[];
   plantUmlServerUrl: string;
@@ -59,6 +59,8 @@ export interface ReefAPI {
     generate: (context: string, options: DiagramOptions) => Promise<DiagramResult>;
     setApiKey: (apiKey: string) => Promise<{ success: boolean; error?: string }>;
     checkConfiguration: () => Promise<{ configured: boolean }>;
+    getAvailableContainers: (repoPath: string) => Promise<{ success: boolean; containers: string[]; error?: string }>;
+    getAvailableComponents: (repoPath: string) => Promise<{ success: boolean; components: string[]; error?: string }>;
   };
   context: {
     extract: (repoPath: string, options: ExtractorOptions) => Promise<ExtractionResult>;
@@ -137,6 +139,8 @@ const reefAPI: ReefAPI = {
     generate: (context: string, options: DiagramOptions) => ipcRenderer.invoke('diagram:generate', context, options),
     setApiKey: (apiKey: string) => ipcRenderer.invoke('diagram:set-api-key', apiKey),
     checkConfiguration: () => ipcRenderer.invoke('diagram:check-configuration'),
+    getAvailableContainers: (repoPath: string) => ipcRenderer.invoke('diagram:get-available-containers', repoPath),
+    getAvailableComponents: (repoPath: string) => ipcRenderer.invoke('diagram:get-available-components', repoPath),
   },
   context: {
     extract: (repoPath: string, options: ExtractorOptions) => ipcRenderer.invoke('context:extract', repoPath, options),

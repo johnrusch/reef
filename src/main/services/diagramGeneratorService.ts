@@ -307,4 +307,60 @@ ipcMain.handle('diagram:check-configuration', async () => {
   return { configured: diagramGeneratorService.isConfigured() };
 });
 
+ipcMain.handle('diagram:get-available-containers', async (_, repoPath: string) => {
+  try {
+    // Get API key from environment or secure storage
+    let apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      const store = new Store();
+      const encryptedKey = store.get('anthropicApiKey') as string | undefined;
+      if (encryptedKey && safeStorage.isEncryptionAvailable()) {
+        try {
+          apiKey = safeStorage.decryptString(Buffer.from(encryptedKey, 'base64'));
+        } catch (error) {
+          console.error('Failed to decrypt API key:', error);
+          return { success: false, containers: [], error: 'Failed to decrypt API key' };
+        }
+      } else {
+        return { success: false, containers: [], error: 'API key not configured' };
+      }
+    }
+
+    const analyzer = new C4AnalyzerService(apiKey);
+    const containers = await analyzer.getAvailableContainers(repoPath);
+    return { success: true, containers };
+  } catch (error) {
+    console.error('Error getting available containers:', error);
+    return { success: false, containers: [], error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+});
+
+ipcMain.handle('diagram:get-available-components', async (_, repoPath: string) => {
+  try {
+    // Get API key from environment or secure storage
+    let apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      const store = new Store();
+      const encryptedKey = store.get('anthropicApiKey') as string | undefined;
+      if (encryptedKey && safeStorage.isEncryptionAvailable()) {
+        try {
+          apiKey = safeStorage.decryptString(Buffer.from(encryptedKey, 'base64'));
+        } catch (error) {
+          console.error('Failed to decrypt API key:', error);
+          return { success: false, components: [], error: 'Failed to decrypt API key' };
+        }
+      } else {
+        return { success: false, components: [], error: 'API key not configured' };
+      }
+    }
+
+    const analyzer = new C4AnalyzerService(apiKey);
+    const components = await analyzer.getAvailableComponents(repoPath);
+    return { success: true, components };
+  } catch (error) {
+    console.error('Error getting available components:', error);
+    return { success: false, components: [], error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+});
+
 export default diagramGeneratorService;

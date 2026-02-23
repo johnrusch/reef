@@ -176,6 +176,91 @@ export class C4AnalyzerService {
   }
 
   /**
+   * Gets available containers from a repository's static analysis
+   * These are the deployable units that can be used for Component-level diagrams
+   */
+  async getAvailableContainers(repoPath: string): Promise<string[]> {
+    try {
+      const staticData = await this.staticAnalyzer.analyzeProject(repoPath);
+
+      if (staticData.error) {
+        console.error('[C4 Analyzer] Failed to analyze project:', staticData.error);
+        return [];
+      }
+
+      // Containers are typically identified by:
+      // 1. Entry points (main process, renderer, preload)
+      // 2. Top-level directories in src/
+      const containers = new Set<string>();
+
+      // Add entry points as containers
+      staticData.entryPoints.forEach(entryPoint => {
+        // Extract container name from path (e.g., src/main/main.ts -> main)
+        const parts = entryPoint.split('/');
+        const srcIndex = parts.indexOf('src');
+        if (srcIndex >= 0 && srcIndex + 1 < parts.length) {
+          containers.add(parts[srcIndex + 1]);
+        }
+      });
+
+      // If no containers found from entry points, infer from directory structure
+      if (containers.size === 0 && staticData.structure.classes.length > 0) {
+        staticData.structure.classes.forEach(cls => {
+          const parts = cls.file.split('/');
+          const srcIndex = parts.indexOf('src');
+          if (srcIndex >= 0 && srcIndex + 1 < parts.length) {
+            containers.add(parts[srcIndex + 1]);
+          }
+        });
+      }
+
+      return Array.from(containers).sort();
+    } catch (error) {
+      console.error('[C4 Analyzer] Error getting available containers:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Gets available components from a repository's static analysis
+   * These are the logical groupings that can be used for Code-level diagrams
+   */
+  async getAvailableComponents(repoPath: string): Promise<string[]> {
+    try {
+      const staticData = await this.staticAnalyzer.analyzeProject(repoPath);
+
+      if (staticData.error) {
+        console.error('[C4 Analyzer] Failed to analyze project:', staticData.error);
+        return [];
+      }
+
+      // Components are typically service classes, controllers, or major classes
+      const components = staticData.structure.classes
+        .filter(cls => {
+          // Include classes that are:
+          // 1. Exported (public API)
+          // 2. Named like services, controllers, managers, handlers
+          return (
+            cls.isExported &&
+            (cls.name.endsWith('Service') ||
+              cls.name.endsWith('Controller') ||
+              cls.name.endsWith('Manager') ||
+              cls.name.endsWith('Handler') ||
+              cls.name.endsWith('Store') ||
+              cls.name.endsWith('Repository'))
+          );
+        })
+        .map(cls => cls.name)
+        .sort();
+
+      return components;
+    } catch (error) {
+      console.error('[C4 Analyzer] Error getting available components:', error);
+      return [];
+    }
+  }
+
+  /**
    * Closes cache database connection
    */
   close(): void {

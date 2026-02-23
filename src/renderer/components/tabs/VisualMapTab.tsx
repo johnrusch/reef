@@ -25,6 +25,9 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
   const [focusArea, setFocusArea] = useState<FocusArea | undefined>(undefined);
   const [modelType, setModelType] = useState<ModelType>('haiku');
   const [elementId, setElementId] = useState<string | undefined>(undefined);
+  const [availableContainers, setAvailableContainers] = useState<string[]>([]);
+  const [availableComponents, setAvailableComponents] = useState<string[]>([]);
+  const [loadingElements, setLoadingElements] = useState<boolean>(false);
 
   useEffect(() => {
     checkConfiguration();
@@ -36,6 +39,68 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
       setElementId(undefined);
     }
   }, [diagramType]);
+
+  // Fetch available containers when switching to Component level
+  useEffect(() => {
+    if (diagramType === 'c4-component' && repository) {
+      fetchAvailableContainers();
+    }
+  }, [diagramType, repository]);
+
+  // Fetch available components when switching to Code level
+  useEffect(() => {
+    if (diagramType === 'c4-code' && repository) {
+      fetchAvailableComponents();
+    }
+  }, [diagramType, repository]);
+
+  const fetchAvailableContainers = async () => {
+    if (!repository) return;
+
+    setLoadingElements(true);
+    try {
+      const result = await window.reef.diagram.getAvailableContainers(repository.path);
+      if (result.success && result.containers.length > 0) {
+        setAvailableContainers(result.containers);
+        // Auto-select first container if none selected
+        if (!elementId) {
+          setElementId(result.containers[0]);
+        }
+      } else {
+        setAvailableContainers([]);
+        console.warn('No containers found for repository');
+      }
+    } catch (error) {
+      console.error('Failed to fetch available containers:', error);
+      setAvailableContainers([]);
+    } finally {
+      setLoadingElements(false);
+    }
+  };
+
+  const fetchAvailableComponents = async () => {
+    if (!repository) return;
+
+    setLoadingElements(true);
+    try {
+      const result = await window.reef.diagram.getAvailableComponents(repository.path);
+      if (result.success && result.components.length > 0) {
+        setAvailableComponents(result.components);
+        // Auto-select first component if none selected
+        if (!elementId) {
+          setElementId(result.components[0].toLowerCase());
+        }
+      } else {
+        setAvailableComponents([]);
+        console.warn('No components found for repository');
+      }
+    } catch (error) {
+      console.error('Failed to fetch available components:', error);
+      setAvailableComponents([]);
+    } finally {
+      setLoadingElements(false);
+    }
+  };
 
   const checkConfiguration = async () => {
     try {
@@ -400,38 +465,32 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
                 <p className="text-xs text-gray-500 mb-2">
                   Choose which container (deployable unit) to analyze in detail
                 </p>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    onClick={() => setElementId('reef_main')}
-                    className={`px-3 py-2 rounded text-sm transition-colors ${
-                      elementId === 'reef_main'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                    }`}
-                  >
-                    Main Process
-                  </button>
-                  <button
-                    onClick={() => setElementId('reef_renderer')}
-                    className={`px-3 py-2 rounded text-sm transition-colors ${
-                      elementId === 'reef_renderer'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                    }`}
-                  >
-                    Renderer Process
-                  </button>
-                  <button
-                    onClick={() => setElementId('reef_preload')}
-                    className={`px-3 py-2 rounded text-sm transition-colors ${
-                      elementId === 'reef_preload'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                    }`}
-                  >
-                    Preload Script
-                  </button>
-                </div>
+                {loadingElements ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="w-4 h-4 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
+                    <span className="ml-2 text-sm text-gray-400">Loading containers...</span>
+                  </div>
+                ) : availableContainers.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-2">
+                    {availableContainers.map((container) => (
+                      <button
+                        key={container}
+                        onClick={() => setElementId(container)}
+                        className={`px-3 py-2 rounded text-sm transition-colors ${
+                          elementId === container
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                        }`}
+                      >
+                        {container}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500 py-2">
+                    No containers found in this repository
+                  </div>
+                )}
               </div>
             )}
 
@@ -443,58 +502,32 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
                 <p className="text-xs text-gray-500 mb-2">
                   Choose which component to drill down into for class-level details
                 </p>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    onClick={() => setElementId('gitservice')}
-                    className={`px-3 py-2 rounded text-sm transition-colors ${
-                      elementId === 'gitservice'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                    }`}
-                  >
-                    GitService
-                  </button>
-                  <button
-                    onClick={() => setElementId('githubservice')}
-                    className={`px-3 py-2 rounded text-sm transition-colors ${
-                      elementId === 'githubservice'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                    }`}
-                  >
-                    GitHubService
-                  </button>
-                  <button
-                    onClick={() => setElementId('c4analyzerservice')}
-                    className={`px-3 py-2 rounded text-sm transition-colors ${
-                      elementId === 'c4analyzerservice'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                    }`}
-                  >
-                    C4AnalyzerService
-                  </button>
-                  <button
-                    onClick={() => setElementId('staticanalyzerservice')}
-                    className={`px-3 py-2 rounded text-sm transition-colors ${
-                      elementId === 'staticanalyzerservice'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                    }`}
-                  >
-                    StaticAnalyzerService
-                  </button>
-                  <button
-                    onClick={() => setElementId('diagramgeneratorservice')}
-                    className={`px-3 py-2 rounded text-sm transition-colors ${
-                      elementId === 'diagramgeneratorservice'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                    }`}
-                  >
-                    DiagramGeneratorService
-                  </button>
-                </div>
+                {loadingElements ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="w-4 h-4 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
+                    <span className="ml-2 text-sm text-gray-400">Loading components...</span>
+                  </div>
+                ) : availableComponents.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-2">
+                    {availableComponents.map((component) => (
+                      <button
+                        key={component}
+                        onClick={() => setElementId(component.toLowerCase())}
+                        className={`px-3 py-2 rounded text-sm transition-colors ${
+                          elementId === component.toLowerCase()
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                        }`}
+                      >
+                        {component}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500 py-2">
+                    No components found in this repository
+                  </div>
+                )}
               </div>
             )}
 
