@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 01-c4-foundation
 source:
   - 01-01-SUMMARY.md
@@ -76,27 +76,46 @@ skipped: 0
   reason: "User reported: PlantUML generation failed: Component diagram requires elementId (container name)"
   severity: major
   test: 3
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "UI missing controls to collect elementId parameter. Backend correctly validates Component diagrams need container name, but UI never asks user to select which container to drill into."
+  artifacts:
+    - path: "src/renderer/components/tabs/VisualMapTab.tsx"
+      issue: "Missing UI controls (dropdown/input) to select container for Component diagrams"
+  missing:
+    - "Add dropdown to select container (Main Process, Renderer Process, Preload Script)"
+    - "Pass elementId in options when calling generateDiagram()"
+    - "Consider progressive drill-down UX: click Container diagram to generate Component view"
+  debug_session: ".planning/debug/c4-component-elementid-missing.md"
 
 - truth: "Generate a C4 Code diagram showing class details with methods, properties, inheritance, and relationships"
   status: failed
   reason: "User reported: VisualMapTab.tsx:189 Diagram generation error: Error: PlantUML generation failed: Code diagram requires elementId (component name)"
   severity: major
   test: 4
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "Same root cause as Test 3 - UI missing elementId collection mechanism. Both Component and Code diagrams need drill-down context but UI has no controls."
+  artifacts:
+    - path: "src/renderer/components/tabs/VisualMapTab.tsx"
+      issue: "Missing UI controls to select component for Code diagrams"
+  missing:
+    - "Add component selector dropdown (appears after container selection)"
+    - "Pass elementId in options when calling generateDiagram()"
+    - "Consider progressive drill-down UX: click Component diagram to generate Code view"
+  debug_session: ".planning/debug/c4-code-element-id-required.md"
 
 - truth: "After modifying a source file, cache invalidates and diagram regenerates with updated content"
   status: failed
   reason: "User reported: there's been a regression: getting this error because it asks for my anthropic key again and this pops up after i put it in: The module '/Users/johnrusch/Code/reef/node_modules/better-sqlite3/build/Release/better_sqlite3.node' was compiled against a different Node.js version using NODE_MODULE_VERSION 127. This version of Node.js requires NODE_MODULE_VERSION 139. Please try re-compiling or re-installing the module (for instance, using `npm rebuild` or `npm install`)."
   severity: blocker
   test: 8
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "Native module better-sqlite3 compiled against system Node.js v22 (ABI 127) but Electron 38.8.2 requires ABI 139. API key re-prompt is symptom of failed service initialization, not storage issue."
+  artifacts:
+    - path: "package.json"
+      issue: "Missing electron-rebuild dependency and postinstall script for native modules"
+    - path: "src/main/services/c4/c4CacheService.ts"
+      issue: "Line 29 - Database instantiation fails due to wrong ABI version"
+    - path: "node_modules/better-sqlite3/build/Release/better_sqlite3.node"
+      issue: "Compiled for NODE_MODULE_VERSION 127 instead of 139"
+  missing:
+    - "Install electron-rebuild package as dev dependency"
+    - "Update postinstall script: 'node scripts/update-plantuml.js && electron-rebuild -f -w better-sqlite3'"
+    - "Run npx electron-rebuild -f -w better-sqlite3 to rebuild native module"
+  debug_session: ".planning/debug/better-sqlite3-api-key-regression.md"
