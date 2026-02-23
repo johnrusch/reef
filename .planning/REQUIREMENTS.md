@@ -32,9 +32,9 @@ Requirements for C4 diagram feature release. Each maps to roadmap phases.
 ### Auto-Update & Caching
 
 - [x] **UPDATE-01**: System detects when repository files change
-- [ ] **UPDATE-02**: System shows visual indicator when diagram is potentially stale due to file changes
-- [ ] **UPDATE-03**: System automatically regenerates diagrams when user confirms file changes
-- [ ] **UPDATE-04**: User can manually trigger diagram regeneration at any time
+- [x] **UPDATE-02**: System shows visual indicator when diagram is potentially stale due to file changes
+- [x] **UPDATE-03**: System automatically regenerates diagrams when user confirms file changes
+- [x] **UPDATE-04**: User can manually trigger diagram regeneration at any time
 - [x] **UPDATE-05**: System implements level-aware caching (Context cached longer, Code cached shorter)
 - [x] **UPDATE-06**: System invalidates cache intelligently based on changed files and C4 level
 - [x] **UPDATE-07**: System reuses cached diagrams when codebase hasn't changed to avoid API costs
@@ -104,9 +104,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NAV-07 | Phase 4 | Pending |
 | NAV-08 | Phase 3 | Pending |
 | UPDATE-01 | Phase 2 | Complete (02-01) |
-| UPDATE-02 | Phase 2 | Pending |
-| UPDATE-03 | Phase 2 | Pending |
-| UPDATE-04 | Phase 2 | Pending |
+| UPDATE-02 | Phase 2 | Complete |
+| UPDATE-03 | Phase 2 | Complete |
+| UPDATE-04 | Phase 2 | Complete |
 | UPDATE-05 | Phase 1 | Complete |
 | UPDATE-06 | Phase 2 | Complete (02-01) |
 | UPDATE-07 | Phase 2 | Complete (02-01) |
