@@ -20,14 +20,14 @@ Requirements for C4 diagram feature release. Each maps to roadmap phases.
 
 ### Navigation & Hierarchy
 
-- [ ] **NAV-01**: User can click diagram elements to drill down from Context to Container level
-- [ ] **NAV-02**: User can click diagram elements to drill down from Container to Component level
-- [ ] **NAV-03**: User can click diagram elements to drill down from Component to Code level
+- [x] **NAV-01**: User can click diagram elements to drill down from Context to Container level
+- [x] **NAV-02**: User can click diagram elements to drill down from Container to Component level
+- [x] **NAV-03**: User can click diagram elements to drill down from Component to Code level
 - [x] **NAV-04**: User sees breadcrumb trail showing current position in C4 hierarchy
 - [x] **NAV-05**: User can click breadcrumbs to navigate back up hierarchy levels
 - [x] **NAV-06**: User can switch between C4 levels using level selector controls
 - [ ] **NAV-07**: User can use keyboard shortcuts to navigate diagram (fullscreen toggle, zoom, regenerate)
-- [ ] **NAV-08**: Diagram elements show visual indicators when clickable for drill-down
+- [x] **NAV-08**: Diagram elements show visual indicators when clickable for drill-down
 
 ### Auto-Update & Caching
 
@@ -95,14 +95,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | C4GEN-06 | Phase 1 | Complete |
 | C4GEN-07 | Phase 1 | Complete |
 | C4GEN-08 | Phase 1 | Complete |
-| NAV-01 | Phase 3 | Pending |
-| NAV-02 | Phase 3 | Pending |
-| NAV-03 | Phase 3 | Pending |
-| NAV-04 | Phase 3 | Complete |
-| NAV-05 | Phase 3 | Complete |
+| NAV-01 | Phase 3 | Complete (03-02) |
+| NAV-02 | Phase 3 | Complete (03-02) |
+| NAV-03 | Phase 3 | Complete (03-02) |
+| NAV-04 | Phase 3 | Complete (03-01) |
+| NAV-05 | Phase 3 | Complete (03-01) |
 | NAV-06 | Phase 1 | Complete (01-04) |
 | NAV-07 | Phase 4 | Pending |
-| NAV-08 | Phase 3 | Pending |
+| NAV-08 | Phase 3 | Complete (03-02) |
 | UPDATE-01 | Phase 2 | Complete (02-01) |
 | UPDATE-02 | Phase 2 | Complete |
 | UPDATE-03 | Phase 2 | Complete |
