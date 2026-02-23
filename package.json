@@ -25,7 +25,7 @@
     "test:e2e": "playwright test",
     "test:watch": "vitest --config vitest.config.ts",
     "test:coverage": "concurrently \"vitest run --coverage --config vitest.config.ts\" \"vitest run --coverage --config vitest.config.main.ts\"",
-    "postinstall": "node scripts/update-plantuml.js"
+    "postinstall": "node scripts/update-plantuml.js && electron-rebuild -f -w better-sqlite3 -v 38.8.2"
   },
   "keywords": [
     "github",
@@ -38,6 +38,7 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
     "@playwright/test": "^1.55.0",
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
