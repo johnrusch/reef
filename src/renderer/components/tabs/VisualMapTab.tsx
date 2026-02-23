@@ -24,10 +24,18 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
   const [detailLevel, setDetailLevel] = useState<DetailLevel>('overview');
   const [focusArea, setFocusArea] = useState<FocusArea | undefined>(undefined);
   const [modelType, setModelType] = useState<ModelType>('haiku');
+  const [elementId, setElementId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     checkConfiguration();
   }, []);
+
+  useEffect(() => {
+    // Reset elementId when switching to Context or Container diagram types
+    if (diagramType === 'c4-context' || diagramType === 'c4-container') {
+      setElementId(undefined);
+    }
+  }, [diagramType]);
 
   const checkConfiguration = async () => {
     try {
@@ -132,6 +140,7 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
           type: finalOptions.type,
           detailLevel: apiDetailLevel as 'overview' | 'detailed',
           focusArea: apiFocusArea as 'api' | 'database' | 'business-logic' | undefined,
+          elementId: elementId,
         });
       } else {
         // Traditional UML diagrams use pre-extracted context
@@ -382,6 +391,112 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
                 </button>
               </div>
             </div>
+
+            {diagramType === 'c4-component' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Select Container to Analyze
+                </label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Choose which container (deployable unit) to analyze in detail
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => setElementId('reef_main')}
+                    className={`px-3 py-2 rounded text-sm transition-colors ${
+                      elementId === 'reef_main'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                    }`}
+                  >
+                    Main Process
+                  </button>
+                  <button
+                    onClick={() => setElementId('reef_renderer')}
+                    className={`px-3 py-2 rounded text-sm transition-colors ${
+                      elementId === 'reef_renderer'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                    }`}
+                  >
+                    Renderer Process
+                  </button>
+                  <button
+                    onClick={() => setElementId('reef_preload')}
+                    className={`px-3 py-2 rounded text-sm transition-colors ${
+                      elementId === 'reef_preload'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                    }`}
+                  >
+                    Preload Script
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {diagramType === 'c4-code' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Select Component to Analyze
+                </label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Choose which component to drill down into for class-level details
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => setElementId('gitservice')}
+                    className={`px-3 py-2 rounded text-sm transition-colors ${
+                      elementId === 'gitservice'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                    }`}
+                  >
+                    GitService
+                  </button>
+                  <button
+                    onClick={() => setElementId('githubservice')}
+                    className={`px-3 py-2 rounded text-sm transition-colors ${
+                      elementId === 'githubservice'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                    }`}
+                  >
+                    GitHubService
+                  </button>
+                  <button
+                    onClick={() => setElementId('c4analyzerservice')}
+                    className={`px-3 py-2 rounded text-sm transition-colors ${
+                      elementId === 'c4analyzerservice'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                    }`}
+                  >
+                    C4AnalyzerService
+                  </button>
+                  <button
+                    onClick={() => setElementId('staticanalyzerservice')}
+                    className={`px-3 py-2 rounded text-sm transition-colors ${
+                      elementId === 'staticanalyzerservice'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                    }`}
+                  >
+                    StaticAnalyzerService
+                  </button>
+                  <button
+                    onClick={() => setElementId('diagramgeneratorservice')}
+                    className={`px-3 py-2 rounded text-sm transition-colors ${
+                      elementId === 'diagramgeneratorservice'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                    }`}
+                  >
+                    DiagramGeneratorService
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-2">
