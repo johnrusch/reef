@@ -47,6 +47,20 @@ export class C4CacheService {
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_timestamp ON c4_cache(timestamp)
     `);
+
+    // Create generation_timestamps table for staleness detection
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS generation_timestamps (
+        repo_path TEXT NOT NULL,
+        level TEXT NOT NULL CHECK(level IN ('context', 'container', 'component', 'code')),
+        timestamp INTEGER NOT NULL,
+        PRIMARY KEY (repo_path, level)
+      )
+    `);
+
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_timestamps_repo ON generation_timestamps(repo_path)
+    `);
   }
 
   /**
@@ -124,6 +138,9 @@ export class C4CacheService {
     `);
 
     stmt.run(key, diagram, timestamp, level);
+
+    // Update generation timestamp
+    this.setLastGenerationTimestamp(repoPath, level);
   }
 
   /**
@@ -132,6 +149,7 @@ export class C4CacheService {
   clearCache(repoPath: string): void {
     const keyPrefix = `${repoPath}:`;
     this.db.prepare('DELETE FROM c4_cache WHERE key LIKE ?').run(`${keyPrefix}%`);
+    this.clearAllGenerationTimestamps(repoPath);
   }
 
   /**
@@ -155,6 +173,47 @@ export class C4CacheService {
       now - this.COMPONENT_TTL,
       now - this.CODE_TTL
     );
+  }
+
+  /**
+   * Sets the last generation timestamp for a repo/level combination
+   */
+  setLastGenerationTimestamp(repoPath: string, level: C4Level): void {
+    const stmt = this.db.prepare(`
+      INSERT OR REPLACE INTO generation_timestamps (repo_path, level, timestamp)
+      VALUES (?, ?, ?)
+    `);
+
+    stmt.run(repoPath, level, Date.now());
+  }
+
+  /**
+   * Gets the last generation timestamp for a repo/level combination
+   * Returns 0 if not found (never generated)
+   */
+  getLastGenerationTimestamp(repoPath: string, level: C4Level): number {
+    const stmt = this.db.prepare(`
+      SELECT timestamp FROM generation_timestamps
+      WHERE repo_path = ? AND level = ?
+    `);
+
+    const result = stmt.get(repoPath, level) as { timestamp: number } | undefined;
+    return result?.timestamp ?? 0;
+  }
+
+  /**
+   * Clears all generation timestamps for a repository
+   */
+  clearAllGenerationTimestamps(repoPath: string): void {
+    this.db.prepare('DELETE FROM generation_timestamps WHERE repo_path = ?').run(repoPath);
+  }
+
+  /**
+   * Clears all cache entries and timestamps (for troubleshooting)
+   */
+  clearAllCache(): void {
+    this.db.prepare('DELETE FROM c4_cache').run();
+    this.db.prepare('DELETE FROM generation_timestamps').run();
   }
 
   /**
@@ -192,7 +251,7 @@ export class C4CacheService {
   /**
    * Gets relevant file patterns for cache invalidation
    */
-  private getRelevantFilePatterns(level: C4Level): string[] {
+  public getRelevantFilePatterns(level: C4Level): string[] {
     const patterns: Record<C4Level, string[]> = {
       context: ['package.json', 'tsconfig.json', 'src/**/main.*'],
       container: ['package.json', 'src/main', 'src/renderer'],
