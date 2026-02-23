@@ -36,7 +36,7 @@ Plans:
 - [x] 01-01-PLAN.md — Upgrade dependencies and fix PlantUML security (ts-morph, SDK v0.78.0, C4 includes whitelist)
 - [x] 01-02-PLAN.md — Create C4 type system and ts-morph static analyzer (deterministic code extraction)
 - [x] 01-03-PLAN.md — Implement C4 generation engine (all 4 levels with hybrid static+AI approach)
-- [ ] 01-04-PLAN.md — Add elementId UI controls for Component/Code drill-down (gap closure)
+- [x] 01-04-PLAN.md — Add elementId UI controls for Component/Code drill-down (gap closure)
 - [ ] 01-05-PLAN.md — Fix better-sqlite3 native module ABI mismatch (gap closure)
 
 ### Phase 2: Automatic Regeneration
@@ -95,7 +95,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. C4 Foundation | 3/5 | Gap closure | 2026-02-21 |
+| 1. C4 Foundation | 4/5 | Gap closure | 2026-02-23 |
 | 2. Automatic Regeneration | 0/2 | Not started | - |
 | 3. Hierarchy Navigation | 0/3 | Not started | - |
 | 4. Polish & Advanced Features | 0/2 | Not started | - |
