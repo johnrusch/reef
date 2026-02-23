@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: C4 Foundation** - Establish validated C4 generation across all four levels with hybrid static+AI approach
 - [x] **Phase 2: Automatic Regeneration** - Implement intelligent cache invalidation and auto-regeneration on file changes (completed 2026-02-23)
-- [ ] **Phase 3: Hierarchy Navigation** - Build drill-down navigation system with element clickability and breadcrumbs
+- [x] **Phase 3: Hierarchy Navigation** - Build drill-down navigation system with element clickability and breadcrumbs
 - [ ] **Phase 4: Polish & Advanced Features** - Add quick navigation, keyboard shortcuts, and performance optimizations
 
 ## Phase Details
@@ -77,15 +77,15 @@ Plans:
 **Depends on**: Phase 3
 **Requirements**: NAV-07
 **Success Criteria** (what must be TRUE):
-  1. User can use keyboard shortcuts for common actions (F11 fullscreen, Ctrl+R regenerate, arrows navigate)
+  1. User can use keyboard shortcuts for common actions (F fullscreen, Cmd/Ctrl+R regenerate, arrows navigate)
   2. User can open quick navigation dialog with keyboard shortcut to jump directly to any diagram by name
   3. User can search for specific containers or components across diagrams using fuzzy text search
   4. Large diagrams (>2MB SVG) load progressively without blocking UI
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
+- [ ] 04-01-PLAN.md — Keyboard shortcut infrastructure with react-hotkeys-hook and help dialog
+- [ ] 04-02-PLAN.md — Command palette with cmdk and Fuse.js fuzzy search for quick navigation
 
 ## Progress
 
@@ -97,4 +97,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. C4 Foundation | 5/5 | Complete   | 2026-02-23 |
 | 2. Automatic Regeneration | 2/2 | Complete   | 2026-02-23 |
 | 3. Hierarchy Navigation | 2/2 | Complete   | 2026-02-23 |
-| 4. Polish & Advanced Features | 0/2 | Not started | - |
+| 4. Polish & Advanced Features | 0/2 | Planned | - |
