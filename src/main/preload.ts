@@ -74,6 +74,14 @@ export interface ReefAPI {
     set: (settings: DiagramSettings) => Promise<void>;
     reset: () => Promise<void>;
   };
+  fileWatcher: {
+    start: (repoPath: string, level: string) => Promise<{ success: boolean }>;
+    stop: (repoPath: string, level: string) => Promise<{ success: boolean }>;
+    checkStaleness: (repoPath: string, level: string) => Promise<boolean>;
+  };
+  cache: {
+    clearAll: () => Promise<{ success: boolean }>;
+  };
   ipc: {
     on: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => void;
     off: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => void;
@@ -153,6 +161,17 @@ const reefAPI: ReefAPI = {
     get: () => ipcRenderer.invoke('diagram-settings:get'),
     set: (settings: DiagramSettings) => ipcRenderer.invoke('diagram-settings:set', settings),
     reset: () => ipcRenderer.invoke('diagram-settings:reset'),
+  },
+  fileWatcher: {
+    start: (repoPath: string, level: string) =>
+      ipcRenderer.invoke('fileWatcher:start', repoPath, level),
+    stop: (repoPath: string, level: string) =>
+      ipcRenderer.invoke('fileWatcher:stop', repoPath, level),
+    checkStaleness: (repoPath: string, level: string) =>
+      ipcRenderer.invoke('fileWatcher:checkStaleness', repoPath, level),
+  },
+  cache: {
+    clearAll: () => ipcRenderer.invoke('cache:clearAll'),
   },
   ipc: {
     on: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => {

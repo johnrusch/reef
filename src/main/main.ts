@@ -14,6 +14,9 @@ import './services/diagramGeneratorServiceV2';
 // Import for side effects - registers IPC handlers
 import './services/plantUmlService';
 import './services/diagramSettingsService';
+import { initializeFileWatcherService, getFileWatcherService } from './services/fileWatcherService';
+import { C4CacheService } from './services/c4/c4CacheService';
+import type { C4Level } from './services/c4/types/c4Types';
 
 const appPath = app.getAppPath();
 const isDev = process.env.NODE_ENV === 'development';
@@ -236,7 +239,18 @@ function createMenu() {
 }
 
 app.whenReady().then(async () => {
+  // Initialize file watcher service with cache service
+  const cacheService = new C4CacheService();
+  initializeFileWatcherService(cacheService);
+
   createWindow();
+});
+
+app.on('before-quit', () => {
+  const fileWatcherService = getFileWatcherService();
+  if (fileWatcherService) {
+    fileWatcherService.stopAllWatchers();
+  }
 });
 
 app.on('window-all-closed', () => {
@@ -284,4 +298,57 @@ ipcMain.handle('select-directory', async () => {
   }
 
   return result.filePaths[0];
+});
+
+// File watcher handlers
+ipcMain.handle('fileWatcher:start', async (_, repoPath: string, level: string) => {
+  try {
+    const fileWatcherService = getFileWatcherService();
+    if (fileWatcherService) {
+      fileWatcherService.startWatching(repoPath, level as C4Level);
+      return { success: true };
+    }
+    return { success: false };
+  } catch (error) {
+    console.error('Error starting file watcher:', error);
+    return { success: false };
+  }
+});
+
+ipcMain.handle('fileWatcher:stop', async (_, repoPath: string, level: string) => {
+  try {
+    const fileWatcherService = getFileWatcherService();
+    if (fileWatcherService) {
+      fileWatcherService.stopWatching(repoPath, level as C4Level);
+      return { success: true };
+    }
+    return { success: false };
+  } catch (error) {
+    console.error('Error stopping file watcher:', error);
+    return { success: false };
+  }
+});
+
+ipcMain.handle('fileWatcher:checkStaleness', async (_, repoPath: string, level: string) => {
+  try {
+    const fileWatcherService = getFileWatcherService();
+    if (fileWatcherService) {
+      return fileWatcherService.checkStalenessOnStartup(repoPath, level as C4Level);
+    }
+    return false;
+  } catch (error) {
+    console.error('Error checking staleness:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('cache:clearAll', async () => {
+  try {
+    const cacheService = new C4CacheService();
+    cacheService.clearAllCache();
+    return { success: true };
+  } catch (error) {
+    console.error('Error clearing cache:', error);
+    return { success: false };
+  }
 });
