@@ -130,6 +130,8 @@ export interface AnalysisResult {
   readonly entryPoints: readonly string[];
   /** Analysis metadata */
   readonly metadata: {
+    /** Project name from package.json */
+    readonly projectName: string;
     /** Number of files analyzed */
     readonly filesAnalyzed: number;
     /** Total number of files in project (excluding node_modules) */

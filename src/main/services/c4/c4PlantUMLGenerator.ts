@@ -20,21 +20,25 @@ export class C4PlantUMLGenerator {
   generateContextDiagram(_enrichedData: string, staticData: AnalysisResult): string {
     const lines: string[] = [];
 
+    // Extract project info
+    const projectName = staticData.metadata.projectName;
+    const systemId = this.sanitizeId(projectName);
+
     // Add C4-PlantUML include from stdlib (bundled with PlantUML JAR)
     lines.push('@startuml');
     lines.push('!include <C4/C4_Context>');
     lines.push('');
 
     // Add title
-    lines.push('title System Context Diagram for Reef');
+    lines.push(`title System Context Diagram for ${projectName}`);
     lines.push('');
 
     // Add primary actor
-    lines.push('Person(user, "Developer", "Uses Reef to manage repositories")');
+    lines.push('Person(user, "User", "Uses the system")');
     lines.push('');
 
-    // Add target system (Reef)
-    lines.push('System(reef, "Reef", "Multi-repository GitHub desktop client")');
+    // Add target system
+    lines.push(`System(${systemId}, "${projectName}", "Software system")`);
     lines.push('');
 
     // Parse enriched data and static data to identify external systems
@@ -52,11 +56,11 @@ export class C4PlantUMLGenerator {
     }
 
     // Add relationships
-    lines.push('Rel(user, reef, "Manages repositories")');
+    lines.push(`Rel(user, ${systemId}, "Uses")`);
 
     for (const system of externalSystems) {
       const id = this.sanitizeId(system.name);
-      lines.push(`Rel(reef, ${id}, "${system.relationship}", "${system.tech || 'API'}")`);
+      lines.push(`Rel(${systemId}, ${id}, "${system.relationship}", "${system.tech || 'API'}")`);
     }
 
     lines.push('');
@@ -72,21 +76,25 @@ export class C4PlantUMLGenerator {
   generateContainerDiagram(_enrichedData: string, staticData: AnalysisResult): string {
     const lines: string[] = [];
 
+    // Extract project info
+    const projectName = staticData.metadata.projectName;
+    const systemId = this.sanitizeId(projectName);
+
     // Add C4-PlantUML include from stdlib (bundled with PlantUML JAR)
     lines.push('@startuml');
     lines.push('!include <C4/C4_Container>');
     lines.push('');
 
     // Add title
-    lines.push('title Container Diagram for Reef');
+    lines.push(`title Container Diagram for ${projectName}`);
     lines.push('');
 
     // Add primary actor
-    lines.push('Person(user, "Developer", "Uses Reef to manage repositories")');
+    lines.push('Person(user, "User", "Uses the system")');
     lines.push('');
 
-    // Add system boundary for Reef containers
-    lines.push('System_Boundary(reef, "Reef") {');
+    // Add system boundary
+    lines.push(`System_Boundary(${systemId}, "${projectName}") {`);
 
     // Detect containers from entry points and tech stack
     const containers = this.detectContainers(staticData);
@@ -118,24 +126,57 @@ export class C4PlantUMLGenerator {
       lines.push('');
     }
 
-    // Add relationships
-    lines.push('Rel(user, mainProcess, "Launches application")');
+    // Add relationships dynamically based on detected containers
+    if (containers.length > 0) {
+      const firstContainer = this.sanitizeId(containers[0].name);
+      lines.push(`Rel(user, ${firstContainer}, "Uses")`);
 
-    // Add inter-container relationships
-    if (containers.some(c => c.name.includes('Main'))) {
-      lines.push('Rel(mainProcess, rendererProcess, "IPC communication", "Electron IPC")');
-      lines.push('Rel(mainProcess, preloadScript, "Loads", "Context Bridge")');
-      lines.push('Rel(rendererProcess, preloadScript, "Uses", "IPC Bridge")');
+      // Add inter-container relationships based on detection
+      const isElectronApp = staticData.technologies.includes('Electron');
 
-      if (containers.some(c => c.type === 'database')) {
-        lines.push('Rel(mainProcess, configStore, "Reads/writes", "electron-store")');
+      if (isElectronApp && containers.length >= 2) {
+        // For Electron apps, add typical IPC relationships
+        const containerIds = containers.map(c => this.sanitizeId(c.name));
+
+        if (containerIds.some(id => id.includes('main'))) {
+          const mainId = containerIds.find(id => id.includes('main')) || containerIds[0];
+          const rendererId = containerIds.find(id => id.includes('renderer'));
+          const preloadId = containerIds.find(id => id.includes('preload'));
+
+          if (rendererId) {
+            lines.push(`Rel(${mainId}, ${rendererId}, "IPC communication", "Electron IPC")`);
+          }
+          if (preloadId) {
+            lines.push(`Rel(${mainId}, ${preloadId}, "Loads", "Context Bridge")`);
+            if (rendererId) {
+              lines.push(`Rel(${rendererId}, ${preloadId}, "Uses", "IPC Bridge")`);
+            }
+          }
+
+          // Connect to database if present
+          const dbContainer = containers.find(c => c.type === 'database');
+          if (dbContainer) {
+            const dbId = this.sanitizeId(dbContainer.name);
+            lines.push(`Rel(${mainId}, ${dbId}, "Reads/writes")`);
+          }
+        }
+      } else {
+        // For non-Electron apps, add basic container relationships
+        for (let i = 0; i < containers.length - 1; i++) {
+          const fromId = this.sanitizeId(containers[i].name);
+          const toId = this.sanitizeId(containers[i + 1].name);
+          lines.push(`Rel(${fromId}, ${toId}, "Uses")`);
+        }
       }
     }
 
-    // Add external relationships
-    for (const system of externalSystems) {
-      const id = this.sanitizeId(system.name);
-      lines.push(`Rel(mainProcess, ${id}, "${system.relationship}", "${system.tech || 'API'}")`);
+    // Add external relationships from first container
+    if (containers.length > 0 && externalSystems.length > 0) {
+      const firstContainerId = this.sanitizeId(containers[0].name);
+      for (const system of externalSystems) {
+        const id = this.sanitizeId(system.name);
+        lines.push(`Rel(${firstContainerId}, ${id}, "${system.relationship}", "${system.tech || 'API'}")`);
+      }
     }
 
     lines.push('');

@@ -99,6 +99,9 @@ export class StaticAnalyzerService {
       // Detect technologies from package.json
       const technologies = await this.detectTechnologies(repoPath);
 
+      // Extract project name from package.json
+      const projectName = await this.getProjectName(repoPath);
+
       // Find entry points
       const entryPoints = this.findEntryPoints(filesToAnalyze);
 
@@ -110,6 +113,7 @@ export class StaticAnalyzerService {
         technologies,
         entryPoints,
         metadata: {
+          projectName,
           filesAnalyzed: filesToAnalyze.length,
           totalFiles,
           timestamp: new Date().toISOString(),
@@ -134,6 +138,7 @@ export class StaticAnalyzerService {
         technologies: [],
         entryPoints: [],
         metadata: {
+          projectName: 'Unknown Project',
           filesAnalyzed: 0,
           totalFiles: 0,
           timestamp: new Date().toISOString(),
@@ -400,6 +405,28 @@ export class StaticAnalyzerService {
     } catch (error) {
       // If package.json doesn't exist or can't be read, return empty array
       return [];
+    }
+  }
+
+  /**
+   * Gets project name from package.json
+   */
+  private async getProjectName(repoPath: string): Promise<string> {
+    try {
+      const packageJsonPath = join(repoPath, 'package.json');
+      const packageJsonContent = await readFile(packageJsonPath, 'utf-8');
+      const packageJson = JSON.parse(packageJsonContent);
+
+      // Use package.json name field, fallback to directory name
+      if (packageJson.name) {
+        return packageJson.name;
+      }
+
+      // Fallback: use the directory name
+      return repoPath.split('/').pop() || 'Unknown Project';
+    } catch (error) {
+      // If package.json doesn't exist or can't be read, use directory name
+      return repoPath.split('/').pop() || 'Unknown Project';
     }
   }
 
