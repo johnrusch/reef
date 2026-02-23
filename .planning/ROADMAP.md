@@ -37,7 +37,7 @@ Plans:
 - [x] 01-02-PLAN.md — Create C4 type system and ts-morph static analyzer (deterministic code extraction)
 - [x] 01-03-PLAN.md — Implement C4 generation engine (all 4 levels with hybrid static+AI approach)
 - [x] 01-04-PLAN.md — Add elementId UI controls for Component/Code drill-down (gap closure)
-- [ ] 01-05-PLAN.md — Fix better-sqlite3 native module ABI mismatch (gap closure)
+- [x] 01-05-PLAN.md — Fix better-sqlite3 native module ABI mismatch (gap closure)
 
 ### Phase 2: Automatic Regeneration
 **Goal**: Diagrams automatically stay current with codebase changes through intelligent cache invalidation
@@ -49,11 +49,11 @@ Plans:
   3. User can manually force regeneration at any time via dedicated button
   4. System reuses cached diagrams when codebase hasn't changed to avoid unnecessary API costs
   5. Cached diagrams invalidate intelligently based on changed files and C4 level (Context cached longer than Code)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
+- [ ] 02-01-PLAN.md — Create FileWatcherService with chokidar and extend C4CacheService with timestamp persistence
+- [ ] 02-02-PLAN.md — Implement StalenessBadge UI, IPC integration, and Force Regenerate controls
 
 ### Phase 3: Hierarchy Navigation
 **Goal**: Users can navigate C4 hierarchy through clickable elements drilling from Context down to Code level
