@@ -3,6 +3,8 @@ import { DiagramPanel } from './DiagramPanel';
 import { DiagramControls } from './DiagramControls';
 import { DiagramInfo } from './DiagramInfo';
 import { StalenessBadge } from './StalenessBadge';
+import { DiagramBreadcrumbs } from './DiagramBreadcrumbs';
+import { useNavigationStore } from '../../stores/navigationStore';
 import { Loader2, AlertCircle } from 'lucide-react';
 
 export type DiagramType = 'component' | 'class' | 'sequence' | 'c4-context' | 'c4-container' | 'c4-component' | 'c4-code';
@@ -39,6 +41,7 @@ interface DiagramViewerProps {
     detailLevel: DetailLevel;
     focusArea?: FocusArea;
     model?: ModelType;
+    elementId?: string;
   }) => Promise<void>;
   onExport: (format: 'svg' | 'png') => void;
   onShowChanges?: (enabled: boolean) => void;
@@ -68,6 +71,9 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
   const [isStale, setIsStale] = useState(false);
   const [isRegeneratingFromBadge, setIsRegeneratingFromBadge] = useState(false);
 
+  // Subscribe to navigation store
+  const navigationStore = useNavigationStore();
+
   const handleControlChange = (updates: Partial<typeof currentOptions>) => {
     setCurrentOptions(prev => ({ ...prev, ...updates }));
   };
@@ -95,6 +101,22 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
   const handleForceRegenerate = useCallback(async () => {
     await onRegenerateDiagram({ ...currentOptions });
   }, [currentOptions, onRegenerateDiagram]);
+
+  const handleBreadcrumbNavigate = useCallback(async (index: number) => {
+    const targetLevel = navigationStore.stack[index];
+    navigationStore.navigateTo(index);
+
+    // Update diagram type to match navigation
+    const newType = `c4-${targetLevel.level}` as DiagramType;
+    handleControlChange({ type: newType });
+
+    // Trigger regeneration with the target elementId
+    await onRegenerateDiagram({
+      ...currentOptions,
+      type: newType,
+      elementId: targetLevel.elementId,
+    });
+  }, [navigationStore, currentOptions, onRegenerateDiagram]);
 
   // Subscribe to staleness events from main process
   useEffect(() => {
@@ -142,6 +164,35 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
       setIsStale(false);
     }
   }, [metadata.generatedAt]);
+
+  // Reset navigation when repository changes
+  useEffect(() => {
+    if (_repository?.path && _repository.path !== navigationStore.repositoryPath) {
+      navigationStore.setRepository(_repository.path);
+    }
+  }, [_repository?.path, navigationStore]);
+
+  // Sync navigation state with diagram type changes
+  useEffect(() => {
+    const typeLevel = currentOptions.type.replace('c4-', '') as any;
+    const currentNavLevel = navigationStore.currentLevel();
+
+    // Only reset if navigating "up" via type selector (not via breadcrumb)
+    if (typeLevel !== currentNavLevel.level && currentOptions.type.startsWith('c4-')) {
+      const typeIndex = ['context', 'container', 'component', 'code'].indexOf(typeLevel);
+      const navIndex = ['context', 'container', 'component', 'code'].indexOf(currentNavLevel.level);
+
+      if (typeIndex < navIndex) {
+        // User selected a higher level, truncate navigation
+        const targetIndex = navigationStore.stack.findIndex(l => l.level === typeLevel);
+        if (targetIndex >= 0) {
+          navigationStore.navigateTo(targetIndex);
+        } else {
+          navigationStore.reset();
+        }
+      }
+    }
+  }, [currentOptions.type, navigationStore]);
 
   useEffect(() => {
     const handleKeyboardShortcuts = (e: KeyboardEvent) => {
@@ -251,7 +302,15 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
         onRegenerate={handleRegenerate}
         onForceRegenerate={handleForceRegenerate}
       />
-      
+
+      {currentOptions.type.startsWith('c4-') && (
+        <DiagramBreadcrumbs
+          stack={navigationStore.stack}
+          onNavigate={handleBreadcrumbNavigate}
+          disabled={isGenerating}
+        />
+      )}
+
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 relative">
           {renderDiagramWithOverlay()}
