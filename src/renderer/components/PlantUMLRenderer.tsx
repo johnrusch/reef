@@ -13,12 +13,16 @@ interface PlantUMLRendererProps {
     diagramType?: string;
   };
   className?: string;
+  onElementClick?: (elementId: string) => void;  // Add this
+  isClickable?: boolean;  // Add this - controls whether click detection is active
 }
 
 export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
   content,
   metadata,
   className = '',
+  onElementClick,
+  isClickable = false,
 }) => {
   const [svgContent, setSvgContent] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
@@ -27,6 +31,49 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
   const [useLocalGeneration, setUseLocalGeneration] = useState<boolean>(true);
   const [fallbackNotification, setFallbackNotification] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleSvgClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    // Only process if click detection is enabled and callback provided
+    if (!onElementClick || !isClickable) return;
+
+    const target = event.target as SVGElement;
+
+    // Traverse up DOM tree to find element with ID
+    // PlantUML generates elements like <g id="elem_reef_main">
+    // Or directly on shapes like <rect id="reef_main">
+    let element: Element | null = target;
+    let elementId: string | null = null;
+
+    while (element && element !== event.currentTarget) {
+      // Check for ID attribute
+      const id = element.getAttribute('id');
+
+      if (id) {
+        // Skip SVG root and internal PlantUML IDs
+        if (id === 'svg_root' || id.startsWith('_')) {
+          element = element.parentElement;
+          continue;
+        }
+
+        // PlantUML wraps elements in groups with "elem_" prefix
+        if (id.startsWith('elem_')) {
+          elementId = id.replace('elem_', '');
+          break;
+        }
+
+        // Direct element ID (for some diagram types)
+        elementId = id;
+        break;
+      }
+
+      element = element.parentElement;
+    }
+
+    if (elementId) {
+      console.log('Clicked element:', elementId);
+      onElementClick(elementId);
+    }
+  }, [onElementClick, isClickable]);
 
   const generateDiagram = useCallback(async () => {
     try {
@@ -285,14 +332,17 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
 
         {svgContent && !error && (
           <div
-            className="diagram-wrapper p-8"
+            className={`diagram-wrapper p-8 ${isClickable ? 'clickable' : ''}`}
             style={{
               transform: `scale(${zoom})`,
               transformOrigin: 'top left',
               transition: 'transform 0.2s ease',
               minHeight: '100%',
               minWidth: '100%',
+              cursor: isClickable ? 'default' : undefined,  // Let CSS handle per-element
             }}
+            onClick={handleSvgClick}
+            data-clickable={isClickable}
             dangerouslySetInnerHTML={{ __html: svgContent }}
           />
         )}
