@@ -52,7 +52,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Create FileWatcherService with chokidar and extend C4CacheService with timestamp persistence
+- [x] 02-01-PLAN.md — Create FileWatcherService with chokidar and extend C4CacheService with timestamp persistence
 - [ ] 02-02-PLAN.md — Implement StalenessBadge UI, IPC integration, and Force Regenerate controls
 
 ### Phase 3: Hierarchy Navigation

@@ -5,32 +5,33 @@
 See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Core value:** Users can quickly grasp unfamiliar codebase architecture through AI-generated C4 diagrams that update as code changes
-**Current focus:** Phase 1 - C4 Foundation
+**Current focus:** Phase 2 - Automatic Regeneration
 
 ## Current Position
 
-Phase: 1 of 4 (C4 Foundation)
-Plan: 5 of 5 in current phase
-Status: Phase complete
-Last activity: 2026-02-23 — Completed plan 01-05
+Phase: 2 of 4 (Automatic Regeneration)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-23 — Completed plan 02-01
 
-Progress: [██████████] 50%
+Progress: [████████████░░] 60%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Average duration: 4.4 minutes
-- Total execution time: 0.4 hours
+- Total plans completed: 6
+- Average duration: 4.5 minutes
+- Total execution time: 0.5 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-c4-foundation | 5 | 22m | 4.4m |
+| 02-automatic-regeneration | 1 | 5m | 5.0m |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (2m), 01-02 (7m), 01-03 (9m), 01-04 (2m), 01-05 (2m)
+- Last 5 plans: 01-02 (7m), 01-03 (9m), 01-04 (2m), 01-05 (2m), 02-01 (5m)
 - Trend: Stabilizing at 2-9m per plan
 
 *Updated after each plan completion*
@@ -42,6 +43,9 @@ Progress: [██████████] 50%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- Singleton pattern with factory functions for FileWatcherService — Ensures proper cache service injection (Phase 02, Plan 01)
+- Chokidar with 100ms debounce for file watching — Optimal balance between responsiveness and stability (Phase 02, Plan 01)
+- Level-specific file patterns for staleness detection — Context/container/component/code each watch relevant files only (Phase 02, Plan 01)
 - Use @electron/rebuild instead of electron-rebuild — Official replacement supports Electron 38.8.2 and ABI 139, deprecated package failed (Phase 01, Plan 05)
 - Container ID naming matches PlantUML element IDs — reef_main, reef_renderer, reef_preload ensure frontend-backend ID consistency (Phase 01, Plan 04)
 - Progressive disclosure for drill-down selectors — Show container/component dropdowns only when relevant diagram type selected (Phase 01, Plan 04)
@@ -72,5 +76,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-23
-Stopped at: Completed 01-c4-foundation/01-05-PLAN.md (Phase 1 complete)
+Stopped at: Completed 02-automatic-regeneration/02-01-PLAN.md
 Resume file: None
