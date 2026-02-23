@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { DiagramPanel } from './DiagramPanel';
 import { DiagramControls } from './DiagramControls';
 import { DiagramInfo } from './DiagramInfo';
 import { StalenessBadge } from './StalenessBadge';
 import { DiagramBreadcrumbs } from './DiagramBreadcrumbs';
-import { useNavigationStore } from '../../stores/navigationStore';
+import { useNavigationStore, getNextLevel } from '../../stores/navigationStore';
 import { Loader2, AlertCircle } from 'lucide-react';
 
 export type DiagramType = 'component' | 'class' | 'sequence' | 'c4-context' | 'c4-container' | 'c4-component' | 'c4-code';
@@ -117,6 +117,58 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
       elementId: targetLevel.elementId,
     });
   }, [navigationStore, currentOptions, onRegenerateDiagram]);
+
+  const handleElementClick = useCallback(async (elementId: string) => {
+    // Don't process clicks during generation or for non-C4 diagrams
+    if (isGenerating || !currentOptions.type.startsWith('c4-')) return;
+
+    const currentNavLevel = navigationStore.currentLevel();
+    const nextLevel = getNextLevel(currentNavLevel.level);
+
+    // Can't drill down from Code level
+    if (!nextLevel) {
+      console.log('Already at Code level, cannot drill down further');
+      return;
+    }
+
+    // Determine human-readable name for breadcrumb
+    // The elementId is sanitized (e.g., "reef_main"), convert back to readable
+    const elementName = elementId
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase());
+
+    console.log(`Drilling down to ${nextLevel}: ${elementId} (${elementName})`);
+
+    // Push new level to navigation stack
+    navigationStore.push({
+      level: nextLevel,
+      elementId: elementId,
+      elementName: elementName,
+    });
+
+    // Update diagram type and regenerate
+    const newType = `c4-${nextLevel}` as DiagramType;
+    handleControlChange({ type: newType });
+
+    try {
+      await onRegenerateDiagram({
+        ...currentOptions,
+        type: newType,
+        elementId: elementId,
+      });
+    } catch (error) {
+      // Revert navigation on error
+      navigationStore.pop();
+      console.error('Failed to drill down:', error);
+    }
+  }, [isGenerating, currentOptions, navigationStore, onRegenerateDiagram]);
+
+  const isClickableLevel = useMemo(() => {
+    if (!currentOptions.type.startsWith('c4-')) return false;
+    const level = currentOptions.type.replace('c4-', '');
+    // Code level elements can't be drilled into
+    return level !== 'code';
+  }, [currentOptions.type]);
 
   // Subscribe to staleness events from main process
   useEffect(() => {
@@ -256,6 +308,8 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
         isFullscreen={isFullscreen}
         onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
         onExport={onExport}
+        onElementClick={handleElementClick}
+        isClickable={isClickableLevel}
       />
       <StalenessBadge
         isStale={isStale}

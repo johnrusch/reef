@@ -11,6 +11,8 @@ interface DiagramPanelProps {
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
   onExport: (format: 'svg' | 'png') => void;
+  onElementClick?: (elementId: string) => void;
+  isClickable?: boolean;
 }
 
 export const DiagramPanel: React.FC<DiagramPanelProps> = ({
@@ -21,6 +23,8 @@ export const DiagramPanel: React.FC<DiagramPanelProps> = ({
   isFullscreen,
   onToggleFullscreen,
   onExport,
+  onElementClick,
+  isClickable = false,
 }) => {
   const [highlightedContent, setHighlightedContent] = useState(content);
   const [showLegend, setShowLegend] = useState(false);
@@ -147,6 +151,8 @@ export const DiagramPanel: React.FC<DiagramPanelProps> = ({
           diagramType: metadata.diagramType,
         }}
         className="h-full"
+        onElementClick={onElementClick}
+        isClickable={isClickable}
       />
 
       {isFullscreen && (
