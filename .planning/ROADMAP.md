@@ -40,10 +40,13 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full details.
   2. Database migrates v1.0 TTL-based cache to v1.1 persistent storage automatically on first launch
   3. App displays diagram state accurately (never generated, generating, fresh, stale, error) in UI
   4. Multiple diagram reads complete without blocking during generation operations
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 05-01: TBD
+- [ ] 05-01-PLAN.md — Storage infrastructure: types, C4StorageService, MigrationService
+- [ ] 05-02-PLAN.md — Frontend state: diagramStateStore, DiagramStateBadge, GeneratePromptCard
+- [ ] 05-03-PLAN.md — Integration: IPC handlers, preload API, DiagramViewer wiring
+- [ ] 05-04-PLAN.md — Settings UI and test coverage
 
 ### Phase 6: Auto-Generation on Repo Add
 **Goal**: Users see diagrams ready without manual triggering
@@ -112,11 +115,11 @@ Plans:
 | 2. Automatic Regeneration | v1.0 | 2/2 | Complete | 2026-02-23 |
 | 3. Hierarchy Navigation | v1.0 | 2/2 | Complete | 2026-02-23 |
 | 4. Polish & Advanced Features | v1.0 | 2/2 | Complete | 2026-02-24 |
-| 5. Persistent Storage Foundation | v1.1 | 0/TBD | Not started | - |
+| 5. Persistent Storage Foundation | v1.1 | 0/4 | Planned | - |
 | 6. Auto-Generation on Repo Add | v1.1 | 0/TBD | Not started | - |
 | 7. Enhanced Change Detection | v1.1 | 0/TBD | Not started | - |
 | 8. Change Visualization | v1.1 | 0/TBD | Not started | - |
 | 9. Diagram-to-Diff Navigation | v1.1 | 0/TBD | Not started | - |
 
 ---
-*Last updated: 2026-02-24 — v1.1 roadmap created*
+*Last updated: 2026-02-24 — Phase 5 planned (4 plans)*
