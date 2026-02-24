@@ -84,8 +84,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Keyboard shortcut infrastructure with react-hotkeys-hook and help dialog
-- [ ] 04-02-PLAN.md — Command palette with cmdk and Fuse.js fuzzy search for quick navigation
+- [x] 04-01-PLAN.md — Keyboard shortcut infrastructure with react-hotkeys-hook and help dialog
+- [x] 04-02-PLAN.md — Command palette with cmdk and Fuse.js fuzzy search for quick navigation
 
 ## Progress
 
@@ -97,4 +97,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. C4 Foundation | 5/5 | Complete   | 2026-02-23 |
 | 2. Automatic Regeneration | 2/2 | Complete   | 2026-02-23 |
 | 3. Hierarchy Navigation | 2/2 | Complete   | 2026-02-23 |
-| 4. Polish & Advanced Features | 0/2 | Planned | - |
+| 4. Polish & Advanced Features | 2/2 | Complete   | 2026-02-24 |
