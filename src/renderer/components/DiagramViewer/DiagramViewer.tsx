@@ -7,7 +7,9 @@ import { StalenessBadge } from './StalenessBadge';
 import { DiagramBreadcrumbs } from './DiagramBreadcrumbs';
 import { KeyboardShortcutsHelp } from './KeyboardShortcutsHelp';
 import { CommandPalette } from './CommandPalette';
+import { GeneratePromptCard } from './GeneratePromptCard';
 import { useNavigationStore, getNextLevel, type DiagramSearchItem } from '../../stores/navigationStore';
+import { useDiagramStateStore } from '../../stores/diagramStateStore';
 import { Loader2, AlertCircle } from 'lucide-react';
 
 export type DiagramType = 'component' | 'class' | 'sequence' | 'c4-context' | 'c4-container' | 'c4-component' | 'c4-code';
@@ -79,14 +81,46 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
   // Subscribe to navigation store
   const navigationStore = useNavigationStore();
 
+  // Subscribe to diagram state store
+  const { getState, setState, loadStatesFromBackend } = useDiagramStateStore();
+
+  // Get current diagram state
+  const currentLevel = currentOptions.type.replace('c4-', '') as any;
+  const currentElementId = navigationStore.currentLevel().elementId;
+  const currentState = getState(_repository?.path || '', currentLevel, currentElementId);
+  const stateEntry = useDiagramStateStore(s => s.getEntry(_repository?.path || '', currentLevel, currentElementId));
+
   const handleControlChange = (updates: Partial<typeof currentOptions>) => {
     setCurrentOptions(prev => ({ ...prev, ...updates }));
   };
 
   const handleRegenerate = useCallback(async () => {
     if (isGenerating) return;
-    await onRegenerateDiagram(currentOptions);
-  }, [isGenerating, currentOptions, onRegenerateDiagram]);
+
+    const repoPath = _repository?.path;
+    const level = currentOptions.type.replace('c4-', '');
+    const elementId = navigationStore.currentLevel().elementId;
+
+    if (repoPath) {
+      // Update state to generating
+      await window.reef.c4Storage.updateState(repoPath, level, 'generating', elementId);
+    }
+
+    try {
+      await onRegenerateDiagram(currentOptions);
+
+      // Note: The diagram generation service should update state to 'fresh' after successful generation
+      // If it doesn't, we could add: await window.reef.c4Storage.updateState(repoPath, level, 'fresh', elementId);
+    } catch (error) {
+      console.error('Diagram generation failed:', error);
+
+      if (repoPath) {
+        // Use user-friendly message for UI (no technical details exposed)
+        const userMessage = 'Could not generate diagram. Please try again.';
+        await window.reef.c4Storage.updateState(repoPath, level, 'error', elementId, userMessage);
+      }
+    }
+  }, [isGenerating, currentOptions, onRegenerateDiagram, _repository?.path, navigationStore]);
 
   const handleRegenerateFromBadge = useCallback(async () => {
     setIsRegeneratingFromBadge(true);
@@ -199,6 +233,36 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
     // Code level elements can't be drilled into
     return level !== 'code';
   }, [currentOptions.type]);
+
+  // Initialize storage on mount
+  useEffect(() => {
+    // Initialize storage and run migration if needed (silent)
+    window.reef.c4Storage.initialize().catch(console.error);
+  }, []);
+
+  // Load state from backend when repo changes
+  useEffect(() => {
+    const repoPath = _repository?.path;
+    if (repoPath) {
+      window.reef.c4Storage.getRepoStates(repoPath)
+        .then(states => loadStatesFromBackend(states))
+        .catch(console.error);
+    }
+  }, [_repository?.path, loadStatesFromBackend]);
+
+  // Subscribe to state changes from main process
+  useEffect(() => {
+    const repoPath = _repository?.path;
+    if (!repoPath) return;
+
+    const unsubscribe = window.reef.c4Storage.onStateChanged((_, data) => {
+      if (data.repoPath === repoPath) {
+        setState(data.repoPath, data.level, data.state, data.elementId, data.errorMessage);
+      }
+    });
+
+    return unsubscribe;
+  }, [_repository?.path, setState]);
 
   // Subscribe to staleness events from main process
   useEffect(() => {
@@ -339,39 +403,55 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
     );
   }
 
-  const renderDiagramWithOverlay = () => (
-    <>
-      <DiagramPanel
-        content={diagram}
-        metadata={metadata}
-        changedFiles={changedFiles}
-        showChanges={showChanges}
-        isFullscreen={isFullscreen}
-        onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
-        onExport={onExport}
-        onElementClick={handleElementClick}
-        isClickable={isClickableLevel}
-      />
-      <StalenessBadge
-        isStale={isStale}
-        isRegenerating={isRegeneratingFromBadge || isGenerating}
-        onClick={handleRegenerateFromBadge}
-      />
-      {isGenerating && (
-        <div className="absolute inset-0 bg-gray-900/75 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 shadow-xl">
-            <div className="flex flex-col items-center space-y-4">
-              <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
-              <div className="text-center">
-                <p className="text-gray-300 font-medium">Regenerating Diagram</p>
-                <p className="text-gray-500 text-sm mt-1">Analyzing repository with {currentOptions.model}...</p>
+  const renderDiagramWithOverlay = () => {
+    // Show GeneratePromptCard for never-generated state
+    if (currentState === 'never_generated' && !diagram) {
+      return (
+        <GeneratePromptCard
+          repoName={_repository?.name || 'Repository'}
+          onGenerate={handleRegenerate}
+          isGenerating={isGenerating}
+        />
+      );
+    }
+
+    return (
+      <>
+        <DiagramPanel
+          content={diagram}
+          metadata={metadata}
+          changedFiles={changedFiles}
+          showChanges={showChanges}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+          onExport={onExport}
+          onElementClick={handleElementClick}
+          isClickable={isClickableLevel}
+          diagramState={currentState}
+          diagramErrorMessage={stateEntry?.errorMessage}
+          onRegenerateFromBadge={handleRegenerateFromBadge}
+        />
+        <StalenessBadge
+          isStale={isStale}
+          isRegenerating={isRegeneratingFromBadge || isGenerating}
+          onClick={handleRegenerateFromBadge}
+        />
+        {isGenerating && (
+          <div className="absolute inset-0 bg-gray-900/75 flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 shadow-xl">
+              <div className="flex flex-col items-center space-y-4">
+                <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+                <div className="text-center">
+                  <p className="text-gray-300 font-medium">Regenerating Diagram</p>
+                  <p className="text-gray-500 text-sm mt-1">Analyzing repository with {currentOptions.model}...</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </>
-  );
+        )}
+      </>
+    );
+  };
 
   if (isFullscreen) {
     return (

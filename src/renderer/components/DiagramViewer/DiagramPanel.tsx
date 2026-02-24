@@ -3,6 +3,8 @@ import { PlantUMLRenderer } from '../PlantUMLRenderer';
 import { Maximize2, Minimize2, Download, Copy, Info } from 'lucide-react';
 import type { DiagramMetadata } from './DiagramViewer';
 
+import type { DiagramState } from '@shared/types/diagramState';
+
 interface DiagramPanelProps {
   content: string;
   metadata: DiagramMetadata;
@@ -13,7 +15,12 @@ interface DiagramPanelProps {
   onExport: (format: 'svg' | 'png') => void;
   onElementClick?: (elementId: string) => void;
   isClickable?: boolean;
+  diagramState?: DiagramState;
+  diagramErrorMessage?: string;
+  onRegenerateFromBadge?: () => void;
 }
+
+import { DiagramStateBadge } from './DiagramStateBadge';
 
 export const DiagramPanel: React.FC<DiagramPanelProps> = ({
   content,
@@ -25,6 +32,9 @@ export const DiagramPanel: React.FC<DiagramPanelProps> = ({
   onExport,
   onElementClick,
   isClickable = false,
+  diagramState,
+  diagramErrorMessage,
+  onRegenerateFromBadge,
 }) => {
   const [highlightedContent, setHighlightedContent] = useState(content);
   const [showLegend, setShowLegend] = useState(false);
@@ -82,6 +92,17 @@ export const DiagramPanel: React.FC<DiagramPanelProps> = ({
       className="relative h-full bg-gray-800 border border-gray-700 rounded-lg overflow-hidden"
       onWheel={handlePanZoom}
     >
+      {/* State Badge in header (top-left) */}
+      {diagramState && onRegenerateFromBadge && (
+        <div className="absolute top-4 left-4 z-10">
+          <DiagramStateBadge
+            state={diagramState}
+            errorMessage={diagramErrorMessage}
+            onRegenerate={onRegenerateFromBadge}
+          />
+        </div>
+      )}
+
       <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
         <button
           onClick={() => setShowLegend(!showLegend)}
