@@ -23,7 +23,7 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full details.
 
 **Milestone Goal:** Make C4 diagrams a persistent, always-ready feature with real-time architectural change visualization.
 
-- [ ] **Phase 5: Persistent Storage Foundation** - Remove TTL expiration, establish diagram persistence across sessions
+- [x] **Phase 5: Persistent Storage Foundation** - Remove TTL expiration, establish diagram persistence across sessions (completed 2026-02-24)
 - [ ] **Phase 6: Auto-Generation on Repo Add** - Prompt users to generate diagrams when adding repositories
 - [ ] **Phase 7: Enhanced Change Detection** - Real-time file-to-element mapping with hierarchical propagation
 - [ ] **Phase 8: Change Visualization** - Visual indicators for changed elements with tooltips and badges
@@ -116,7 +116,7 @@ Plans:
 | 2. Automatic Regeneration | v1.0 | 2/2 | Complete | 2026-02-23 |
 | 3. Hierarchy Navigation | v1.0 | 2/2 | Complete | 2026-02-23 |
 | 4. Polish & Advanced Features | v1.0 | 2/2 | Complete | 2026-02-24 |
-| 5. Persistent Storage Foundation | 4/5 | In Progress|  | - |
+| 5. Persistent Storage Foundation | 5/5 | Complete   | 2026-02-24 | - |
 | 6. Auto-Generation on Repo Add | v1.1 | 0/TBD | Not started | - |
 | 7. Enhanced Change Detection | v1.1 | 0/TBD | Not started | - |
 | 8. Change Visualization | v1.1 | 0/TBD | Not started | - |
