@@ -1,553 +1,822 @@
-# Architecture Research
+# Architecture Integration: Persistent Diagrams with Change Visualization
 
-**Domain:** C4 Diagram Generation Systems
-**Researched:** 2026-02-21
-**Confidence:** HIGH
+**Project:** Reef C4 Architecture Diagrams v1.1
+**Researched:** 2026-02-24
+**Overall confidence:** HIGH
 
-## Standard Architecture
+## Executive Summary
 
-### System Overview
+The v1.1 milestone extends the existing C4 diagram infrastructure with three major architectural additions: (1) permanent diagram storage with auto-generation on repo add, (2) real-time change detection with visual indicators that propagate through C4 levels, and (3) contextual navigation from changed diagram elements to the diff viewer. The existing architecture provides solid foundations (SQLite cache, chokidar file watching, Zustand navigation), requiring targeted extensions rather than redesigns. Critical integration points include cache schema evolution, file watcher event enrichment, SVG post-processing for change highlighting, and cross-tab navigation patterns.
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         PRESENTATION LAYER                          │
-├─────────────────────────────────────────────────────────────────────┤
-│  ┌────────────┐  ┌──────────────┐  ┌─────────────┐  ┌────────────┐ │
-│  │ Settings   │  │  Diagram     │  │ Navigation  │  │  Export    │ │
-│  │ UI         │  │  Viewer      │  │ Controls    │  │  Actions   │ │
-│  └─────┬──────┘  └──────┬───────┘  └──────┬──────┘  └─────┬──────┘ │
-│        │                │                 │                │        │
-├────────┴────────────────┴─────────────────┴────────────────┴────────┤
-│                      ORCHESTRATION LAYER                             │
-├─────────────────────────────────────────────────────────────────────┤
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │               Diagram Generation Orchestrator                │   │
-│  │  - Manages C4 level hierarchy (Context→Container→Component)  │   │
-│  │  - Handles state transitions between levels                  │   │
-│  │  - Coordinates code analysis → AI generation → rendering     │   │
-│  └───────────────────────┬──────────────────────────────────────┘   │
-│                          │                                           │
-├──────────────────────────┴───────────────────────────────────────────┤
-│                        SERVICE LAYER                                 │
-├─────────────────────────────────────────────────────────────────────┤
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
-│  │   Code       │  │   AI/LLM     │  │   Cache      │              │
-│  │   Analysis   │  │   Service    │  │   Service    │              │
-│  │   Service    │  │              │  │              │              │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘              │
-│         │                 │                 │                       │
-│         ↓                 ↓                 ↓                       │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
-│  │  AST Parser  │  │  Anthropic   │  │   SQLite     │              │
-│  │  (optional)  │  │  Claude API  │  │   Database   │              │
-│  └──────────────┘  └──────────────┘  └──────────────┘              │
-├─────────────────────────────────────────────────────────────────────┤
-│                        RENDERING LAYER                               │
-├─────────────────────────────────────────────────────────────────────┤
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │                    PlantUML Renderer                         │   │
-│  │  - Converts C4-PlantUML syntax to SVG diagrams              │   │
-│  │  - Supports local (Java) or server-based rendering          │   │
-│  └──────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
-```
+## Current Architecture Baseline (v1.0)
 
-### Component Responsibilities
+### Existing Components
 
-| Component | Responsibility | Typical Implementation |
-|-----------|----------------|------------------------|
-| **Settings UI** | Collects user preferences (diagram type, C4 level, detail, focus area, AI model) | React component with form controls |
-| **Diagram Viewer** | Displays rendered diagrams with zoom/pan/fullscreen controls | React component wrapping SVG renderer |
-| **Navigation Controls** | Enables drill-down/drill-up between C4 hierarchy levels | React component with breadcrumb + clickable elements |
-| **Export Actions** | Saves diagrams as SVG/PNG files | Browser download API integration |
-| **Diagram Generation Orchestrator** | Coordinates workflow: code analysis → AI generation → caching → rendering | Service class managing state machine |
-| **Code Analysis Service** | Scans repository, prioritizes files, extracts relevant code context | File system traversal + heuristic filtering |
-| **AST Parser (Optional)** | Parses code into Abstract Syntax Trees for deterministic structure extraction | Language-specific parsers (ANTLR, Espree, etc.) |
-| **AI/LLM Service** | Converts code context into C4-PlantUML diagram syntax using LLM | Anthropic Claude API client |
-| **Cache Service** | Stores/retrieves previously generated diagrams to reduce costs and latency | SQLite database with hash-based invalidation |
-| **PlantUML Renderer** | Converts PlantUML text to visual SVG diagrams | Local Java process or HTTP server API |
+| Component | Location | Purpose | Integration Point |
+|-----------|----------|---------|------------------|
+| **C4CacheService** | `src/main/services/c4/c4CacheService.ts` | SQLite-based diagram caching with level-aware TTL | Extend schema for permanent storage |
+| **FileWatcherService** | `src/main/services/fileWatcherService.ts` | chokidar-based file watching with staleness detection | Enrich events with change details |
+| **NavigationStore** | `src/renderer/stores/navigationStore.ts` | Zustand store for C4 hierarchy navigation | Add diff navigation action |
+| **DiagramViewer** | `src/renderer/components/DiagramViewer/DiagramViewer.tsx` | Main diagram display with click handling | Add change visualization layer |
+| **PlantUMLRenderer** | `src/renderer/components/PlantUMLRenderer.tsx` | SVG generation and click detection | Post-process SVG for highlighting |
+| **DiffViewer** | `src/renderer/components/repository/DiffViewer.tsx` | Git diff display with revert functionality | Accept navigation from diagram |
+| **C4AnalyzerService** | `src/main/services/c4/c4AnalyzerService.ts` | Three-phase pipeline (static → AI → PlantUML) | Trigger on repo add |
 
-## Recommended Project Structure
+### Current Data Flow
 
 ```
-src/
-├── main/                           # Electron main process (Node.js)
-│   ├── services/
-│   │   ├── contextExtractorService.ts    # Code analysis & file prioritization
-│   │   ├── diagramGeneratorService.ts    # AI-powered diagram generation
-│   │   ├── cacheService.ts               # Diagram caching with SQLite
-│   │   ├── plantUmlService.ts            # PlantUML rendering (local/server)
-│   │   ├── c4HierarchyService.ts         # [NEW] C4 level management & navigation
-│   │   └── astParserService.ts           # [NEW] Optional static code analysis
-│   └── handlers/
-│       └── diagramHandlers.ts            # IPC communication handlers
-├── renderer/                       # React UI (browser)
-│   ├── components/
-│   │   ├── tabs/
-│   │   │   └── VisualMapTab.tsx          # Main diagram UI container
-│   │   ├── DiagramViewer/
-│   │   │   ├── DiagramViewer.tsx         # Diagram display + controls
-│   │   │   ├── C4Navigator.tsx           # [NEW] Hierarchy drill-down UI
-│   │   │   └── DiagramSettings.tsx       # Generation options form
-│   │   └── PlantUMLRenderer.tsx          # SVG rendering component
-│   ├── stores/
-│   │   └── diagramStore.ts               # [NEW] C4 hierarchy state management
-│   └── hooks/
-│       └── useC4Navigation.ts            # [NEW] Navigation state logic
-└── shared/
-    ├── types/
-    │   ├── diagram.ts                    # Diagram-related types
-    │   └── c4.ts                         # [NEW] C4-specific types
-    └── constants/
-        └── c4Levels.ts                   # [NEW] C4 hierarchy configuration
+User adds repository → RepositoryStore persists
+User navigates to Visual Map Tab → Manual generation trigger
+FileWatcherService detects changes → Emit 'diagram:stale' IPC event
+DiagramViewer receives event → Display StalenessBadge
+User clicks badge → Regenerate diagram → Cache in SQLite
 ```
 
-### Structure Rationale
+## New Architecture: v1.1 Additions
 
-- **Main/Renderer Separation:** Follows Electron's multi-process architecture (security + performance)
-- **Service Layer Isolation:** Each service has single responsibility, testable in isolation
-- **C4-Specific Services:** New `c4HierarchyService` manages level transitions and maintains parent-child relationships between diagrams
-- **Shared Types:** C4 types defined once, used in both main and renderer processes
-- **Optional AST Parser:** Static analysis can supplement or replace LLM for deterministic structure extraction (cost savings)
+### 1. Persistent Storage Architecture
 
-## Architectural Patterns
+**Problem:** Current cache uses TTL expiration (Context: 7d, Container: 3d, Component: 1d, Code: 6h). Diagrams disappear after TTL, requiring expensive regeneration.
 
-### Pattern 1: Hybrid Code Analysis (Static + AI)
+**Solution:** Extend SQLite schema to support permanent storage with generation state tracking.
 
-**What:** Combines deterministic static analysis with AI-powered semantic understanding
+#### Database Schema Changes
 
-**When to use:** When you need cost-effective diagram generation with high accuracy
-
-**Trade-offs:**
-- **Pros:** Lower AI costs (smaller context), faster generation, deterministic structure
-- **Cons:** More complex implementation, requires language-specific parsers
-
-**Example:**
-```typescript
-// Static analysis extracts deterministic structure
-const staticStructure = await astParserService.extractStructure(repoPath, {
-  targetLanguages: ['typescript', 'javascript'],
-  extractTypes: ['classes', 'interfaces', 'functions', 'imports']
-});
-
-// AI enriches with architectural insights and relationships
-const enrichedContext = `
-STATIC STRUCTURE:
-${JSON.stringify(staticStructure, null, 2)}
-
-ADDITIONAL CONTEXT:
-${codeSnippets}
-`;
-
-const diagram = await aiService.generateC4Diagram(enrichedContext, {
-  level: 'container',
-  focus: 'enrich-relationships' // AI focuses on what static analysis can't determine
-});
+**New Table: `diagram_metadata`**
+```sql
+CREATE TABLE diagram_metadata (
+  repo_path TEXT NOT NULL,
+  level TEXT NOT NULL CHECK(level IN ('context', 'container', 'component', 'code')),
+  element_id TEXT,  -- NULL for context/container root diagrams
+  state TEXT NOT NULL CHECK(state IN ('never_generated', 'generating', 'fresh', 'stale', 'error')),
+  generated_at INTEGER,  -- Unix timestamp
+  last_checked INTEGER,  -- Last staleness check timestamp
+  error_message TEXT,    -- If state = 'error'
+  PRIMARY KEY (repo_path, level, element_id)
+);
 ```
+
+**Modified Table: `c4_cache`**
+- Remove TTL-based logic from cache retrieval
+- Keep cache entries indefinitely (remove `clearExpiredEntries()`)
+- Add `element_id` to cache key for component/code level diagrams
+
+**Modified Table: `generation_timestamps`**
+- Already exists, retain for file modification comparison
+- Add index on `(repo_path, timestamp)` for faster staleness queries
+
+**Migration Strategy:**
+- Use better-sqlite3's `user_version` pragma for schema versioning
+- Implement incremental migration in C4CacheService constructor
+- Check `PRAGMA user_version`, apply migrations if needed
+- Wrap in transaction for atomicity
 
 **Sources:**
-- [AI-Assisted Software Architecture](https://www.workingsoftware.dev/ai-assisted-software-architecture-generating-the-c4-model-and-views-directly-from-code/) - 88% accuracy with AST + LLM approach
-- [ArchAgent](https://arxiv.org/html/2601.13007) - Combines static analysis with LLM-powered synthesis
+- [better-sqlite3 migrations patterns](https://github.com/BlackGlory/better-sqlite3-migrations)
+- [SQLite versioning strategies](https://www.sqliteforum.com/p/sqlite-versioning-and-migration-strategies)
 
-### Pattern 2: C4 Hierarchy State Machine
+#### Component Changes
 
-**What:** Manages transitions between C4 levels (Context → Container → Component → Code) with parent-child relationships
-
-**When to use:** For implementing drill-down navigation in C4 diagrams
-
-**Trade-offs:**
-- **Pros:** Maintains coherent hierarchy, enables efficient regeneration of specific levels, clear navigation UX
-- **Cons:** More complex state management, requires careful cache invalidation
-
-**Example:**
+**Modified: C4CacheService**
 ```typescript
-interface C4HierarchyNode {
-  level: 'context' | 'container' | 'component' | 'code';
-  elementId: string; // e.g., "UserService" container
-  parentId?: string; // Link to parent level element
-  diagram: string; // PlantUML code
-  metadata: DiagramMetadata;
-  children?: C4HierarchyNode[]; // Child elements that can be drilled into
-}
+// New methods
+initializeMigrations(): void
+  - Check user_version
+  - Apply migration if < current version
+  - Update user_version
 
-class C4HierarchyService {
-  private hierarchyMap: Map<string, C4HierarchyNode> = new Map();
+getDiagramState(repoPath: string, level: C4Level, elementId?: string): DiagramState
+  - Query diagram_metadata table
+  - Return state enum value
 
-  async drillDown(currentNode: C4HierarchyNode, targetElement: string) {
-    // Find or generate next level diagram focused on target element
-    const childLevel = this.getNextLevel(currentNode.level);
-    const childNode = await this.getOrGenerateNode(
-      childLevel,
-      targetElement,
-      currentNode.elementId // parent reference
-    );
+setDiagramState(repoPath: string, level: C4Level, state: DiagramState, elementId?: string): void
+  - Insert/update diagram_metadata
+  - Set generated_at, last_checked timestamps
 
-    return childNode;
-  }
+removeTTLLogic(): void
+  - Delete clearExpiredEntries() method
+  - Remove TTL checks from getCachedDiagram()
+  - Keep generation_timestamps for staleness detection
+```
 
-  private getNextLevel(current: C4Level): C4Level | null {
-    const hierarchy = ['context', 'container', 'component', 'code'];
-    const currentIndex = hierarchy.indexOf(current);
-    return hierarchy[currentIndex + 1] as C4Level || null;
-  }
+**New: DiagramAutoGenerator** (`src/main/services/c4/diagramAutoGenerator.ts`)
+```typescript
+class DiagramAutoGenerator {
+  constructor(
+    private c4Analyzer: C4AnalyzerService,
+    private cache: C4CacheService
+  )
+
+  async checkAndGenerateForRepo(repoPath: string): Promise<void>
+    - Check diagram_metadata for all 4 levels
+    - If state = 'never_generated', prompt user via IPC
+    - If user confirms, generate Context diagram
+    - Update state to 'generating' → 'fresh' / 'error'
+
+  async generateContextDiagram(repoPath: string): Promise<void>
+    - Emit IPC 'diagram:generation-started'
+    - Call c4Analyzer.generateC4Diagram('context')
+    - Update cache and metadata
+    - Emit IPC 'diagram:generation-complete'
 }
 ```
 
-**Sources:**
-- [C4 Model Official](https://c4model.com/) - Hierarchical approach to software architecture
-- [Hierarchy Drill-Down Implementation](https://dev3lop.com/implementing-drill-down-navigation-in-hierarchical-visualizations/)
-
-### Pattern 3: Cache-First Generation with Invalidation
-
-**What:** Check cache before expensive AI generation, invalidate based on file change hashing
-
-**When to use:** Always — caching is critical for performance and cost control
-
-**Trade-offs:**
-- **Pros:** Massive cost savings (avoid repeat API calls), faster user experience
-- **Cons:** Stale diagrams if invalidation logic is wrong, storage overhead
-
-**Example:**
+**IPC Handlers: main.ts**
 ```typescript
-async generateDiagram(repoPath: string, options: C4DiagramOptions) {
-  // 1. Generate hash from critical files + settings
-  const criticalFiles = await contextExtractor.getCriticalFiles(repoPath);
-  const repoHash = await cacheService.generateRepoHash(repoPath, criticalFiles);
-  const cacheKey = `${repoHash}-${options.level}-${options.focusArea}`;
+ipcMain.handle('diagram:auto-generate-prompt', async (event, repoPath: string) => {
+  // Show Electron native dialog
+  const result = await dialog.showMessageBox({
+    type: 'question',
+    buttons: ['Generate Now', 'Later'],
+    defaultId: 0,
+    title: 'Generate C4 Diagrams?',
+    message: 'Generate architecture diagrams for this repository?',
+    detail: 'Uses Claude API (Haiku model). Estimated cost: $0.02-0.10'
+  });
+  return result.response === 0; // true if "Generate Now"
+});
+```
 
-  // 2. Check cache
-  const cached = await cacheService.get(cacheKey);
-  if (cached && !this.shouldRegenerateDespiteCache(cached)) {
-    return { ...cached, fromCache: true };
-  }
+**Trigger Point: Repository Add Flow**
+```typescript
+// In RepositoryStore.addRepository() or AddRepositoryModal
+After repository added to store:
+  1. Emit IPC 'repo:added' with repoPath
+  2. Main process receives event
+  3. DiagramAutoGenerator.checkAndGenerateForRepo(repoPath)
+  4. Prompt user if never generated
+  5. Background generation if confirmed
+```
 
-  // 3. Generate fresh diagram
-  const context = await contextExtractor.extract(repoPath, options);
-  const diagram = await aiService.generate(context, options);
+**Sources:**
+- [Electron dialog API](https://www.electronjs.org/docs/latest/api/dialog)
+- [Electron confirmation dialogs](https://www.brainbell.com/javascript/dialog-show-message-box.html)
 
-  // 4. Store in cache with metadata
-  await cacheService.store(cacheKey, {
-    diagram,
-    repoHash,
-    options,
+### 2. Real-Time Change Detection with Visual Indicators
+
+**Problem:** Current staleness detection emits binary 'diagram:stale' events. Need granular change information to highlight specific elements and propagate changes up the C4 hierarchy.
+
+**Solution:** Enrich file watcher events with change context and implement SVG post-processing for visual highlighting.
+
+#### Change Event Enrichment
+
+**Modified: FileWatcherService**
+```typescript
+// Enhanced event data structure
+interface DiagramChangeEvent {
+  repoPath: string;
+  level: C4Level;
+  changedPath: string;         // File that changed
+  timestamp: number;
+  changeType: 'add' | 'modify' | 'delete';
+  affectedElements: string[];  // Element IDs affected by this change
+}
+
+private async handleFileChange(repoPath: string, level: C4Level, changedPath: string): Promise<void> {
+  // Existing staleness check logic
+  // NEW: Determine affected elements
+  const affectedElements = await this.mapFileToElements(changedPath, level);
+
+  this.emitEnrichedChangeEvent({
+    repoPath,
+    level,
+    changedPath,
     timestamp: Date.now(),
-    tokensUsed: diagram.tokensUsed
+    changeType: await this.detectChangeType(changedPath),
+    affectedElements
+  });
+}
+
+private async mapFileToElements(filePath: string, level: C4Level): Promise<string[]> {
+  // Context level: System boundary (affects entire diagram)
+  if (level === 'context') return ['system'];
+
+  // Container level: Map file to container (main/renderer/services)
+  if (level === 'container') {
+    if (filePath.includes('/main/')) return ['reef_main'];
+    if (filePath.includes('/renderer/')) return ['reef_renderer'];
+    return [];
+  }
+
+  // Component/Code level: Extract component name from file path
+  const componentName = this.extractComponentFromPath(filePath);
+  return [componentName.toLowerCase().replace(/\s+/g, '_')];
+}
+```
+
+**New: ChangeAggregationService** (`src/main/services/c4/changeAggregationService.ts`)
+```typescript
+class ChangeAggregationService {
+  private changeBuffer: Map<string, DiagramChangeEvent[]>; // key: repo:level
+  private debounceTimer: NodeJS.Timeout;
+
+  aggregateChanges(event: DiagramChangeEvent): void {
+    // Buffer changes for 500ms
+    // Group by repo + level
+    // Merge affectedElements arrays
+    // Emit single aggregated event
+
+  private emitAggregatedChange(key: string, events: DiagramChangeEvent[]): void {
+    // Merge all affectedElements
+    const uniqueElements = [...new Set(events.flatMap(e => e.affectedElements))];
+
+    // Emit to renderer
+    BrowserWindow.getAllWindows().forEach(win => {
+      win.webContents.send('diagram:changes-detected', {
+        repoPath: events[0].repoPath,
+        level: events[0].level,
+        affectedElements: uniqueElements,
+        changedFiles: events.map(e => e.changedPath),
+        timestamp: Date.now()
+      });
+    });
+  }
+}
+```
+
+#### Change Propagation Through C4 Levels
+
+**Logic:**
+- **Code → Component:** Code-level changes mark parent component as changed
+- **Component → Container:** Component changes mark parent container as changed
+- **Container → Context:** Container changes mark entire system context as changed
+- **Store in SQLite:** Track propagated changes in new table
+
+**New Table: `diagram_changes`**
+```sql
+CREATE TABLE diagram_changes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  repo_path TEXT NOT NULL,
+  level TEXT NOT NULL,
+  element_id TEXT,  -- Element affected (NULL for system-level)
+  changed_files TEXT NOT NULL,  -- JSON array of file paths
+  detected_at INTEGER NOT NULL,
+  propagated_to_parent BOOLEAN DEFAULT 0,
+  cleared_at INTEGER  -- NULL if not cleared yet
+);
+
+CREATE INDEX idx_changes_active ON diagram_changes(repo_path, level, cleared_at) WHERE cleared_at IS NULL;
+```
+
+**Modified: NavigationStore**
+```typescript
+interface NavigationState {
+  // Existing fields...
+  changedElements: Map<string, Set<string>>; // level -> Set of changed element IDs
+
+  // New actions
+  markElementChanged: (level: C4Level, elementId: string) => void;
+  clearChanges: (level: C4Level) => void;
+  getChangesForLevel: (level: C4Level) => string[];
+}
+
+// Listen for IPC events
+useEffect(() => {
+  window.reef.ipc.on('diagram:changes-detected', (event, data) => {
+    navigationStore.markElementChanged(data.level, ...data.affectedElements);
+  });
+}, []);
+```
+
+**Sources:**
+- [Real-time data visualization strategies](https://risingwave.com/blog/real-time-data-visualization-tools-and-strategies/)
+- [Code change visualization patterns](https://softagram.com/docs/visualizing-code-changes)
+- [Architecture change detection](https://archtocode.com/)
+
+#### SVG Highlighting Implementation
+
+**Approach:** Post-process PlantUML-generated SVG to add visual change indicators.
+
+**Modified: PlantUMLRenderer**
+```typescript
+private postProcessSVG(svgContent: string, changedElements: string[]): string {
+  const parser = new DOMParser();
+  const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+
+  changedElements.forEach(elementId => {
+    // Find element by ID (PlantUML uses id="elem_<name>")
+    const element = svgDoc.getElementById(`elem_${elementId}`);
+    if (!element) return;
+
+    // Add change indicator styles
+    // Option 1: Border highlight
+    const rect = element.querySelector('rect');
+    if (rect) {
+      rect.setAttribute('stroke', '#FFB800');  // Amber border
+      rect.setAttribute('stroke-width', '3');
+      rect.setAttribute('stroke-dasharray', '5,5');  // Dashed
+    }
+
+    // Option 2: Background color change
+    rect?.setAttribute('fill', '#FFF3CD');  // Light amber
+
+    // Option 3: Add pulsing animation
+    const style = svgDoc.createElement('style');
+    style.textContent = `
+      @keyframes pulse-${elementId} {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+      }
+      #elem_${elementId} {
+        animation: pulse-${elementId} 2s infinite;
+      }
+    `;
+    svgDoc.querySelector('defs')?.appendChild(style);
+
+    // Option 4: Add change badge
+    const badge = this.createChangeBadge(elementId);
+    element.appendChild(badge);
   });
 
-  return { ...diagram, fromCache: false };
+  return new XMLSerializer().serializeToString(svgDoc);
+}
+
+private createChangeBadge(elementId: string): SVGElement {
+  // Create small circle with "!" or file count
+  // Position in top-right corner of element
+  // Add tooltip with changed files
 }
 ```
 
+**Visual Design:**
+- **Amber/Orange color scheme** (#FFB800, #FFF3CD) for change indicators
+- **Pulsing animation** to draw attention (2s interval)
+- **Dashed borders** to distinguish from normal elements
+- **Change badges** with file count tooltip
+- **Legend component** explaining change visualization
+
+**New Component: ChangeVisualizationLegend**
+```tsx
+const ChangeVisualizationLegend: React.FC = () => (
+  <div className="absolute top-4 left-4 bg-gray-900/90 rounded-lg p-3 border border-gray-700">
+    <h4 className="text-xs font-semibold text-gray-300 mb-2">Change Indicators</h4>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <div className="w-4 h-4 border-2 border-amber-500 border-dashed rounded" />
+        <span className="text-xs text-gray-400">Modified elements</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="w-4 h-4 bg-amber-100 rounded" />
+        <span className="text-xs text-gray-400">Elements with changes</span>
+      </div>
+    </div>
+  </div>
+);
+```
+
 **Sources:**
-- Existing Reef implementation (cacheService.ts)
-- [Caching Strategies for Performance Optimization](https://namastedev.com/blog/caching-strategies-for-performance-optimization/)
+- [PlantUML SVG styling](https://plantuml.com/style-evolution)
+- [PlantUML interactive SVG features](https://github.com/plantuml/plantuml/issues/2130)
+- [Data visualization trends 2026](https://medium.com/@anuj.rawat_17321/data-visualization-trends-2026-cxo-guide-to-stay-ahead-15d380261809)
 
-### Pattern 4: Progressive Context Loading
+### 3. Diagram-to-Diff Navigation
 
-**What:** Load code context in priority order (critical → important → optional) up to token budget
+**Problem:** Users see changed elements in diagrams but need context about what changed. Should navigate directly from diagram element to relevant diff view.
 
-**When to use:** For large codebases that exceed LLM context windows
+**Solution:** Extend click handling to support "View Changes" action and cross-tab navigation.
 
-**Trade-offs:**
-- **Pros:** Works with any codebase size, predictable costs
-- **Cons:** May miss relevant code in "optional" tier, requires good heuristics
+#### Click Handler Extension
 
-**Example:**
+**Modified: DiagramViewer**
 ```typescript
-class ContextExtractorService {
-  private readonly PRIORITY_PATTERNS = {
-    critical: [/main\.(ts|js)$/, /index\.(ts|js)$/, /\/api\//],
-    important: [/package\.json$/, /\/services\//, /\/models\//],
-    optional: [/\/utils\//, /\/helpers\//]
-  };
-
-  async extract(repoPath: string, maxTokens: number) {
-    const allFiles = await this.scanRepository(repoPath);
-    const prioritized = this.assignPriorities(allFiles);
-
-    let context = '';
-    let tokens = 0;
-
-    // Add critical files first (always included if under budget)
-    for (const file of prioritized.critical) {
-      const fileTokens = this.estimateTokens(file);
-      if (tokens + fileTokens <= maxTokens) {
-        context += this.formatFile(file);
-        tokens += fileTokens;
-      }
-    }
-
-    // Add important files if budget allows
-    for (const file of prioritized.important) {
-      const fileTokens = this.estimateTokens(file);
-      if (tokens + fileTokens <= maxTokens) {
-        context += this.formatFile(file);
-        tokens += fileTokens;
-      }
-    }
-
-    // Add optional files if budget still allows
-    for (const file of prioritized.optional) {
-      const fileTokens = this.estimateTokens(file);
-      if (tokens + fileTokens <= maxTokens) {
-        context += this.formatFile(file);
-        tokens += fileTokens;
-      } else {
-        break; // Stop when budget exhausted
-      }
-    }
-
-    return { context, tokensUsed: tokens };
+const handleElementClick = useCallback(async (elementId: string, metaKey: boolean) => {
+  // Existing drill-down logic...
+  if (!metaKey && navigationStore.canDrillDown()) {
+    // Normal click: drill down to next level
+    await handleDrillDown(elementId);
+    return;
   }
+
+  // NEW: Meta+Click or changed element: show changes
+  const hasChanges = navigationStore.getChangesForLevel(currentLevel.level).includes(elementId);
+  if (metaKey || hasChanges) {
+    await showChangesForElement(elementId);
+  }
+}, [navigationStore, currentLevel]);
+
+const showChangesForElement = async (elementId: string) => {
+  // Get changed files for this element
+  const changes = await window.reef.diagram.getChangesForElement(
+    repository.path,
+    currentLevel.level,
+    elementId
+  );
+
+  if (changes.files.length === 0) {
+    console.log('No changes for element:', elementId);
+    return;
+  }
+
+  // Navigate to Commit Workflow tab with diff view
+  navigationStore.setActiveTab('commit-workflow');
+  navigationStore.setDiffContext({
+    elementId,
+    elementName: getElementName(elementId),
+    files: changes.files,
+    level: currentLevel.level
+  });
+};
+```
+
+**New IPC Handler: main.ts**
+```typescript
+ipcMain.handle('diagram:get-changes-for-element',
+  async (event, repoPath: string, level: C4Level, elementId: string) => {
+    // Query diagram_changes table
+    const changes = changeAggregationService.getChangesForElement(repoPath, level, elementId);
+
+    // Get git diff for changed files
+    const diffs = await Promise.all(
+      changes.files.map(file => gitService.diff(repoPath, file))
+    );
+
+    return {
+      files: changes.files,
+      diffs: diffs,
+      detectedAt: changes.timestamp
+    };
+  }
+);
+```
+
+**Modified: NavigationStore**
+```typescript
+interface NavigationState {
+  // Existing fields...
+  activeTab: 'repositories' | 'commit-workflow' | 'visual-map';
+  diffContext: DiffContext | null;
+
+  // New actions
+  setActiveTab: (tab: string) => void;
+  setDiffContext: (context: DiffContext) => void;
+  clearDiffContext: () => void;
+}
+
+interface DiffContext {
+  elementId: string;
+  elementName: string;
+  files: string[];
+  level: C4Level;
+  sourceTab: 'visual-map';  // For back navigation
 }
 ```
 
-**Sources:**
-- Existing Reef implementation (contextExtractorService.ts)
-- [Codebase Digest](https://github.com/kamilstanuch/codebase-digest) - AI-friendly codebase packing
+**Modified: CommitWorkflowTab / EnhancedChangesPanel**
+```typescript
+useEffect(() => {
+  // Listen for diff context from diagram navigation
+  const diffContext = navigationStore.diffContext;
 
-## Data Flow
+  if (diffContext && diffContext.sourceTab === 'visual-map') {
+    // Highlight relevant files in changes panel
+    setHighlightedFiles(diffContext.files);
 
-### Request Flow: Diagram Generation
+    // Auto-open first file diff
+    if (diffContext.files.length > 0) {
+      handleFileClick(diffContext.files[0]);
+    }
 
-```
-[User Selects Settings]
-    ↓ (diagramType, level, focusArea, model)
-[UI Layer] → [IPC Channel] → [Main Process]
-    ↓
-[Diagram Generation Orchestrator]
-    ↓
-    ├→ [Check Cache] ────────────────┐
-    │   ↓ (cache miss)                │
-    │   [Code Analysis Service]       │ (cache hit)
-    │   ↓                              │
-    │   [File Scanner] → [Prioritizer] → [Context Builder]
-    │   ↓ (formatted context)          │
-    │   [AI/LLM Service]               │
-    │   ↓ (generate C4-PlantUML)      │
-    │   [Anthropic Claude API]         │
-    │   ↓ (PlantUML code)              │
-    │   [Store in Cache] ──────────────┘
-    ↓
-[PlantUML Renderer]
-    ↓
-    ├→ [Local Java Process] (if Java installed)
-    └→ [HTTP Server API] (fallback)
-    ↓ (SVG)
-[IPC Channel] → [UI Layer]
-    ↓
-[Diagram Viewer Component] → [Display SVG]
+    // Show context banner
+    setContextBanner({
+      message: `Viewing changes for ${diffContext.elementName}`,
+      onBack: () => {
+        navigationStore.setActiveTab('visual-map');
+        navigationStore.clearDiffContext();
+      }
+    });
+  }
+}, [navigationStore.diffContext]);
 ```
 
-### State Management: C4 Hierarchy Navigation
+**New Component: DiffContextBanner**
+```tsx
+const DiffContextBanner: React.FC<{ context: DiffContext, onBack: () => void }> = ({ context, onBack }) => (
+  <div className="bg-blue-900/20 border-b border-blue-800/50 px-4 py-2 flex items-center justify-between">
+    <div className="flex items-center gap-2">
+      <FileCode className="w-4 h-4 text-blue-400" />
+      <span className="text-sm text-blue-300">
+        Changes in {context.elementName} ({context.level} level)
+      </span>
+    </div>
+    <button
+      onClick={onBack}
+      className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1"
+    >
+      ← Back to Diagram
+    </button>
+  </div>
+);
+```
+
+#### Context Menu for Changed Elements
+
+**Optional Enhancement:** Right-click menu on changed elements.
+
+**Implementation:**
+```typescript
+const handleElementRightClick = useCallback((elementId: string, event: React.MouseEvent) => {
+  event.preventDefault();
+
+  const hasChanges = navigationStore.getChangesForLevel(currentLevel.level).includes(elementId);
+  if (!hasChanges) return;
+
+  // Show context menu
+  setContextMenu({
+    x: event.clientX,
+    y: event.clientY,
+    elementId,
+    options: [
+      { label: 'View Changes', action: () => showChangesForElement(elementId) },
+      { label: 'Clear Change Indicator', action: () => clearElementChanges(elementId) },
+      { label: 'Regenerate Diagram', action: () => regenerateDiagram() }
+    ]
+  });
+}, [navigationStore, currentLevel]);
+```
+
+## Component Dependency Graph
 
 ```
-[DiagramStore] (Zustand or similar)
-    ├─ currentLevel: 'context' | 'container' | 'component' | 'code'
-    ├─ hierarchyStack: C4HierarchyNode[]
-    ├─ activeDiagram: string (PlantUML code)
-    └─ navigationHistory: BreadcrumbItem[]
-    ↓ (user clicks element in diagram)
-[useC4Navigation Hook]
-    ↓ (identifies clicked element)
-[C4 Hierarchy Service]
-    ↓ (determines target level)
-    ├→ [Check if child diagram cached]
-    └→ [Generate child diagram with focus on clicked element]
-    ↓ (new diagram)
-[Update DiagramStore]
-    ↓
-[Re-render Diagram Viewer]
+┌─────────────────────────────────────────────────────────────┐
+│ Main Process                                                 │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────────────┐         ┌────────────────────────┐   │
+│  │ C4CacheService   │────────▶│ diagram_metadata       │   │
+│  │ (extended)       │         │ c4_cache (no TTL)      │   │
+│  └────────┬─────────┘         │ diagram_changes (NEW)  │   │
+│           │                   └────────────────────────┘   │
+│           │                                                 │
+│  ┌────────▼───────────────┐                                │
+│  │ DiagramAutoGenerator   │                                │
+│  │ (NEW)                  │                                │
+│  └────────┬───────────────┘                                │
+│           │                                                 │
+│           ▼                                                 │
+│  ┌────────────────────────┐   ┌──────────────────────┐    │
+│  │ C4AnalyzerService      │──▶│ StaticAnalyzer       │    │
+│  │ (existing)             │   │ AIEnricher           │    │
+│  │                        │   │ PlantUMLGenerator    │    │
+│  └────────────────────────┘   └──────────────────────┘    │
+│           │                                                 │
+│           │                                                 │
+│  ┌────────▼───────────────┐   ┌──────────────────────┐    │
+│  │ FileWatcherService     │──▶│ ChangeAggregation    │    │
+│  │ (enriched events)      │   │ Service (NEW)        │    │
+│  └────────────────────────┘   └──────────┬───────────┘    │
+│                                           │                 │
+└───────────────────────────────────────────┼─────────────────┘
+                                            │ IPC Events
+                                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Renderer Process                                             │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────────────────┐      ┌──────────────────────┐    │
+│  │ NavigationStore      │◀─────│ IPC Event Listeners  │    │
+│  │ (change tracking)    │      │ - diagram:stale      │    │
+│  │                      │      │ - diagram:changes    │    │
+│  └─────────┬────────────┘      │ - diagram:generated  │    │
+│            │                   └──────────────────────┘    │
+│            ▼                                                │
+│  ┌──────────────────────┐                                  │
+│  │ DiagramViewer        │                                  │
+│  │ (change handlers)    │                                  │
+│  └─────────┬────────────┘                                  │
+│            │                                                │
+│    ┌───────┴───────┬─────────────┬──────────────┐         │
+│    ▼               ▼             ▼              ▼         │
+│  ┌──────┐   ┌──────────┐  ┌──────────┐  ┌────────────┐   │
+│  │ Dia- │   │ PlantUML │  │ Change   │  │ Diff       │   │
+│  │ gram │   │ Renderer │  │ Viz      │  │ Context    │   │
+│  │ Panel│   │ (SVG     │  │ Legend   │  │ Banner     │   │
+│  │      │   │ post-    │  │ (NEW)    │  │ (NEW)      │   │
+│  │      │   │ process) │  │          │  │            │   │
+│  └──────┘   └──────────┘  └──────────┘  └─────┬──────┘   │
+│                                                 │          │
+│                                                 ▼          │
+│  ┌─────────────────────────────────────────────────────┐  │
+│  │ CommitWorkflowTab / EnhancedChangesPanel           │  │
+│  │ (diff view with context)                            │  │
+│  └─────────────────────────────────────────────────────┘  │
+│                                                            │
+└────────────────────────────────────────────────────────────┘
 ```
 
-### Key Data Flows
+## Build Order Recommendation
 
-1. **Settings → Generation:** User preferences flow through validation → IPC → service layer, controlling all generation parameters
-2. **Code → Context:** Repository files are scanned, filtered, prioritized, and formatted into structured LLM-friendly context
-3. **Context → Diagram:** LLM receives context + C4-specific prompt → generates PlantUML code → validated → cached
-4. **PlantUML → SVG:** PlantUML code converted to visual SVG either locally (Java) or remotely (server)
-5. **Cache Invalidation:** File changes trigger hash recalculation → cache key mismatch → regeneration
-6. **Drill-Down:** User clicks diagram element → identify element ID → check cache for child diagram → generate if needed → display with navigation breadcrumb
+Based on dependency analysis, suggested implementation sequence:
 
-## Scaling Considerations
+### Phase 1: Persistent Storage Foundation
+**Dependencies:** None (extends existing cache)
+**Complexity:** Low-Medium
 
-| Scale | Architecture Adjustments |
-|-------|--------------------------|
-| **1-10 repositories** | Current architecture sufficient. Local caching handles well. |
-| **10-100 repositories** | Consider cache size limits (LRU eviction). May need database indexing optimization. |
-| **100-1000 repositories** | Implement background cache warming for frequently accessed repos. Consider moving cache to external database for multi-machine access. |
-| **Enterprise (1000+ repos)** | Dedicated caching server, queue-based diagram generation, batch processing for bulk regeneration, possibly self-hosted LLM to reduce API costs. |
+1. **Database Schema Migration** (1-2 hours)
+   - Add migration logic to C4CacheService
+   - Create diagram_metadata table
+   - Test migration on existing cache.db
 
-### Scaling Priorities
+2. **Remove TTL Logic** (1 hour)
+   - Delete clearExpiredEntries()
+   - Update getCachedDiagram() to ignore TTL
+   - Keep generation_timestamps table
 
-1. **First bottleneck:** LLM API rate limits and costs
-   - **Fix:** Aggressive caching, incremental updates (only regenerate changed containers), batch processing with queue
+3. **State Management** (2-3 hours)
+   - Implement getDiagramState() / setDiagramState()
+   - Add state machine logic (never_generated → generating → fresh/error)
+   - Test state transitions
 
-2. **Second bottleneck:** Large monorepos exceed token limits
-   - **Fix:** Implement AST-based static analysis to reduce context size, generate diagrams per module/package, combine with stitching logic
+### Phase 2: Auto-Generation on Repo Add
+**Dependencies:** Phase 1 complete
+**Complexity:** Medium
 
-3. **Third bottleneck:** PlantUML rendering performance
-   - **Fix:** Parallelize rendering, use local Java process pool, pre-render common diagrams in background
+4. **DiagramAutoGenerator Service** (3-4 hours)
+   - Create new service class
+   - Implement checkAndGenerateForRepo()
+   - Add user prompt via Electron dialog
+   - Test generation flow
 
-## Anti-Patterns
+5. **Integration with Repository Add** (2 hours)
+   - Add IPC event 'repo:added'
+   - Hook into AddRepositoryModal or RepositoryStore
+   - Test auto-prompt on new repo
 
-### Anti-Pattern 1: Full Codebase in Every Request
+6. **Background Generation** (2-3 hours)
+   - Emit progress events during generation
+   - Handle concurrent repo adds gracefully
+   - Test error recovery
 
-**What people do:** Send entire repository code to LLM for every diagram generation
+### Phase 3: Change Detection Enhancement
+**Dependencies:** Phase 1-2 complete
+**Complexity:** Medium-High
 
-**Why it's wrong:**
-- Exceeds token limits on large repos
-- Massive API costs
-- Slow generation times
-- Includes irrelevant code (tests, configs, dependencies)
+7. **Enrich FileWatcher Events** (3-4 hours)
+   - Extend DiagramChangeEvent structure
+   - Implement mapFileToElements()
+   - Test file-to-element mapping accuracy
 
-**Do this instead:**
-- Implement priority-based file selection (critical → important → optional)
-- Use focus area to filter relevant files
-- Respect token budgets strictly
-- Cache aggressively to avoid repeat requests
+8. **Change Aggregation Service** (4-5 hours)
+   - Create ChangeAggregationService
+   - Implement debouncing (500ms)
+   - Add diagram_changes table
+   - Test change propagation logic
 
-### Anti-Pattern 2: Stateless C4 Hierarchy
+9. **NavigationStore Change Tracking** (2-3 hours)
+   - Add changedElements Map
+   - Implement markElementChanged() / clearChanges()
+   - Wire up IPC event listeners
 
-**What people do:** Treat each C4 level as independent diagram generation with no relationship tracking
+### Phase 4: Change Visualization
+**Dependencies:** Phase 3 complete
+**Complexity:** Medium-High
 
-**Why it's wrong:**
-- Inconsistent element names across levels (Context "API" vs Container "ApiService")
-- Cannot drill down coherently (parent-child relationships unknown)
-- Regenerating parent level breaks child diagrams
-- Poor UX (no breadcrumb navigation, no way to go back)
+10. **SVG Post-Processing** (4-6 hours)
+    - Implement postProcessSVG() in PlantUMLRenderer
+    - Add highlighting styles (border, fill, animation)
+    - Create change badge component
+    - Test with various diagram sizes
 
-**Do this instead:**
-- Maintain C4HierarchyNode tree structure with parent references
-- Pass parent context when generating child diagrams
-- Store hierarchy metadata in cache alongside diagrams
-- Implement breadcrumb navigation with stack-based state
+11. **Change Visualization Legend** (2 hours)
+    - Create ChangeVisualizationLegend component
+    - Add toggle in DiagramControls
+    - Test visibility logic
 
-### Anti-Pattern 3: Cache Without Invalidation
+12. **Change Clearing Logic** (2-3 hours)
+    - Add "Clear Changes" button
+    - Update diagram_changes.cleared_at timestamp
+    - Refresh diagram after clearing
 
-**What people do:** Cache diagrams indefinitely without detecting code changes
+### Phase 5: Diagram-to-Diff Navigation
+**Dependencies:** Phase 3-4 complete
+**Complexity:** Medium
 
-**Why it's wrong:**
-- Shows stale diagrams that don't match current code
-- Users don't trust the tool
-- No way to force refresh when needed
+13. **Enhanced Click Handling** (3-4 hours)
+    - Extend handleElementClick with Meta key detection
+    - Implement showChangesForElement()
+    - Add IPC handler 'diagram:get-changes-for-element'
 
-**Do this instead:**
-- Generate hash from critical file paths + modification times + file sizes
-- Include hash in cache key
-- Provide manual "Regenerate" button
-- Show cache metadata (age, hash) in UI so users can see freshness
+14. **Cross-Tab Navigation** (3-4 hours)
+    - Extend NavigationStore with activeTab / diffContext
+    - Add setDiffContext() action
+    - Test tab switching flow
 
-### Anti-Pattern 4: Single LLM Call for All C4 Levels
+15. **DiffContextBanner Component** (2 hours)
+    - Create banner component
+    - Add to CommitWorkflowTab
+    - Implement back navigation
 
-**What people do:** Ask LLM to generate Context + Container + Component + Code diagrams in one request
+16. **Highlighted Files in Changes Panel** (2-3 hours)
+    - Add highlight styling to EnhancedChangesPanel
+    - Auto-open first diff
+    - Test integration
 
-**Why it's wrong:**
-- Overwhelming complexity for LLM (hallucinations increase)
-- All-or-nothing generation (one error ruins everything)
-- Cannot customize detail level per hierarchy level
-- Breaks drill-down interaction (all levels generated upfront)
+### Total Estimated Effort
+- **Phase 1:** 4-6 hours
+- **Phase 2:** 7-9 hours
+- **Phase 3:** 9-12 hours
+- **Phase 4:** 8-11 hours
+- **Phase 5:** 10-13 hours
 
-**Do this instead:**
-- Generate one C4 level at a time
-- Use previous level's output as context for next level
-- Allow users to drill down on-demand (lazy generation)
-- Tailor prompts specifically to each level's purpose
+**Total:** 38-51 hours (approximately 5-7 days for single developer)
 
-## Integration Points
+## Integration Points Summary
 
-### External Services
+| Integration Point | Existing Component | New/Modified Component | Risk Level |
+|-------------------|-------------------|------------------------|------------|
+| **Cache Schema** | C4CacheService | Add diagram_metadata table | LOW - Backwards compatible via migration |
+| **File Watching** | FileWatcherService | Enrich events with element mapping | MEDIUM - Complex file-to-element logic |
+| **Navigation State** | NavigationStore | Add change tracking + diff context | LOW - Additive changes only |
+| **SVG Rendering** | PlantUMLRenderer | Post-process for highlighting | MEDIUM - DOM manipulation risk |
+| **Cross-Tab Nav** | MainLayout/Tabs | Pass navigation context | LOW - Standard React patterns |
+| **IPC Events** | main.ts / preload.ts | Add 5 new handlers | LOW - Established pattern |
+| **Repo Add Flow** | AddRepositoryModal | Trigger auto-generation | LOW - Optional prompt, no breaking changes |
 
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| **Anthropic Claude API** | REST API with SDK client | Use haiku-3 for cost efficiency, sonnet-3.5 for quality. Implement rate limiting and retry logic. |
-| **PlantUML Server** | HTTP API (self-hosted or public) | Prefer local Java process for security. Fall back to server for users without Java. |
-| **GitHub API (optional)** | REST API via Octokit | For fetching remote repository metadata, not required for local repos. |
-| **Local Java Runtime** | Child process execution | Check availability at startup. Graceful fallback to server mode. |
+## Performance Considerations
 
-### Internal Boundaries
+### Database Performance
+- **Index Strategy:** Add indexes on `diagram_changes(repo_path, level, cleared_at)`
+- **Query Optimization:** Use prepared statements for repeated queries
+- **Cleanup Strategy:** Periodically archive cleared changes older than 30 days
+- **Expected Load:** ~100-500 rows per active repo, acceptable for SQLite
 
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| **Main ↔ Renderer** | Electron IPC (contextBridge) | All diagram operations cross this boundary. Use typed channels. |
-| **Service Layer ↔ Cache** | Direct function calls | Synchronous cache reads, asynchronous writes. |
-| **Code Analysis ↔ File System** | Node.js fs/promises | Async file operations with error handling. Validate paths to prevent traversal attacks. |
-| **AI Service ↔ Cache** | Direct function calls | Check cache before AI call, store after. |
-| **PlantUML Renderer ↔ UI** | Component props | SVG string passed as prop. Viewer handles zoom/pan locally. |
+### Change Event Throughput
+- **Debouncing:** 500ms aggregation window reduces event flood
+- **Batch Updates:** Aggregate 10-50 file changes into single event
+- **IPC Overhead:** Minimal (<1ms per event), negligible impact
+- **Memory:** ChangeBuffer max size: 1000 events, auto-flush on limit
 
-## Build Order Recommendations
+### SVG Post-Processing
+- **Parsing Time:** DOMParser ~5-10ms for typical C4 diagram (<100 elements)
+- **Highlighting:** O(n) where n = changed elements, typically <10
+- **Serialization:** ~2-5ms for modified SVG
+- **Total Overhead:** <20ms per diagram render, imperceptible to user
 
-Based on dependencies and risk reduction:
+### Navigation Performance
+- **Store Updates:** Zustand shallow equality checks prevent unnecessary re-renders
+- **Diff Loading:** Lazy load diffs only when navigating to Commit Workflow tab
+- **File Highlighting:** CSS-based, no JavaScript overhead
 
-### Phase 1: Foundation (Week 1-2)
-1. **C4 Type Definitions** - Define C4Level, C4HierarchyNode, C4DiagramOptions types
-2. **Extend Existing Services** - Modify diagramGeneratorService to support C4-specific prompts
-3. **Basic C4 Context Generation** - Implement simplest level first (System Context)
+## Testing Strategy
 
-**Why first:** Establishes contracts, can be tested independently, minimal changes to existing code
+### Unit Tests
+- **C4CacheService:** Schema migration, state transitions
+- **ChangeAggregationService:** Debouncing, element mapping
+- **PlantUMLRenderer:** SVG parsing, highlighting logic
 
-### Phase 2: Hierarchy Management (Week 2-3)
-1. **C4HierarchyService** - State machine for level transitions
-2. **Update Cache Schema** - Add parent_id, element_id, level columns to cache
-3. **DiagramStore** - Zustand store for hierarchy navigation state
+### Integration Tests
+- **Auto-Generation Flow:** Repo add → prompt → background generation
+- **Change Detection:** File change → event emission → store update
+- **Cross-Tab Navigation:** Diagram click → tab switch → diff display
 
-**Why second:** Depends on types from Phase 1, core logic needed before UI
+### E2E Tests (Playwright)
+- **Full Flow:** Add repo → generate diagrams → modify file → see highlights → navigate to diff
+- **Error Cases:** Generation failure, missing diagram, no changes
 
-### Phase 3: Navigation UI (Week 3-4)
-1. **C4Navigator Component** - Breadcrumb + drill-down controls
-2. **Clickable Diagram Elements** - Enhance PlantUML parsing to identify clickable regions
-3. **Navigation Hooks** - useC4Navigation for state management
+## Risks and Mitigations
 
-**Why third:** Depends on hierarchy service, pure UI layer
+| Risk | Impact | Likelihood | Mitigation |
+|------|--------|------------|------------|
+| **Schema migration breaks existing cache** | HIGH | LOW | Test on copy of production db, versioned migrations |
+| **File-to-element mapping inaccurate** | MEDIUM | MEDIUM | Start with conservative mapping, add test cases |
+| **SVG post-processing breaks rendering** | HIGH | LOW | Graceful fallback to unhighlighted SVG |
+| **Change events flood IPC** | MEDIUM | MEDIUM | Debouncing + aggregation reduces to <1 event/sec |
+| **Cross-tab navigation confusing** | LOW | LOW | Clear context banner + back button |
+| **Auto-generation unexpected costs** | HIGH | LOW | Explicit user prompt with cost estimate |
 
-### Phase 4: Generation Quality (Week 4-5)
-1. **C4-Specific Prompts** - Refine prompts for each level with C4-PlantUML syntax
-2. **Context Enrichment** - Add focus area filtering specific to C4 levels
-3. **Validation** - Ensure C4-PlantUML syntax compliance
+## Open Questions for Phase-Specific Research
 
-**Why fourth:** Can iterate on quality without breaking core functionality
+1. **Element ID Standardization:** Should element IDs in PlantUML follow strict naming convention for reliable mapping?
+2. **Change Hierarchy Propagation:** Should code-level changes always bubble up, or only when viewing higher levels?
+3. **Performance at Scale:** How does SVG highlighting perform with >100 changed elements? Need progressive disclosure?
+4. **User Preferences:** Should auto-generation prompt be shown once per repo or respect global setting?
+5. **Diff View Integration:** Should diff viewer support split-screen with diagram for side-by-side viewing?
 
-### Phase 5: Optional Enhancements (Week 5+)
-1. **AST Parser Integration** - Static analysis to supplement/replace LLM
-2. **Automatic Regeneration** - File watcher triggers re-generation
-3. **Export Enhancements** - Multi-level export, documentation generation
+## References and Sources
 
-**Why last:** Nice-to-have features, not blocking for MVP
+### Electron & Storage
+- [Electron dialog API](https://www.electronjs.org/docs/latest/api/dialog)
+- [Electron confirmation dialogs best practices](https://www.brainbell.com/javascript/dialog-show-message-box.html)
+- [better-sqlite3 migrations](https://github.com/BlackGlory/better-sqlite3-migrations)
+- [SQLite versioning strategies](https://www.sqliteforum.com/p/sqlite-versioning-and-migration-strategies)
+- [SQLite change tracking patterns](https://til.simonwillison.net/sqlite/json-audit-log)
 
-## Sources
+### Visualization & UI
+- [PlantUML SVG generation](https://plantuml.com/svg)
+- [PlantUML CSS-like styling](https://plantuml.com/style-evolution)
+- [PlantUML interactive SVG](https://github.com/plantuml/plantuml/issues/2130)
+- [Real-time data visualization strategies 2026](https://risingwave.com/blog/real-time-data-visualization-tools-and-strategies/)
+- [Data visualization trends 2026](https://medium.com/@anuj.rawat_17321/data-visualization-trends-2026-cxo-guide-to-stay-ahead-15d380261809)
+- [Code change visualization patterns](https://softagram.com/docs/visualizing-code-changes)
+- [Architecture change detection](https://archtocode.com/)
 
-### C4 Model & Standards
-- [C4 Model Official](https://c4model.com/) - Authoritative C4 model documentation
-- [C4-PlantUML GitHub](https://github.com/plantuml-stdlib/C4-PlantUML) - Standard library for C4 diagrams with PlantUML
-- [C4 Model Wikipedia](https://en.wikipedia.org/wiki/C4_model) - Overview and history
-
-### Automated C4 Generation
-- [AI-Assisted Software Architecture](https://www.workingsoftware.dev/ai-assisted-software-architecture-generating-the-c4-model-and-views-directly-from-code/) - LLM-based C4 generation
-- [ArchAgent Research](https://arxiv.org/html/2601.13007) - Scalable architecture recovery with LLMs (88% accuracy)
-- [C4InterFlow](https://www.c4interflow.com/) - Framework for automated C4 generation
-- [Medium: Generative AI for C4 Diagrams](https://medium.com/@sauravskit749/architectural-intelligence-using-generative-ai-to-automatically-derive-c4-diagrams-from-source-6d908901af7a)
-
-### Code Analysis & AST
-- [Static Analysis using ASTs](https://medium.com/hootsuite-engineering/static-analysis-using-asts-ebcd170c955e) - Hootsuite Engineering
-- [The Art of Static Code Analysis](https://javapro.io/2025/02/04/the-art-of-static-code-analysis/) - JAVAPRO International
-
-### LLM Code Understanding
-- [How to Extract and Analyze a Codebase with LLMs](https://advanced-stack.com/archives/resources/how-to-extract-and-analyze-a-code-base-with-llms.html)
-- [Large Language Models for Source Code Analysis](https://arxiv.org/html/2503.17502v1)
-- [Codebase Digest GitHub](https://github.com/kamilstanuch/codebase-digest) - AI-friendly codebase packer
-
-### Hierarchical Navigation
-- [Implementing Drill-Down Navigation](https://dev3lop.com/implementing-drill-down-navigation-in-hierarchical-visualizations/)
-- [amCharts Hierarchy Drill-Down](https://www.amcharts.com/docs/v5/charts/hierarchy/hierarchy-drill-down/)
-
-### Caching Strategies
-- [Caching Strategies for Performance Optimization](https://namastedev.com/blog/caching-strategies-for-performance-optimization/)
-- [AWS Caching Patterns with Redis](https://docs.aws.amazon.com/whitepapers/latest/database-caching-strategies-using-redis/caching-patterns.html)
-
-### PlantUML Integration
-- [C4-PlantUML Documentation](https://plantuml-stdlib.github.io/C4-PlantUML/)
-- [The Hitchhiker's Guide to PlantUML - C4 Section](https://crashedmind.github.io/PlantUMLHitchhikersGuide/C4/c4.html)
+### Architecture Patterns
+- [Electron data persistence patterns](https://10xdev.blog/electron-data-persistence/)
+- [RxDB for Electron databases](https://rxdb.info/electron-database.html)
 
 ---
-*Architecture research for: C4 Diagram Generation Systems*
-*Researched: 2026-02-21*
+
+**Next Steps:**
+1. Review architecture with team/stakeholders
+2. Address open questions via phase-specific research
+3. Create detailed implementation plans for each phase
+4. Begin Phase 1: Persistent Storage Foundation
