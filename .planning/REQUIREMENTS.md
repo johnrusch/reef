@@ -9,10 +9,10 @@ Requirements for v1.1 Persistent Diagrams with Change Visualization. Each maps t
 
 ### Persistent Storage
 
-- [ ] **STOR-01**: User can close and reopen app without losing generated diagrams
-- [ ] **STOR-02**: App migrates v1.0 TTL-based cache to persistent storage on first launch
-- [ ] **STOR-03**: Database uses WAL mode for concurrent read performance
-- [ ] **STOR-04**: App tracks diagram state (never_generated, generating, fresh, stale, error)
+- [x] **STOR-01**: User can close and reopen app without losing generated diagrams
+- [x] **STOR-02**: App migrates v1.0 TTL-based cache to persistent storage on first launch
+- [x] **STOR-03**: Database uses WAL mode for concurrent read performance
+- [x] **STOR-04**: App tracks diagram state (never_generated, generating, fresh, stale, error)
 
 ### Auto-Generation
 
@@ -78,10 +78,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| STOR-01 | Phase 5 | Pending |
-| STOR-02 | Phase 5 | Pending |
-| STOR-03 | Phase 5 | Pending |
-| STOR-04 | Phase 5 | Pending |
+| STOR-01 | Phase 5 | Complete |
+| STOR-02 | Phase 5 | Complete |
+| STOR-03 | Phase 5 | Complete |
+| STOR-04 | Phase 5 | Complete |
 | AGEN-01 | Phase 6 | Pending |
 | AGEN-02 | Phase 6 | Pending |
 | AGEN-03 | Phase 6 | Pending |
