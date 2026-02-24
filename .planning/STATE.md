@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Core value:** Users can quickly grasp unfamiliar codebase architecture through AI-generated C4 diagrams that update as code changes
-**Current focus:** Phase 3 - Hierarchy Navigation
+**Current focus:** Phase 4 - Polish & Advanced Features
 
 ## Current Position
 
-Phase: 3 of 4 (Hierarchy Navigation)
-Plan: 2 of 2 in current phase
+Phase: 4 of 4 (Polish & Advanced Features)
+Plan: 1 of 2 in current phase
 Status: In progress
-Last activity: 2026-02-23 — Completed plan 03-02
+Last activity: 2026-02-24 — Completed plan 04-01
 
-Progress: [█████████████████] 83%
+Progress: [██████████████████] 91%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
-- Average duration: 4.4 minutes
-- Total execution time: 0.7 hours
+- Total plans completed: 10
+- Average duration: 4.7 minutes
+- Total execution time: 0.8 hours
 
 **By Phase:**
 
@@ -30,10 +30,11 @@ Progress: [█████████████████] 83%
 | 01-c4-foundation | 5 | 22m | 4.4m |
 | 02-automatic-regeneration | 2 | 9m | 4.5m |
 | 03-hierarchy-navigation | 2 | 9m | 4.5m |
+| 04-polish-advanced-features | 1 | 7m | 7.0m |
 
 **Recent Trend:**
-- Last 5 plans: 01-05 (2m), 02-01 (5m), 02-02 (4m), 03-01 (4m), 03-02 (4m)
-- Trend: Stabilizing at 4-5m per plan
+- Last 5 plans: 02-01 (5m), 02-02 (4m), 03-01 (4m), 03-02 (4m), 04-01 (7m)
+- Trend: Consistent execution with slightly longer polish tasks
 
 *Updated after each plan completion*
 
@@ -76,6 +77,8 @@ Recent decisions affecting current work:
 - [Phase 02]: Yellow badge (yellow-600) for staleness indicator - High visibility without being alarming
 - [Phase 02]: Badge click triggers regeneration with optimistic UI - Single-click interaction for better perceived performance
 - [Phase 02]: File watcher only starts for C4 diagrams - Other diagram types don't support staleness yet
+- [Phase 04]: Use react-hotkeys-hook for declarative keyboard shortcuts - provides built-in input filtering and cross-platform support
+- [Phase 04]: Left arrow for breadcrumb navigation - natural mapping for going back in hierarchy
 
 ### Pending Todos
 
@@ -87,6 +90,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-23
-Stopped at: Completed 03-hierarchy-navigation/03-02-PLAN.md
+Last session: 2026-02-24
+Stopped at: Completed 04-polish-advanced-features/04-01-PLAN.md
 Resume file: None

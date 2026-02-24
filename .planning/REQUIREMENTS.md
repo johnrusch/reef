@@ -26,7 +26,7 @@ Requirements for C4 diagram feature release. Each maps to roadmap phases.
 - [x] **NAV-04**: User sees breadcrumb trail showing current position in C4 hierarchy
 - [x] **NAV-05**: User can click breadcrumbs to navigate back up hierarchy levels
 - [x] **NAV-06**: User can switch between C4 levels using level selector controls
-- [ ] **NAV-07**: User can use keyboard shortcuts to navigate diagram (fullscreen toggle, zoom, regenerate)
+- [x] **NAV-07**: User can use keyboard shortcuts to navigate diagram (fullscreen toggle, zoom, regenerate)
 - [x] **NAV-08**: Diagram elements show visual indicators when clickable for drill-down
 
 ### Auto-Update & Caching
@@ -101,7 +101,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NAV-04 | Phase 3 | Complete (03-01) |
 | NAV-05 | Phase 3 | Complete (03-01) |
 | NAV-06 | Phase 1 | Complete (01-04) |
-| NAV-07 | Phase 4 | Pending |
+| NAV-07 | Phase 4 | Complete |
 | NAV-08 | Phase 3 | Complete (03-02) |
 | UPDATE-01 | Phase 2 | Complete (02-01) |
 | UPDATE-02 | Phase 2 | Complete |
