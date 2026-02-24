@@ -11,7 +11,7 @@ const shortcuts = [
   { key: 'F', action: 'Toggle fullscreen mode' },
   { key: 'Escape', action: 'Exit fullscreen mode' },
   { key: 'Cmd/Ctrl + R', action: 'Regenerate diagram' },
-  { key: 'Cmd/Ctrl + K', action: 'Open quick navigation (coming soon)' },
+  { key: 'Cmd/Ctrl + K', action: 'Open quick navigation' },
   { key: 'Arrow Left', action: 'Navigate to parent breadcrumb' },
   { key: 'Shift + ?', action: 'Show this help dialog' },
 ];

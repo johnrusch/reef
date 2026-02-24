@@ -6,7 +6,8 @@ import { DiagramInfo } from './DiagramInfo';
 import { StalenessBadge } from './StalenessBadge';
 import { DiagramBreadcrumbs } from './DiagramBreadcrumbs';
 import { KeyboardShortcutsHelp } from './KeyboardShortcutsHelp';
-import { useNavigationStore, getNextLevel } from '../../stores/navigationStore';
+import { CommandPalette } from './CommandPalette';
+import { useNavigationStore, getNextLevel, type DiagramSearchItem } from '../../stores/navigationStore';
 import { Loader2, AlertCircle } from 'lucide-react';
 
 export type DiagramType = 'component' | 'class' | 'sequence' | 'c4-context' | 'c4-container' | 'c4-component' | 'c4-code';
@@ -73,6 +74,7 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
   const [isStale, setIsStale] = useState(false);
   const [isRegeneratingFromBadge, setIsRegeneratingFromBadge] = useState(false);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
 
   // Subscribe to navigation store
   const navigationStore = useNavigationStore();
@@ -165,6 +167,31 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
       console.error('Failed to drill down:', error);
     }
   }, [isGenerating, currentOptions, navigationStore, onRegenerateDiagram]);
+
+  const handleCommandPaletteNavigate = useCallback(async (item: DiagramSearchItem) => {
+    // Reset navigation to context first
+    navigationStore.reset();
+
+    // Determine the target diagram type
+    const newType = `c4-${item.level}` as DiagramType;
+    handleControlChange({ type: newType });
+
+    // If navigating to a specific element (not just a level), push it to nav stack
+    if (item.elementId) {
+      navigationStore.push({
+        level: item.level,
+        elementId: item.elementId,
+        elementName: item.name,
+      });
+    }
+
+    // Trigger regeneration with the target elementId
+    await onRegenerateDiagram({
+      ...currentOptions,
+      type: newType,
+      elementId: item.elementId,
+    });
+  }, [navigationStore, currentOptions, onRegenerateDiagram]);
 
   const isClickableLevel = useMemo(() => {
     if (!currentOptions.type.startsWith('c4-')) return false;
@@ -288,6 +315,12 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
     enableOnFormTags: false
   });
 
+  // Open command palette (Cmd/Ctrl + K)
+  useHotkeys('mod+k', () => setShowCommandPalette(true), {
+    preventDefault: true,
+    enableOnFormTags: false
+  });
+
   if (error && !diagram) {
     return (
       <div className="flex items-center justify-center h-full bg-gray-900">
@@ -400,6 +433,12 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
           onOpenChange={setShowShortcutsHelp}
         />
       )}
+
+      <CommandPalette
+        open={showCommandPalette}
+        onOpenChange={setShowCommandPalette}
+        onNavigate={handleCommandPaletteNavigate}
+      />
     </div>
   );
 };
