@@ -7,6 +7,14 @@ export interface NavigationLevel {
   elementName: string; // Human-readable name for breadcrumb display
 }
 
+export interface DiagramSearchItem {
+  id: string;
+  name: string;
+  level: 'context' | 'container' | 'component' | 'code';
+  path: string[];
+  elementId?: string;
+}
+
 interface NavigationState {
   stack: NavigationLevel[];
   repositoryPath: string | null;
@@ -15,6 +23,7 @@ interface NavigationState {
   currentLevel: () => NavigationLevel;
   canDrillDown: () => boolean;
   canDrillUp: () => boolean;
+  allDiagrams: () => DiagramSearchItem[];
 
   // Actions
   push: (level: NavigationLevel) => void;
@@ -55,6 +64,33 @@ export const useNavigationStore = create<NavigationState>()(
       canDrillUp: () => {
         const { stack } = get();
         return stack.length > 1;
+      },
+
+      allDiagrams: () => {
+        // Return static list of available diagram types
+        // In future, this could be dynamically populated from actual generated diagrams
+        const diagrams: DiagramSearchItem[] = [
+          { id: 'c4-context', name: 'System Context', level: 'context', path: [] },
+          { id: 'c4-container', name: 'Container Diagram', level: 'container', path: ['System Context'] },
+          { id: 'c4-component', name: 'Component Diagram', level: 'component', path: ['System Context', 'Container'] },
+          { id: 'c4-code', name: 'Code Diagram', level: 'code', path: ['System Context', 'Container', 'Component'] },
+        ];
+
+        // Add current navigation stack items as searchable
+        const { stack } = get();
+        stack.forEach((level, index) => {
+          if (level.elementId && !diagrams.find(d => d.id === level.elementId)) {
+            diagrams.push({
+              id: level.elementId,
+              name: level.elementName,
+              level: level.level,
+              path: stack.slice(0, index).map(l => l.elementName),
+              elementId: level.elementId,
+            });
+          }
+        });
+
+        return diagrams;
       },
 
       // Actions
