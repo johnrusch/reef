@@ -43,9 +43,9 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full details.
 **Plans**: 5 plans (Wave 0 + 4 implementation plans)
 
 Plans:
-- [ ] 05-00-PLAN.md — Wave 0: Test scaffolds for Nyquist compliance
-- [ ] 05-01-PLAN.md — Storage infrastructure: types, C4StorageService, MigrationService
-- [ ] 05-02-PLAN.md — Frontend state: diagramStateStore, DiagramStateBadge, GeneratePromptCard
+- [x] 05-00-PLAN.md — Wave 0: Test scaffolds for Nyquist compliance (3 tasks, 8 files)
+- [x] 05-01-PLAN.md — Storage infrastructure: types, C4StorageService, MigrationService (3 tasks, 3 files)
+- [x] 05-02-PLAN.md — Frontend state: diagramStateStore, DiagramStateBadge, GeneratePromptCard (3 tasks, 3 files)
 - [ ] 05-03-PLAN.md — Integration: IPC handlers, preload API, DiagramViewer wiring
 - [ ] 05-04-PLAN.md — Settings UI and test implementation
 
@@ -116,11 +116,11 @@ Plans:
 | 2. Automatic Regeneration | v1.0 | 2/2 | Complete | 2026-02-23 |
 | 3. Hierarchy Navigation | v1.0 | 2/2 | Complete | 2026-02-23 |
 | 4. Polish & Advanced Features | v1.0 | 2/2 | Complete | 2026-02-24 |
-| 5. Persistent Storage Foundation | 3/5 | In Progress|  | - |
+| 5. Persistent Storage Foundation | v1.1 | 3/5 | In Progress | - |
 | 6. Auto-Generation on Repo Add | v1.1 | 0/TBD | Not started | - |
 | 7. Enhanced Change Detection | v1.1 | 0/TBD | Not started | - |
 | 8. Change Visualization | v1.1 | 0/TBD | Not started | - |
 | 9. Diagram-to-Diff Navigation | v1.1 | 0/TBD | Not started | - |
 
 ---
-*Last updated: 2026-02-24 — Phase 5 revised (5 plans with Wave 0 for Nyquist compliance)*
+*Last updated: 2026-02-24 — Phase 5 progress: 3/5 plans complete*
