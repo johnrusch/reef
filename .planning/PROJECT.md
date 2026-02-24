@@ -33,7 +33,18 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 
 ### Active
 
-(None — planning next milestone)
+(Defined in REQUIREMENTS.md for v1.1)
+
+## Current Milestone: v1.1 Persistent Diagrams with Change Visualization
+
+**Goal:** Make C4 diagrams a persistent, always-ready feature with real-time architectural change visualization.
+
+**Target features:**
+- Auto-generate diagrams when repo added (with user prompt for API cost awareness)
+- Permanent diagram storage (no TTL expiration, survives app restarts)
+- Real-time change detection with visual indicators that bubble up through C4 levels
+- Contextual navigation from changed code-level elements to diff viewer
+- Optimized loading (no multi-minute regeneration waits)
 
 ### Out of Scope
 
@@ -90,4 +101,4 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 | react-hotkeys-hook for shortcuts | Declarative, cross-platform, input filtering built-in | ✓ Good |
 
 ---
-*Last updated: 2026-02-24 after v1.0 milestone*
+*Last updated: 2026-02-24 after v1.1 milestone start*
