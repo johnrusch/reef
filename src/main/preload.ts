@@ -82,6 +82,17 @@ export interface ReefAPI {
   cache: {
     clearAll: () => Promise<{ success: boolean }>;
   };
+  c4Storage: {
+    initialize: () => Promise<{ initialized: boolean }>;
+    getDiagram: (repoPath: string, level: string, elementId?: string) => Promise<any>;
+    storeDiagram: (diagram: any) => Promise<{ success: boolean }>;
+    updateState: (repoPath: string, level: string, state: string, elementId?: string, errorMessage?: string) => Promise<{ success: boolean }>;
+    getState: (repoPath: string, level: string, elementId?: string) => Promise<any>;
+    getRepoStates: (repoPath: string) => Promise<any[]>;
+    getStats: () => Promise<{ path: string; sizeBytes: number; diagramCount: number }>;
+    clearAll: () => Promise<{ success: boolean }>;
+    onStateChanged: (callback: (event: any, data: any) => void) => () => void;
+  };
   ipc: {
     on: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => void;
     off: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => void;
@@ -172,6 +183,27 @@ const reefAPI: ReefAPI = {
   },
   cache: {
     clearAll: () => ipcRenderer.invoke('cache:clearAll'),
+  },
+  c4Storage: {
+    initialize: () => ipcRenderer.invoke('c4-storage:initialize'),
+    getDiagram: (repoPath: string, level: string, elementId?: string) =>
+      ipcRenderer.invoke('c4-storage:get-diagram', repoPath, level, elementId),
+    storeDiagram: (diagram: any) =>
+      ipcRenderer.invoke('c4-storage:store-diagram', diagram),
+    updateState: (repoPath: string, level: string, state: string, elementId?: string, errorMessage?: string) =>
+      ipcRenderer.invoke('c4-storage:update-state', repoPath, level, state, elementId, errorMessage),
+    getState: (repoPath: string, level: string, elementId?: string) =>
+      ipcRenderer.invoke('c4-storage:get-state', repoPath, level, elementId),
+    getRepoStates: (repoPath: string) =>
+      ipcRenderer.invoke('c4-storage:get-repo-states', repoPath),
+    getStats: () => ipcRenderer.invoke('c4-storage:get-stats'),
+    clearAll: () => ipcRenderer.invoke('c4-storage:clear-all'),
+
+    // Event listener for state changes
+    onStateChanged: (callback: (event: any, data: any) => void) => {
+      ipcRenderer.on('c4-storage:state-changed', callback);
+      return () => ipcRenderer.removeListener('c4-storage:state-changed', callback);
+    },
   },
   ipc: {
     on: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => {

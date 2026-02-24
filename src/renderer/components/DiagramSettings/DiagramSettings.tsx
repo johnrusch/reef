@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, DollarSign, ToggleLeft, ToggleRight, Info } from 'lucide-react';
+import { Sparkles, DollarSign, ToggleLeft, ToggleRight, Info, HardDrive, Database } from 'lucide-react';
 import type { DiagramType, DetailLevel, ModelType } from '../DiagramViewer/DiagramViewer';
+import { useDiagramStateStore } from '../../stores/diagramStateStore';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 interface DiagramSettingsProps {
   onSettingsChange?: (settings: DiagramSettings) => void;
@@ -33,10 +35,27 @@ export const DiagramSettings: React.FC<DiagramSettingsProps> = ({ onSettingsChan
 
   const [newPattern, setNewPattern] = useState('');
   const [showCostEstimate, setShowCostEstimate] = useState(false);
+  const [storageStats, setStorageStats] = useState<{
+    path: string;
+    sizeBytes: number;
+    diagramCount: number;
+  } | null>(null);
+  const [isClearing, setIsClearing] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   useEffect(() => {
     loadSettings();
+    loadStorageStats();
   }, []);
+
+  const loadStorageStats = async () => {
+    try {
+      const stats = await window.reef.c4Storage.getStats();
+      setStorageStats(stats);
+    } catch (error) {
+      console.error('Failed to load storage stats:', error);
+    }
+  };
 
   const loadSettings = async () => {
     try {
@@ -98,13 +117,39 @@ export const DiagramSettings: React.FC<DiagramSettingsProps> = ({ onSettingsChan
       sonnet: 3 / 1000000,
       opus: 15 / 1000000,
     };
-    
+
     const dailyCost = avgDiagramsPerDay * tokensPerDiagram * modelCosts[settings.defaultModel];
     const monthlyCost = dailyCost * 30;
-    
+
     if (monthlyCost < 0.01) return '<$0.01';
     if (monthlyCost < 1) return `~$${monthlyCost.toFixed(2)}`;
     return `~$${Math.round(monthlyCost)}`;
+  };
+
+  const formatSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const handleClearAll = async () => {
+    setIsClearing(true);
+    setShowClearConfirm(false);
+
+    try {
+      await window.reef.c4Storage.clearAll();
+
+      // CRITICAL: Sync frontend state store to prevent UI desync
+      useDiagramStateStore.getState().states.clear();
+
+      // Refresh stats
+      const newStats = await window.reef.c4Storage.getStats();
+      setStorageStats(newStats);
+    } catch (error) {
+      console.error('Clear failed:', error);
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   return (
@@ -368,7 +413,61 @@ export const DiagramSettings: React.FC<DiagramSettingsProps> = ({ onSettingsChan
             </div>
           </div>
         </div>
+
+        {/* Storage Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-100">Diagram Storage</h3>
+
+          {storageStats && (
+            <div className="space-y-3">
+              {/* Storage path display */}
+              <div className="flex items-start gap-3 p-3 bg-gray-800/50 rounded-lg">
+                <HardDrive className="w-5 h-5 text-gray-400 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-300">Storage Location</p>
+                  <p className="text-xs text-gray-500 truncate" title={storageStats.path}>
+                    {storageStats.path}
+                  </p>
+                </div>
+              </div>
+
+              {/* Storage size and count */}
+              <div className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg">
+                <Database className="w-5 h-5 text-gray-400" />
+                <div className="flex-1">
+                  <p className="text-sm text-gray-300">
+                    {formatSize(storageStats.sizeBytes)} used
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {storageStats.diagramCount} diagram{storageStats.diagramCount !== 1 ? 's' : ''} stored
+                  </p>
+                </div>
+              </div>
+
+              {/* Clear button */}
+              <button
+                onClick={() => setShowClearConfirm(true)}
+                disabled={isClearing || storageStats.diagramCount === 0}
+                className="w-full px-4 py-2 text-sm bg-red-500/20 hover:bg-red-500/30 disabled:bg-gray-700/30 disabled:cursor-not-allowed text-red-400 disabled:text-gray-500 rounded-lg transition-colors"
+              >
+                {isClearing ? 'Clearing...' : 'Clear All Stored Diagrams'}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Confirmation dialog */}
+      <ConfirmDialog
+        open={showClearConfirm}
+        onOpenChange={setShowClearConfirm}
+        title="Clear All Diagrams?"
+        description="This will delete all stored C4 diagrams. You'll need to regenerate them when needed. This action cannot be undone."
+        confirmText="Clear All"
+        variant="danger"
+        onConfirm={handleClearAll}
+        onCancel={() => setShowClearConfirm(false)}
+      />
     </div>
   );
 };
