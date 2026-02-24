@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useHotkeys } from 'react-hotkeys-hook';
 import { DiagramPanel } from './DiagramPanel';
 import { DiagramControls } from './DiagramControls';
 import { DiagramInfo } from './DiagramInfo';
 import { StalenessBadge } from './StalenessBadge';
 import { DiagramBreadcrumbs } from './DiagramBreadcrumbs';
+import { KeyboardShortcutsHelp } from './KeyboardShortcutsHelp';
 import { useNavigationStore, getNextLevel } from '../../stores/navigationStore';
 import { Loader2, AlertCircle } from 'lucide-react';
 
@@ -70,6 +72,7 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isStale, setIsStale] = useState(false);
   const [isRegeneratingFromBadge, setIsRegeneratingFromBadge] = useState(false);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
 
   // Subscribe to navigation store
   const navigationStore = useNavigationStore();
@@ -246,39 +249,44 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
     }
   }, [currentOptions.type, navigationStore]);
 
-  useEffect(() => {
-    const handleKeyboardShortcuts = (e: KeyboardEvent) => {
-      // Fullscreen toggle (F)
-      if (e.key === 'f' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        e.preventDefault();
-        setIsFullscreen(prev => !prev);
-      }
-      
-      // Exit fullscreen (Escape)
-      if (e.key === 'Escape' && isFullscreen) {
-        setIsFullscreen(false);
-      }
-      
-      // Regenerate diagram (Cmd/Ctrl + R)
-      if (e.key === 'r' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        handleRegenerate();
-      }
-      
-      // Zoom controls (Cmd/Ctrl + Plus/Minus)
-      if ((e.key === '+' || e.key === '=') && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        // This would be handled by PlantUMLRenderer internally
-      }
-      if (e.key === '-' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        // This would be handled by PlantUMLRenderer internally
-      }
-    };
+  // Keyboard shortcuts using react-hotkeys-hook
+  // Fullscreen toggle (F key)
+  useHotkeys('f', () => setIsFullscreen(prev => !prev), {
+    preventDefault: true,
+    enableOnFormTags: false
+  });
 
-    window.addEventListener('keydown', handleKeyboardShortcuts);
-    return () => window.removeEventListener('keydown', handleKeyboardShortcuts);
-  }, [isFullscreen, handleRegenerate]);
+  // Exit fullscreen (Escape)
+  useHotkeys('escape', () => {
+    if (isFullscreen) setIsFullscreen(false);
+  }, { enableOnFormTags: true }, [isFullscreen]);
+
+  // Regenerate diagram (Cmd/Ctrl + R)
+  useHotkeys('mod+r', () => handleRegenerate(), {
+    preventDefault: true,
+    enableOnFormTags: false
+  }, [handleRegenerate]);
+
+  // Breadcrumb navigation (arrow keys)
+  useHotkeys('left', () => {
+    if (navigationStore.canDrillUp() && currentOptions.type.startsWith('c4-')) {
+      const currentIndex = navigationStore.stack.length - 1;
+      if (currentIndex > 0) {
+        handleBreadcrumbNavigate(currentIndex - 1);
+      }
+    }
+  }, { preventDefault: true, enableOnFormTags: false }, [navigationStore, handleBreadcrumbNavigate, currentOptions.type]);
+
+  useHotkeys('right', () => {
+    // Right arrow could be used for forward navigation if we track history
+    // For now, no-op since we don't have forward history
+  }, { preventDefault: true, enableOnFormTags: false });
+
+  // Open keyboard shortcuts help (Shift + ?)
+  useHotkeys('shift+?', () => setShowShortcutsHelp(true), {
+    preventDefault: true,
+    enableOnFormTags: false
+  });
 
   if (error && !diagram) {
     return (
@@ -384,6 +392,13 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
             {error}
           </p>
         </div>
+      )}
+
+      {showShortcutsHelp && (
+        <KeyboardShortcutsHelp
+          open={showShortcutsHelp}
+          onOpenChange={setShowShortcutsHelp}
+        />
       )}
     </div>
   );
