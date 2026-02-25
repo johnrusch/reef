@@ -125,8 +125,9 @@ export class FileWatcherService {
         return true;
       }
 
+      // SQLite CURRENT_TIMESTAMP is UTC but lacks timezone marker — append 'Z' so JS parses as UTC
       const lastGenTimestamp = stored.updatedAt
-        ? new Date(stored.updatedAt).getTime()
+        ? new Date(stored.updatedAt + 'Z').getTime()
         : 0;
 
       // Never generated
@@ -173,8 +174,9 @@ export class FileWatcherService {
       }
 
       // Get the generation timestamp from the stored diagram's updated_at field
+      // SQLite CURRENT_TIMESTAMP is UTC but lacks timezone marker — append 'Z' so JS parses as UTC
       const lastGenTimestamp = stored.updatedAt
-        ? new Date(stored.updatedAt).getTime()
+        ? new Date(stored.updatedAt + 'Z').getTime()
         : 0;
 
       if (lastGenTimestamp === 0) {
