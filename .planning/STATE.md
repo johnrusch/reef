@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-24)
 ## Current Position
 
 Phase: 5 of 9 (Persistent Storage Foundation)
-Plan: 5 of 5 (COMPLETE)
+Plan: 6 of 6 (COMPLETE)
 Status: Phase complete
-Last activity: 2026-02-25 — Completed 05-05 storage wiring gap closure
+Last activity: 2026-02-25 — Completed 05-06 UI rendering gap closure
 
 Progress: [█████░░░░░] 56% (5/9 phases complete)
 
@@ -31,7 +31,7 @@ Progress: [█████░░░░░] 56% (5/9 phases complete)
 | 2. Automatic Regeneration | 2/2 | - | - |
 | 3. Hierarchy Navigation | 2/2 | - | - |
 | 4. Polish & Advanced Features | 2/2 | - | - |
-| 5. Persistent Storage Foundation | 6/6 | 1723s | 287s |
+| 5. Persistent Storage Foundation | 7/7 | 1806s | 258s |
 
 **Recent Trend:**
 - v1.0 completed: 4 phases, 11 plans
@@ -48,6 +48,7 @@ Progress: [█████░░░░░] 56% (5/9 phases complete)
 | 05-03 | 349s | 3 | 5 |
 | 05-04 | 665s | 3 | 8 |
 | 05-05 | 233s | 3 | 3 |
+| 05-06 | 83s | 1 | 1 |
 
 ## Accumulated Context
 
@@ -68,6 +69,8 @@ Recent decisions affecting current work:
 - [Phase 05]: Sync frontend diagramStateStore when clearing all diagrams (prevents UI desync)
 - [Phase 05 Plan 05]: C4AnalyzerService creates own C4StorageService instance (WAL mode handles concurrent access from both the analyzer and IPC singleton)
 - [Phase 05 Plan 05]: State transitions in generateDiagram() are best-effort (try/catch) — generation continues even if IPC state update fails
+- [Phase 05 Plan 06]: GeneratePromptCard moved to settings-mode render path — checks currentState rather than viewMode to avoid impossible guard
+- [Phase 05 Plan 06]: VisualMapTab subscribes to onStateChanged independently from DiagramViewer for pre-mount state sync
 
 ### Pending Todos
 
@@ -81,9 +84,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-25 — Phase 5 gap closure complete
-Stopped at: Completed 05-05-PLAN.md (Phase 5 storage wiring)
+Last session: 2026-02-25 — Phase 5 UI rendering gap closure complete
+Stopped at: Completed 05-06-PLAN.md (Phase 5 UI rendering gaps)
 Resume file: None
 
 ---
-*Next step: Phase 5 fully complete. Storage pipeline wired end-to-end. Ready for Phase 6.*
+*Next step: Phase 5 fully complete. Storage pipeline wired end-to-end with correct UI state rendering. GeneratePromptCard and generating indicator now reachable. Ready for Phase 6.*
