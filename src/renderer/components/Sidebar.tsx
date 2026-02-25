@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { GitBranch, FolderGit2, Settings, Grid3x3, Plus } from 'lucide-react';
+import { GitBranch, FolderGit2, Settings, Grid3x3, Plus, AlertCircle } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { useRepositoryStore } from '../stores/repositoryStore';
 import AddRepositoryModal from './AddRepositoryModal';
 import { isMacOS } from '../utils/platform';
+import { useGenerationQueueStore } from '../stores/generationQueueStore';
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
   const { workspaces, activeWorkspace } = useWorkspaceStore();
   const { repositories } = useRepositoryStore();
   const [isAddRepoModalOpen, setIsAddRepoModalOpen] = useState(false);
+  const { jobs } = useGenerationQueueStore();
 
   // Listen for menu events
   useEffect(() => {
@@ -89,9 +91,16 @@ const Sidebar: React.FC = () => {
                 >
                   <GitBranch size={14} />
                   <span className="truncate">{repo.name}</span>
-                  {repo.status && (repo.status.modified > 0 || repo.status.staged > 0) && (
-                    <span className="w-2 h-2 bg-yellow-500 rounded-full ml-auto"></span>
-                  )}
+                  <span className="flex items-center gap-1 ml-auto shrink-0">
+                    {repo.status && (repo.status.modified > 0 || repo.status.staged > 0) && (
+                      <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                    )}
+                    {jobs.get(repo.path)?.status === 'error' && (
+                      <span title="Diagram generation failed">
+                        <AlertCircle size={14} className="text-red-400" />
+                      </span>
+                    )}
+                  </span>
                 </Link>
               ))
             )}
