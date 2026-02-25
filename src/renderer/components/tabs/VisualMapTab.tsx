@@ -4,6 +4,7 @@ import plantumlEncoder from 'plantuml-encoder';
 import { DiagramViewer, DiagramMetadata, DiagramType, DetailLevel, FocusArea, ModelType } from '../DiagramViewer/DiagramViewer';
 import { useDiagramStateStore } from '../../stores/diagramStateStore';
 import { GeneratePromptCard } from '../DiagramViewer/GeneratePromptCard';
+import { DiagramStateBadge } from '../DiagramViewer/DiagramStateBadge';
 
 interface VisualMapTabProps {
   repository: any;
@@ -31,7 +32,7 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
   const [availableComponents, setAvailableComponents] = useState<string[]>([]);
   const [loadingElements, setLoadingElements] = useState<boolean>(false);
 
-  const { getState, loadStatesFromBackend } = useDiagramStateStore();
+  const { getState, setState, loadStatesFromBackend } = useDiagramStateStore();
 
   useEffect(() => {
     checkConfiguration();
@@ -104,6 +105,19 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
 
     loadPersistedDiagram();
   }, [repository, diagramType, elementId, loadStatesFromBackend]);
+
+  // Subscribe to state changes from main process (needed for pre-DiagramViewer states)
+  useEffect(() => {
+    if (!repository) return;
+
+    const unsubscribe = window.reef.c4Storage.onStateChanged((_, data) => {
+      if (data.repoPath === repository.path) {
+        setState(data.repoPath, data.level, data.state, data.elementId, data.errorMessage);
+      }
+    });
+
+    return unsubscribe;
+  }, [repository, setState]);
 
   const fetchAvailableContainers = async () => {
     if (!repository) return;
@@ -468,9 +482,8 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
     );
   }
 
-  // Show GeneratePromptCard for never-generated state when user clicked to diagram view
-  // but there's no diagram yet
-  if (viewMode === 'diagram' && !diagram && currentState === 'never_generated') {
+  // Show GeneratePromptCard when no diagram has ever been generated for this level
+  if (currentState === 'never_generated' && !diagram) {
     return (
       <div className="flex items-center justify-center h-full bg-gray-900">
         <GeneratePromptCard
@@ -478,6 +491,21 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
           onGenerate={() => generateDiagram()}
           isGenerating={isGenerating}
         />
+      </div>
+    );
+  }
+
+  // Show generating indicator during first-time generation (no diagram exists yet)
+  if (currentState === 'generating' && !diagram) {
+    return (
+      <div className="flex items-center justify-center h-full bg-gray-900">
+        <div className="flex flex-col items-center gap-6">
+          <DiagramStateBadge
+            state="generating"
+            onRegenerate={() => {}}
+          />
+          <p className="text-gray-400 text-sm">Analyzing repository with AI...</p>
+        </div>
       </div>
     );
   }
