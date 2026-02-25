@@ -23,7 +23,7 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full details.
 
 **Milestone Goal:** Make C4 diagrams a persistent, always-ready feature with real-time architectural change visualization.
 
-- [x] **Phase 5: Persistent Storage Foundation** - Remove TTL expiration, establish diagram persistence across sessions (completed 2026-02-24)
+- [ ] **Phase 5: Persistent Storage Foundation** - Remove TTL expiration, establish diagram persistence across sessions (UAT gap closure in progress)
 - [ ] **Phase 6: Auto-Generation on Repo Add** - Prompt users to generate diagrams when adding repositories
 - [ ] **Phase 7: Enhanced Change Detection** - Real-time file-to-element mapping with hierarchical propagation
 - [ ] **Phase 8: Change Visualization** - Visual indicators for changed elements with tooltips and badges
@@ -40,14 +40,15 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full details.
   2. Database migrates v1.0 TTL-based cache to v1.1 persistent storage automatically on first launch
   3. App displays diagram state accurately (never generated, generating, fresh, stale, error) in UI
   4. Multiple diagram reads complete without blocking during generation operations
-**Plans**: 5 plans (Wave 0 + 4 implementation plans)
+**Plans**: 6 plans (Wave 0 + 4 implementation plans + 1 gap closure)
 
 Plans:
 - [x] 05-00-PLAN.md — Wave 0: Test scaffolds for Nyquist compliance (3 tasks, 8 files)
 - [x] 05-01-PLAN.md — Storage infrastructure: types, C4StorageService, MigrationService (3 tasks, 3 files)
 - [x] 05-02-PLAN.md — Frontend state: diagramStateStore, DiagramStateBadge, GeneratePromptCard (3 tasks, 3 files)
-- [ ] 05-03-PLAN.md — Integration: IPC handlers, preload API, DiagramViewer wiring
-- [ ] 05-04-PLAN.md — Settings UI and test implementation
+- [x] 05-03-PLAN.md — Integration: IPC handlers, preload API, DiagramViewer wiring (3 tasks, 5 files)
+- [x] 05-04-PLAN.md — Settings UI and test implementation (3 tasks, 8 files)
+- [ ] 05-05-PLAN.md — Gap closure: Wire generation pipeline to storage and state management (3 tasks, 3 files)
 
 ### Phase 6: Auto-Generation on Repo Add
 **Goal**: Users see diagrams ready without manual triggering
@@ -116,11 +117,11 @@ Plans:
 | 2. Automatic Regeneration | v1.0 | 2/2 | Complete | 2026-02-23 |
 | 3. Hierarchy Navigation | v1.0 | 2/2 | Complete | 2026-02-23 |
 | 4. Polish & Advanced Features | v1.0 | 2/2 | Complete | 2026-02-24 |
-| 5. Persistent Storage Foundation | 5/5 | Complete   | 2026-02-24 | - |
+| 5. Persistent Storage Foundation | v1.1 | 5/6 | Gap closure | - |
 | 6. Auto-Generation on Repo Add | v1.1 | 0/TBD | Not started | - |
 | 7. Enhanced Change Detection | v1.1 | 0/TBD | Not started | - |
 | 8. Change Visualization | v1.1 | 0/TBD | Not started | - |
 | 9. Diagram-to-Diff Navigation | v1.1 | 0/TBD | Not started | - |
 
 ---
-*Last updated: 2026-02-24 — Phase 5 progress: 3/5 plans complete*
+*Last updated: 2026-02-25 — Phase 5: Gap closure plan created (05-05)*
