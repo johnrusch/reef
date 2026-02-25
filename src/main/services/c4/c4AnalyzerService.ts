@@ -5,35 +5,31 @@
  * 1. Static Analysis: Extract deterministic code structure with ts-morph
  * 2. AI Enrichment: Add architectural insights with Claude API
  * 3. PlantUML Generation: Generate C4-PlantUML syntax
- * 4. Caching: Store results with level-aware TTL
+ * 4. Storage: Persist results with v1.1 C4StorageService
  *
  * This is the main entry point for C4 diagram generation.
  */
 
-import { app } from 'electron';
-import { join } from 'path';
 import { StaticAnalyzerService } from './staticAnalyzerService';
 import { AIEnricherService } from './aiEnricherService';
 import { C4PlantUMLGenerator } from './c4PlantUMLGenerator';
-import { C4CacheService } from './c4CacheService';
+import { C4StorageService } from './c4StorageService';
 import type { C4Level } from './types/c4Types';
 import type { DiagramResult } from '../../../shared/types/diagram';
 import type { AnalysisResult } from './types/analysisTypes';
+import type { StoredDiagram } from '../../../shared/types/diagramState';
 
 export class C4AnalyzerService {
   private staticAnalyzer: StaticAnalyzerService;
   private aiEnricher: AIEnricherService;
   private generator: C4PlantUMLGenerator;
-  private cache: C4CacheService;
+  private storage: C4StorageService;
 
   constructor(apiKey: string) {
     this.staticAnalyzer = new StaticAnalyzerService();
     this.aiEnricher = new AIEnricherService(apiKey);
     this.generator = new C4PlantUMLGenerator();
-
-    // Use app.getPath for cache database location
-    const cachePath = join(app.getPath('userData'), 'c4-cache.db');
-    this.cache = new C4CacheService(cachePath);
+    this.storage = new C4StorageService();
   }
 
   /**
@@ -46,14 +42,14 @@ export class C4AnalyzerService {
     elementId?: string
   ): Promise<DiagramResult> {
     try {
-      // Check cache first
-      const cached = await this.cache.getCachedDiagram(repoPath, level, elementId);
+      // Check persistent storage first
+      const cached = this.storage.getDiagram(repoPath, level, elementId);
 
-      if (cached) {
-        console.log(`[C4 Analyzer] Cache hit for ${level} diagram`);
+      if (cached && cached.diagramContent) {
+        console.log(`[C4 Analyzer] Storage hit for ${level} diagram`);
         return {
           success: true,
-          diagram: cached,
+          diagram: cached.diagramContent,
           tokensUsed: {
             input: 0,
             output: 0,
@@ -61,7 +57,7 @@ export class C4AnalyzerService {
         };
       }
 
-      console.log(`[C4 Analyzer] Cache miss - generating ${level} diagram`);
+      console.log(`[C4 Analyzer] Storage miss - generating ${level} diagram`);
 
       // Phase 1: Static Analysis
       console.log(`[C4 Analyzer] Phase 1: Static analysis`);
@@ -100,8 +96,21 @@ export class C4AnalyzerService {
         };
       }
 
-      // Cache the result
-      await this.cache.setCachedDiagram(repoPath, level, plantUML, elementId);
+      // Persist the result to v1.1 storage
+      const storedDiagram: StoredDiagram = {
+        repoPath,
+        level,
+        elementId,
+        diagramContent: plantUML,
+        state: 'fresh',
+        modelUsed: 'haiku', // TODO: Pass from options
+        promptVersion: '1.0',
+        tokensUsed: undefined,
+        generationCost: undefined,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      this.storage.storeDiagram(storedDiagram);
 
       console.log(`[C4 Analyzer] Successfully generated ${level} diagram`);
 
@@ -160,19 +169,11 @@ export class C4AnalyzerService {
   }
 
   /**
-   * Clears cached diagrams for a repository
+   * Clears stored diagrams for a repository
    */
   clearRepositoryCache(repoPath: string): void {
-    this.cache.clearCache(repoPath);
-    console.log(`[C4 Analyzer] Cleared cache for ${repoPath}`);
-  }
-
-  /**
-   * Clears expired cache entries across all repositories
-   */
-  clearExpiredCache(): void {
-    this.cache.clearExpiredEntries();
-    console.log('[C4 Analyzer] Cleared expired cache entries');
+    this.storage.deleteDiagramsForRepo(repoPath);
+    console.log(`[C4 Analyzer] Cleared diagrams for ${repoPath}`);
   }
 
   /**
@@ -261,9 +262,9 @@ export class C4AnalyzerService {
   }
 
   /**
-   * Closes cache database connection
+   * Closes storage database connection
    */
   close(): void {
-    this.cache.close();
+    this.storage.close();
   }
 }
