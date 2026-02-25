@@ -113,9 +113,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-25 — Phase 6 Plan 1 complete: background generation queue infrastructure
-Stopped at: Completed 06-01-PLAN.md (generationQueueService, preload c4Generation API, settings field)
+Last session: 2026-02-25 — Phase 6 Plan 2 complete: frontend generation stores and UI components
+Stopped at: Completed 06-02-PLAN.md (generationQueueStore, toastStore, GenerationStatusBar, ToastContainer)
 Resume file: None
 
 ---
-*Next step: Execute 06-02-PLAN.md (renderer UI components: status bar, toast notifications, store).*
+*Next step: Execute 06-03-PLAN.md (MainLayout wiring: IPC subscriptions, auto-generate prompt modal).*
