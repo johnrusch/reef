@@ -121,7 +121,7 @@ Plans:
 | 3. Hierarchy Navigation | v1.0 | 2/2 | Complete | 2026-02-23 |
 | 4. Polish & Advanced Features | v1.0 | 2/2 | Complete | 2026-02-24 |
 | 5. Persistent Storage Foundation | 8/8 | Complete   | 2026-02-25 | - |
-| 6. Auto-Generation on Repo Add | v1.1 | 0/3 | Planned | - |
+| 6. Auto-Generation on Repo Add | 2/3 | In Progress|  | - |
 | 7. Enhanced Change Detection | v1.1 | 0/TBD | Not started | - |
 | 8. Change Visualization | v1.1 | 0/TBD | Not started | - |
 | 9. Diagram-to-Diff Navigation | v1.1 | 0/TBD | Not started | - |

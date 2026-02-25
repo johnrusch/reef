@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Persistent Diagrams with Change Visualization
 status: unknown
-last_updated: "2026-02-25T21:18:49.224Z"
+last_updated: "2026-02-25T22:47:59.521Z"
 progress:
-  total_phases: 1
+  total_phases: 2
   completed_phases: 1
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 11
+  completed_plans: 10
 ---
 
 # Project State
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-02-24)
 
 ## Current Position
 
-Phase: 5 of 9 (Persistent Storage Foundation)
-Plan: 7 of 7 (COMPLETE)
-Status: Phase complete
-Last activity: 2026-02-25 — Completed 05-07 stale badge pipeline fix
+Phase: 6 of 9 (Auto-Generation on Repo Add)
+Plan: 2 of 3 (complete)
+Status: In progress
+Last activity: 2026-02-25 — Completed 06-02 frontend generation stores and UI components
 
-Progress: [█████░░░░░] 56% (5/9 phases complete)
+Progress: [█████░░░░░] 56% (5/9 phases complete, Phase 6 started)
 
 ## Performance Metrics
 
@@ -64,6 +64,12 @@ Progress: [█████░░░░░] 56% (5/9 phases complete)
 | 05-06 | 83s | 1 | 1 |
 | 05-07 | 112s | 1 | 3 |
 
+**Phase 6 Details:**
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| 06-01 | 134s | 2 | 5 |
+| 06-02 | 160s | 2 | 6 |
+
 ## Accumulated Context
 
 ### Decisions
@@ -88,6 +94,12 @@ Recent decisions affecting current work:
 - [Phase 05]: FileWatcherService reads updated_at from C4StorageService.getDiagram() instead of C4CacheService for generation timestamps
 - [Phase 05]: emitStaleEvent (diagram:stale IPC) replaced by emitStateChangedEvent (c4-storage:state-changed IPC) to flow through new Zustand pipeline
 - [Phase 05]: registerC4StorageHandlers() must run before getStorageService() in main.ts app.whenReady() to ensure singleton initialized
+- [Phase 06 Plan 01]: C4AnalyzerService requires apiKey param — retrieved from safeStorage at enqueue time, not service init
+- [Phase 06 Plan 01]: autoGenerateOnRepoAdd defaults to 'prompt' — shows modal rather than silently triggering expensive API calls
+- [Phase 06 Plan 01]: DiagramSettings.tsx local interface must be kept in sync with preload.ts DiagramSettings to prevent TS compile errors
+- [Phase 06-02]: Auto-dismiss timer lives in store addToast() action rather than React useEffect — simpler, no cleanup complexity
+- [Phase 06-02]: GenerationStatusBar calls window.reef.c4Generation.cancel() directly — store tracks state but doesn't initiate IPC calls
+- [Phase 06-02]: Status bar z-40, toasts z-50 with bottom-12 offset so both can coexist when generation is active
 
 ### Pending Todos
 
@@ -101,9 +113,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-25 — Phase 5 stale badge pipeline fix complete
-Stopped at: Completed 05-07-PLAN.md (Phase 5 stale badge gap closure)
+Last session: 2026-02-25 — Phase 6 Plan 1 complete: background generation queue infrastructure
+Stopped at: Completed 06-01-PLAN.md (generationQueueService, preload c4Generation API, settings field)
 Resume file: None
 
 ---
-*Next step: Phase 5 fully complete. All gap closures done. FileWatcherService wired to C4StorageService — stale badge transitions end-to-end. UAT test #4 (stale badge) should now pass. Ready for Phase 6.*
+*Next step: Execute 06-02-PLAN.md (renderer UI components: status bar, toast notifications, store).*
