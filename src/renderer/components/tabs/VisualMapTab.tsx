@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Map, FileCode, GitBranch, FolderTree, Settings, Play, AlertCircle, Key, FileText } from 'lucide-react';
 import plantumlEncoder from 'plantuml-encoder';
 import { DiagramViewer, DiagramMetadata, DiagramType, DetailLevel, FocusArea, ModelType } from '../DiagramViewer/DiagramViewer';
+import { useDiagramStateStore } from '../../stores/diagramStateStore';
+import { GeneratePromptCard } from '../DiagramViewer/GeneratePromptCard';
 
 interface VisualMapTabProps {
   repository: any;
@@ -29,6 +31,8 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
   const [availableComponents, setAvailableComponents] = useState<string[]>([]);
   const [loadingElements, setLoadingElements] = useState<boolean>(false);
 
+  const { getState, loadStatesFromBackend } = useDiagramStateStore();
+
   useEffect(() => {
     checkConfiguration();
   }, []);
@@ -53,6 +57,53 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
       fetchAvailableComponents();
     }
   }, [diagramType, repository]);
+
+  // Load persisted diagram from storage on mount or repo/type change
+  useEffect(() => {
+    if (!repository) return;
+
+    const loadPersistedDiagram = async () => {
+      try {
+        // Get current level from diagramType
+        const level = diagramType.replace('c4-', '');
+
+        // Check storage for existing diagram
+        const storedDiagram = await window.reef.c4Storage.getDiagram(
+          repository.path,
+          level,
+          elementId
+        );
+
+        if (storedDiagram) {
+          setDiagram(storedDiagram.diagramContent);
+          setMetadata({
+            tokensUsed: storedDiagram.tokensUsed
+              ? { input: storedDiagram.tokensUsed, output: 0 }
+              : undefined,
+            generatedAt: storedDiagram.createdAt || new Date().toISOString(),
+            diagramType: diagramType,
+            detailLevel: detailLevel,
+            focusArea: focusArea,
+            repository: repository.name,
+            model: (storedDiagram.modelUsed || 'haiku') as ModelType,
+            generationTime: 0,
+            estimatedCost: storedDiagram.generationCost || 0,
+            cached: true,
+            lastUpdated: storedDiagram.updatedAt || new Date().toISOString(),
+          });
+          setViewMode('diagram');
+        }
+
+        // Load all states for this repo
+        const states = await window.reef.c4Storage.getRepoStates(repository.path);
+        loadStatesFromBackend(states);
+      } catch (error) {
+        console.error('Failed to load persisted diagram:', error);
+      }
+    };
+
+    loadPersistedDiagram();
+  }, [repository, diagramType, elementId, loadStatesFromBackend]);
 
   const fetchAvailableContainers = async () => {
     if (!repository) return;
@@ -356,6 +407,10 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
     );
   }
 
+  // Get current diagram state for the selected level
+  const currentLevel = diagramType.replace('c4-', '') as any;
+  const currentState = getState(repository?.path || '', currentLevel, elementId);
+
   if (viewMode === 'diagram' && diagram && metadata) {
     return (
       <DiagramViewer
@@ -370,6 +425,20 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
         onShowChanges={setShowChanges}
         showChanges={showChanges}
       />
+    );
+  }
+
+  // Show GeneratePromptCard for never-generated state when user clicked to diagram view
+  // but there's no diagram yet
+  if (viewMode === 'diagram' && !diagram && currentState === 'never_generated') {
+    return (
+      <div className="flex items-center justify-center h-full bg-gray-900">
+        <GeneratePromptCard
+          repoName={repository?.name || 'Repository'}
+          onGenerate={() => generateDiagram()}
+          isGenerating={isGenerating}
+        />
+      </div>
     );
   }
 
