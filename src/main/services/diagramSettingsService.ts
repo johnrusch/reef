@@ -11,6 +11,7 @@ interface DiagramSettings {
   maxTokenBudget: number;
   cacheEnabled: boolean;
   cacheDuration: number;
+  autoGenerateOnRepoAdd: 'prompt' | 'always' | 'never';
 }
 
 class DiagramSettingsService {
@@ -52,6 +53,7 @@ class DiagramSettingsService {
       maxTokenBudget: 15000,
       cacheEnabled: true,
       cacheDuration: 86400000, // 24 hours in ms
+      autoGenerateOnRepoAdd: 'prompt', // Default: show the modal asking the user
     };
     
     return this.store.get(this.SETTINGS_KEY, defaultSettings) as DiagramSettings;

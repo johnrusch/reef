@@ -11,6 +11,7 @@ export interface DiagramSettings {
   maxTokenBudget: number;
   cacheEnabled: boolean;
   cacheDuration: number;
+  autoGenerateOnRepoAdd: 'prompt' | 'always' | 'never';
 }
 
 export interface ReefAPI {
@@ -92,6 +93,14 @@ export interface ReefAPI {
     getStats: () => Promise<{ path: string; sizeBytes: number; diagramCount: number }>;
     clearAll: () => Promise<{ success: boolean }>;
     onStateChanged: (callback: (event: any, data: any) => void) => () => void;
+  };
+  c4Generation: {
+    enqueue: (repoPath: string, repoName: string) => Promise<{ queued: boolean }>;
+    cancel: (repoPath: string) => Promise<{ cancelled: boolean }>;
+    getCostEstimate: (repoPath: string) => Promise<{ totalTokens: number; estimatedCost: number; levels: number; summary: string }>;
+    onProgress: (callback: (event: any, data: import('../shared/types/generationQueue').GenerationProgress) => void) => () => void;
+    onComplete: (callback: (event: any, data: import('../shared/types/generationQueue').GenerationComplete) => void) => () => void;
+    onCancelled: (callback: (event: any, data: { repoPath: string; repoName: string }) => void) => () => void;
   };
   ipc: {
     on: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => void;
@@ -203,6 +212,23 @@ const reefAPI: ReefAPI = {
     onStateChanged: (callback: (event: any, data: any) => void) => {
       ipcRenderer.on('c4-storage:state-changed', callback);
       return () => ipcRenderer.removeListener('c4-storage:state-changed', callback);
+    },
+  },
+  c4Generation: {
+    enqueue: (repoPath: string, repoName: string) => ipcRenderer.invoke('c4-generation:enqueue', repoPath, repoName),
+    cancel: (repoPath: string) => ipcRenderer.invoke('c4-generation:cancel', repoPath),
+    getCostEstimate: (repoPath: string) => ipcRenderer.invoke('c4-generation:get-cost-estimate', repoPath),
+    onProgress: (callback: (event: any, data: any) => void) => {
+      ipcRenderer.on('c4-generation:progress', callback);
+      return () => ipcRenderer.removeListener('c4-generation:progress', callback);
+    },
+    onComplete: (callback: (event: any, data: any) => void) => {
+      ipcRenderer.on('c4-generation:complete', callback);
+      return () => ipcRenderer.removeListener('c4-generation:complete', callback);
+    },
+    onCancelled: (callback: (event: any, data: any) => void) => {
+      ipcRenderer.on('c4-generation:cancelled', callback);
+      return () => ipcRenderer.removeListener('c4-generation:cancelled', callback);
     },
   },
   ipc: {

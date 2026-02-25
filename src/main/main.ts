@@ -18,6 +18,7 @@ import { initializeFileWatcherService, getFileWatcherService } from './services/
 import { C4CacheService } from './services/c4/c4CacheService';
 import type { C4Level } from './services/c4/types/c4Types';
 import { registerC4StorageHandlers, cleanupC4Storage, getStorageService } from './services/c4/c4StorageHandlers';
+import { registerGenerationQueueHandlers } from './services/c4/generationQueueService';
 
 const appPath = app.getAppPath();
 const isDev = process.env.NODE_ENV === 'development';
@@ -242,6 +243,9 @@ function createMenu() {
 app.whenReady().then(async () => {
   // Register C4 storage handlers first (creates singleton)
   registerC4StorageHandlers();
+
+  // Register generation queue handlers (after storage singleton is initialized)
+  registerGenerationQueueHandlers();
 
   // Initialize file watcher service with the C4 storage service
   initializeFileWatcherService(getStorageService());

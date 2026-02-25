@@ -18,6 +18,7 @@ export interface DiagramSettings {
   maxTokenBudget: number;
   cacheEnabled: boolean;
   cacheDuration: number;
+  autoGenerateOnRepoAdd: 'prompt' | 'always' | 'never';
 }
 
 export const DiagramSettings: React.FC<DiagramSettingsProps> = ({ onSettingsChange }) => {
@@ -31,6 +32,7 @@ export const DiagramSettings: React.FC<DiagramSettingsProps> = ({ onSettingsChan
     maxTokenBudget: 15000,
     cacheEnabled: true,
     cacheDuration: 86400000, // 24 hours in ms
+    autoGenerateOnRepoAdd: 'prompt',
   });
 
   const [newPattern, setNewPattern] = useState('');
