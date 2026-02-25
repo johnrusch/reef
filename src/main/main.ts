@@ -17,7 +17,7 @@ import './services/diagramSettingsService';
 import { initializeFileWatcherService, getFileWatcherService } from './services/fileWatcherService';
 import { C4CacheService } from './services/c4/c4CacheService';
 import type { C4Level } from './services/c4/types/c4Types';
-import { registerC4StorageHandlers, cleanupC4Storage } from './services/c4/c4StorageHandlers';
+import { registerC4StorageHandlers, cleanupC4Storage, getStorageService } from './services/c4/c4StorageHandlers';
 
 const appPath = app.getAppPath();
 const isDev = process.env.NODE_ENV === 'development';
@@ -240,12 +240,11 @@ function createMenu() {
 }
 
 app.whenReady().then(async () => {
-  // Initialize file watcher service with cache service
-  const cacheService = new C4CacheService();
-  initializeFileWatcherService(cacheService);
-
-  // Register C4 storage handlers
+  // Register C4 storage handlers first (creates singleton)
   registerC4StorageHandlers();
+
+  // Initialize file watcher service with the C4 storage service
+  initializeFileWatcherService(getStorageService());
 
   createWindow();
 });

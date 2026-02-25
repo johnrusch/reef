@@ -7,7 +7,7 @@ import type { C4Level } from './types/c4Types';
 // Singleton instance
 let storageService: C4StorageService | null = null;
 
-const getStorageService = (): C4StorageService => {
+export const getStorageService = (): C4StorageService => {
   if (!storageService) {
     storageService = new C4StorageService();
   }

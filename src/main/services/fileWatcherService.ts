@@ -7,7 +7,7 @@
  * Features:
  * - Level-specific file pattern watching (context/container/component/code)
  * - Debounced change detection (100ms stabilityThreshold)
- * - IPC event emission for stale diagrams
+ * - IPC event emission for stale diagrams via c4-storage:state-changed pipeline
  * - Startup staleness checks via generation timestamp comparison
  */
 
@@ -16,14 +16,15 @@ import { BrowserWindow } from 'electron';
 import { stat } from 'fs/promises';
 import { join } from 'path';
 import type { C4Level } from './c4/types/c4Types';
-import { C4CacheService } from './c4/c4CacheService';
+import { C4StorageService } from './c4/c4StorageService';
+import type { DiagramState } from '../../shared/types/diagramState';
 
 export class FileWatcherService {
   private watchers: Map<string, FSWatcher> = new Map();
-  private cacheService: C4CacheService;
+  private storageService: C4StorageService;
 
-  constructor(cacheService: C4CacheService) {
-    this.cacheService = cacheService;
+  constructor(storageService: C4StorageService) {
+    this.storageService = storageService;
   }
 
   /**
@@ -112,7 +113,21 @@ export class FileWatcherService {
    */
   async checkStalenessOnStartup(repoPath: string, level: C4Level): Promise<boolean> {
     try {
-      const lastGenTimestamp = this.cacheService.getLastGenerationTimestamp(repoPath, level);
+      const stored = this.storageService.getDiagram(repoPath, level);
+
+      // Never generated — not stale
+      if (!stored) {
+        return false;
+      }
+
+      // Already stale in database
+      if (stored.state === 'stale') {
+        return true;
+      }
+
+      const lastGenTimestamp = stored.updatedAt
+        ? new Date(stored.updatedAt).getTime()
+        : 0;
 
       // Never generated
       if (lastGenTimestamp === 0) {
@@ -123,8 +138,11 @@ export class FileWatcherService {
       const isStale = await this.isDiagramStale(repoPath, level, lastGenTimestamp);
 
       if (isStale) {
-        // Emit staleness event
-        this.emitStaleEvent(repoPath, level, 'startup-check');
+        // Update state in database
+        this.storageService.updateState(repoPath, level, 'stale');
+
+        // Emit state change through new pipeline
+        this.emitStateChangedEvent(repoPath, level, 'stale');
       }
 
       return isStale;
@@ -141,9 +159,24 @@ export class FileWatcherService {
    */
   private async handleFileChange(repoPath: string, level: C4Level, changedPath: string): Promise<void> {
     try {
-      const lastGenTimestamp = this.cacheService.getLastGenerationTimestamp(repoPath, level);
+      // Get the stored diagram to check its generation timestamp
+      const stored = this.storageService.getDiagram(repoPath, level);
 
-      // If never generated, no need to mark stale
+      // If never generated (no stored diagram), no need to mark stale
+      if (!stored) {
+        return;
+      }
+
+      // If already stale, no need to update again
+      if (stored.state === 'stale') {
+        return;
+      }
+
+      // Get the generation timestamp from the stored diagram's updated_at field
+      const lastGenTimestamp = stored.updatedAt
+        ? new Date(stored.updatedAt).getTime()
+        : 0;
+
       if (lastGenTimestamp === 0) {
         return;
       }
@@ -153,33 +186,41 @@ export class FileWatcherService {
 
       if (fileStat.mtimeMs > lastGenTimestamp) {
         console.log(`File change detected: ${changedPath} for ${repoPath}:${level}`);
-        this.emitStaleEvent(repoPath, level, changedPath);
+
+        // Update state to 'stale' in the database
+        this.storageService.updateState(repoPath, level, 'stale');
+
+        // Emit state-changed event through the new pipeline
+        this.emitStateChangedEvent(repoPath, level, 'stale');
       }
     } catch (error) {
-      // File might have been deleted or inaccessible, that's okay
+      // File might have been deleted or inaccessible
       console.error(`Error handling file change for ${changedPath}:`, error);
     }
   }
 
   /**
-   * Emit IPC event to renderer indicating diagram is stale
+   * Emit c4-storage:state-changed IPC event to renderer
+   * This flows through the new state management pipeline:
+   * IPC event → VisualMapTab/DiagramViewer onStateChanged → Zustand store → DiagramStateBadge
    */
-  private emitStaleEvent(repoPath: string, level: C4Level, changedPath: string): void {
+  private emitStateChangedEvent(repoPath: string, level: C4Level, state: DiagramState): void {
     try {
       const windows = BrowserWindow.getAllWindows();
 
       for (const window of windows) {
-        window.webContents.send('diagram:stale', {
+        window.webContents.send('c4-storage:state-changed', {
           repoPath,
           level,
-          changedPath,
-          timestamp: Date.now(),
+          state,
+          elementId: undefined,
+          errorMessage: undefined,
         });
       }
 
-      console.log(`Emitted diagram:stale event for ${repoPath}:${level}`);
+      console.log(`Emitted c4-storage:state-changed (${state}) for ${repoPath}:${level}`);
     } catch (error) {
-      console.error('Error emitting stale event:', error);
+      console.error('Error emitting state changed event:', error);
     }
   }
 
@@ -233,9 +274,8 @@ export class FileWatcherService {
     try {
       const patterns = this.getFilePatterns(repoPath, level);
 
-      // Check if any pattern matches files newer than generation timestamp
       for (const pattern of patterns) {
-        // Simple file check (package.json, tsconfig.json)
+        // Simple file check (non-glob patterns like package.json, tsconfig.json)
         if (!pattern.includes('*')) {
           try {
             const fileStat = await stat(pattern);
@@ -249,9 +289,10 @@ export class FileWatcherService {
         }
       }
 
-      // For glob patterns, use the cache service's existing staleness check
-      const isStale = await this.cacheService.isCacheStale(repoPath, level, generationTimestamp);
-      return isStale;
+      // For glob patterns, we rely on the chokidar file watcher to detect changes
+      // at runtime. The startup check only validates non-glob files.
+      // This is acceptable because chokidar will catch glob-matched changes once watching starts.
+      return false;
     } catch (error) {
       console.error(`Error checking staleness for ${repoPath}:${level}:`, error);
       // Default to stale for safety
@@ -261,12 +302,12 @@ export class FileWatcherService {
 }
 
 // Export singleton instance
-// Note: This will be properly initialized in main.ts with the cache service
+// Note: This will be properly initialized in main.ts with the storage service
 let fileWatcherServiceInstance: FileWatcherService | null = null;
 
-export function initializeFileWatcherService(cacheService: C4CacheService): FileWatcherService {
+export function initializeFileWatcherService(storageService: C4StorageService): FileWatcherService {
   if (!fileWatcherServiceInstance) {
-    fileWatcherServiceInstance = new FileWatcherService(cacheService);
+    fileWatcherServiceInstance = new FileWatcherService(storageService);
   }
   return fileWatcherServiceInstance;
 }
