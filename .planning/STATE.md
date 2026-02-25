@@ -1,3 +1,16 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: Persistent Diagrams with Change Visualization
+status: unknown
+last_updated: "2026-02-25T21:18:49.224Z"
+progress:
+  total_phases: 1
+  completed_phases: 1
+  total_plans: 8
+  completed_plans: 8
+---
+
 # Project State
 
 ## Project Reference
@@ -10,9 +23,9 @@ See: .planning/PROJECT.md (updated 2026-02-24)
 ## Current Position
 
 Phase: 5 of 9 (Persistent Storage Foundation)
-Plan: 6 of 6 (COMPLETE)
+Plan: 7 of 7 (COMPLETE)
 Status: Phase complete
-Last activity: 2026-02-25 — Completed 05-06 UI rendering gap closure
+Last activity: 2026-02-25 — Completed 05-07 stale badge pipeline fix
 
 Progress: [█████░░░░░] 56% (5/9 phases complete)
 
@@ -31,7 +44,7 @@ Progress: [█████░░░░░] 56% (5/9 phases complete)
 | 2. Automatic Regeneration | 2/2 | - | - |
 | 3. Hierarchy Navigation | 2/2 | - | - |
 | 4. Polish & Advanced Features | 2/2 | - | - |
-| 5. Persistent Storage Foundation | 7/7 | 1806s | 258s |
+| 5. Persistent Storage Foundation | 8/8 | 1918s | 240s |
 
 **Recent Trend:**
 - v1.0 completed: 4 phases, 11 plans
@@ -49,6 +62,7 @@ Progress: [█████░░░░░] 56% (5/9 phases complete)
 | 05-04 | 665s | 3 | 8 |
 | 05-05 | 233s | 3 | 3 |
 | 05-06 | 83s | 1 | 1 |
+| 05-07 | 112s | 1 | 3 |
 
 ## Accumulated Context
 
@@ -71,6 +85,9 @@ Recent decisions affecting current work:
 - [Phase 05 Plan 05]: State transitions in generateDiagram() are best-effort (try/catch) — generation continues even if IPC state update fails
 - [Phase 05 Plan 06]: GeneratePromptCard moved to settings-mode render path — checks currentState rather than viewMode to avoid impossible guard
 - [Phase 05 Plan 06]: VisualMapTab subscribes to onStateChanged independently from DiagramViewer for pre-mount state sync
+- [Phase 05]: FileWatcherService reads updated_at from C4StorageService.getDiagram() instead of C4CacheService for generation timestamps
+- [Phase 05]: emitStaleEvent (diagram:stale IPC) replaced by emitStateChangedEvent (c4-storage:state-changed IPC) to flow through new Zustand pipeline
+- [Phase 05]: registerC4StorageHandlers() must run before getStorageService() in main.ts app.whenReady() to ensure singleton initialized
 
 ### Pending Todos
 
@@ -84,9 +101,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-25 — Phase 5 UI rendering gap closure complete
-Stopped at: Completed 05-06-PLAN.md (Phase 5 UI rendering gaps)
+Last session: 2026-02-25 — Phase 5 stale badge pipeline fix complete
+Stopped at: Completed 05-07-PLAN.md (Phase 5 stale badge gap closure)
 Resume file: None
 
 ---
-*Next step: Phase 5 fully complete. Storage pipeline wired end-to-end with correct UI state rendering. GeneratePromptCard and generating indicator now reachable. Ready for Phase 6.*
+*Next step: Phase 5 fully complete. All gap closures done. FileWatcherService wired to C4StorageService — stale badge transitions end-to-end. UAT test #4 (stale badge) should now pass. Ready for Phase 6.*
