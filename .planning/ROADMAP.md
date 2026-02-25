@@ -61,10 +61,12 @@ Plans:
   3. User sees progress indicator showing generation status (level and percentage) while diagrams generate
   4. User can continue using app without blocking while background generation runs
   5. User receives notification when background generation completes successfully or encounters error
-**Plans**: TBD
+**Plans**: 3 plans (2 waves)
 
 Plans:
-- [ ] 06-01: TBD
+- [ ] 06-01-PLAN.md — Backend infrastructure: generationQueueService, IPC handlers, preload API, preference persistence (2 tasks, 5 files)
+- [ ] 06-02-PLAN.md — Frontend stores and UI: generationQueueStore, toastStore, GenerationStatusBar, ToastContainer (2 tasks, 5 files)
+- [ ] 06-03-PLAN.md — Integration: GenerationPromptModal, AddRepositoryModal flow, MainLayout wiring, settings toggle (2 tasks, 4 files)
 
 ### Phase 7: Enhanced Change Detection
 **Goal**: Real-time tracking of which C4 elements are affected by file changes
@@ -119,10 +121,10 @@ Plans:
 | 3. Hierarchy Navigation | v1.0 | 2/2 | Complete | 2026-02-23 |
 | 4. Polish & Advanced Features | v1.0 | 2/2 | Complete | 2026-02-24 |
 | 5. Persistent Storage Foundation | 8/8 | Complete   | 2026-02-25 | - |
-| 6. Auto-Generation on Repo Add | v1.1 | 0/TBD | Not started | - |
+| 6. Auto-Generation on Repo Add | v1.1 | 0/3 | Planned | - |
 | 7. Enhanced Change Detection | v1.1 | 0/TBD | Not started | - |
 | 8. Change Visualization | v1.1 | 0/TBD | Not started | - |
 | 9. Diagram-to-Diff Navigation | v1.1 | 0/TBD | Not started | - |
 
 ---
-*Last updated: 2026-02-25 — Phase 5: Gap closure plan created (05-05)*
+*Last updated: 2026-02-25 — Phase 6: Plan created (3 plans, 2 waves)*
