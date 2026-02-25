@@ -40,7 +40,7 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full details.
   2. Database migrates v1.0 TTL-based cache to v1.1 persistent storage automatically on first launch
   3. App displays diagram state accurately (never generated, generating, fresh, stale, error) in UI
   4. Multiple diagram reads complete without blocking during generation operations
-**Plans**: 6 plans (Wave 0 + 4 implementation plans + 1 gap closure)
+**Plans**: 7 plans (Wave 0 + 4 implementation plans + 2 gap closures)
 
 Plans:
 - [x] 05-00-PLAN.md — Wave 0: Test scaffolds for Nyquist compliance (3 tasks, 8 files)
@@ -48,7 +48,8 @@ Plans:
 - [x] 05-02-PLAN.md — Frontend state: diagramStateStore, DiagramStateBadge, GeneratePromptCard (3 tasks, 3 files)
 - [x] 05-03-PLAN.md — Integration: IPC handlers, preload API, DiagramViewer wiring (3 tasks, 5 files)
 - [x] 05-04-PLAN.md — Settings UI and test implementation (3 tasks, 8 files)
-- [ ] 05-05-PLAN.md — Gap closure: Wire generation pipeline to storage and state management (3 tasks, 3 files)
+- [x] 05-05-PLAN.md — Gap closure: Wire generation pipeline to storage and state management (3 tasks, 3 files)
+- [ ] 05-06-PLAN.md — Gap closure: Fix unreachable GeneratePromptCard and first-time generating indicator (1 task, 1 file)
 
 ### Phase 6: Auto-Generation on Repo Add
 **Goal**: Users see diagrams ready without manual triggering
