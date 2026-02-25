@@ -416,6 +416,42 @@ export const DiagramSettings: React.FC<DiagramSettingsProps> = ({ onSettingsChan
           </div>
         </div>
 
+        {/* Auto-Generation */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Sparkles size={20} className="text-blue-400" />
+            Auto-Generation
+          </h3>
+
+          <div className="bg-gray-800/50 rounded-lg p-4 space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                When adding a new repository
+              </label>
+              <select
+                value={settings.autoGenerateOnRepoAdd || 'prompt'}
+                onChange={(e) => {
+                  const newSettings = {
+                    ...settings,
+                    autoGenerateOnRepoAdd: e.target.value as 'prompt' | 'always' | 'never',
+                  };
+                  setSettings(newSettings);
+                  saveSettings(newSettings);
+                  onSettingsChange?.(newSettings);
+                }}
+                className="w-full bg-gray-700 text-gray-200 rounded-lg px-3 py-2 text-sm border border-gray-600 focus:border-blue-500 focus:outline-none"
+              >
+                <option value="prompt">Ask me each time</option>
+                <option value="always">Always generate diagrams</option>
+                <option value="never">Never generate automatically</option>
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                Controls whether to generate C4 architecture diagrams when you add a new repository.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Storage Section */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-100">Diagram Storage</h3>
