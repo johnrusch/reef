@@ -16,7 +16,7 @@ Requirements for v1.1 Persistent Diagrams with Change Visualization. Each maps t
 
 ### Auto-Generation
 
-- [ ] **AGEN-01**: User sees prompt with cost estimate when adding repository asking whether to generate diagrams
+- [x] **AGEN-01**: User sees prompt with cost estimate when adding repository asking whether to generate diagrams
 - [x] **AGEN-02**: User can choose to generate diagrams immediately, skip for now, or set preference for all repos
 - [x] **AGEN-03**: User sees loading indicator with progress during diagram generation
 - [x] **AGEN-04**: Diagram generation runs in background queue without blocking UI
@@ -82,7 +82,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | STOR-02 | Phase 5 | Complete |
 | STOR-03 | Phase 5 | Complete |
 | STOR-04 | Phase 5 | Complete |
-| AGEN-01 | Phase 6 | Pending |
+| AGEN-01 | Phase 6 | Complete |
 | AGEN-02 | Phase 6 | Complete |
 | AGEN-03 | Phase 6 | Complete |
 | AGEN-04 | Phase 6 | Complete |

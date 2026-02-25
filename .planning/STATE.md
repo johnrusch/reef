@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Persistent Diagrams with Change Visualization
 status: unknown
-last_updated: "2026-02-25T22:47:59.521Z"
+last_updated: "2026-02-25T22:52:20Z"
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 11
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-02-24)
 ## Current Position
 
 Phase: 6 of 9 (Auto-Generation on Repo Add)
-Plan: 2 of 3 (complete)
-Status: In progress
-Last activity: 2026-02-25 — Completed 06-02 frontend generation stores and UI components
+Plan: 3 of 3 (complete)
+Status: Phase complete
+Last activity: 2026-02-25 — Completed 06-03 UI integration (GenerationPromptModal, MainLayout wiring, sidebar error badge)
 
-Progress: [█████░░░░░] 56% (5/9 phases complete, Phase 6 started)
+Progress: [█████░░░░░] 56% (5/9 phases complete, Phase 6 complete)
 
 ## Performance Metrics
 
@@ -69,6 +69,7 @@ Progress: [█████░░░░░] 56% (5/9 phases complete, Phase 6 sta
 |------|----------|-------|-------|
 | 06-01 | 134s | 2 | 5 |
 | 06-02 | 160s | 2 | 6 |
+| 06-03 | 173s | 3 | 5 |
 
 ## Accumulated Context
 
@@ -100,6 +101,11 @@ Recent decisions affecting current work:
 - [Phase 06-02]: Auto-dismiss timer lives in store addToast() action rather than React useEffect — simpler, no cleanup complexity
 - [Phase 06-02]: GenerationStatusBar calls window.reef.c4Generation.cancel() directly — store tracks state but doesn't initiate IPC calls
 - [Phase 06-02]: Status bar z-40, toasts z-50 with bottom-12 offset so both can coexist when generation is active
+- [Phase 06-03]: GenerationPromptModal onOpenChange treats dialog close (Escape/overlay) as Skip — consistent UX
+- [Phase 06-03]: Fragment wrapper in AddRepositoryModal allows GenerationPromptModal to render after main modal closes
+- [Phase 06-03]: useGenerationQueueStore.getState() inside useEffect callbacks avoids re-subscriptions from exhaustive-deps
+- [Phase 06-03]: void keyword for c4Generation.enqueue() calls — fire-and-forget, store tracks state via IPC events
+- [Phase 06-03]: Lucide LucideProps does not accept title — wrapped AlertCircle in span for tooltip
 
 ### Pending Todos
 
@@ -113,9 +119,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-25 — Phase 6 Plan 2 complete: frontend generation stores and UI components
-Stopped at: Completed 06-02-PLAN.md (generationQueueStore, toastStore, GenerationStatusBar, ToastContainer)
+Last session: 2026-02-25 — Phase 6 Plan 3 complete: UI integration (GenerationPromptModal, MainLayout IPC wiring, sidebar error badge)
+Stopped at: Completed 06-03-PLAN.md (Phase 6 complete)
 Resume file: None
 
 ---
-*Next step: Execute 06-03-PLAN.md (MainLayout wiring: IPC subscriptions, auto-generate prompt modal).*
+*Next step: Execute Phase 7 plans.*
