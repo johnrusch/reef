@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { X, FolderOpen, GitBranch, AlertCircle, Loader2 } from 'lucide-react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { useRepositoryStore } from '../stores/repositoryStore';
+import GenerationPromptModal from './GenerationPromptModal';
+import { useGenerationQueueStore } from '../stores/generationQueueStore';
 
 interface AddRepositoryModalProps {
   isOpen: boolean;
@@ -18,7 +20,11 @@ const AddRepositoryModal: React.FC<AddRepositoryModalProps> = ({ isOpen, onClose
     branch: string;
     status: any;
   } | null>(null);
+  const [showGenerationPrompt, setShowGenerationPrompt] = useState(false);
+  const [addedRepoPath, setAddedRepoPath] = useState<string | null>(null);
+  const [addedRepoName, setAddedRepoName] = useState<string | null>(null);
   const { addRepository, repositories } = useRepositoryStore();
+  const { addJob } = useGenerationQueueStore();
 
   const handleSelectDirectory = async () => {
     setError(null);
@@ -77,16 +83,72 @@ const AddRepositoryModal: React.FC<AddRepositoryModalProps> = ({ isOpen, onClose
         status: repoDetails.status,
       });
 
-      // Reset state and close modal
-      setSelectedPath(null);
-      setRepoDetails(null);
-      setError(null);
-      onClose();
+      // Check auto-generate preference before closing
+      const settings = await window.reef.diagramSettings.get();
+      if (settings.autoGenerateOnRepoAdd === 'always') {
+        // Auto-generate, skip modal
+        addJob(selectedPath, repoDetails.name);
+        void window.reef.c4Generation.enqueue(selectedPath, repoDetails.name);
+        setSelectedPath(null);
+        setRepoDetails(null);
+        setError(null);
+        onClose();
+      } else if (settings.autoGenerateOnRepoAdd === 'never') {
+        // Skip silently
+        setSelectedPath(null);
+        setRepoDetails(null);
+        setError(null);
+        onClose();
+      } else {
+        // Default: 'prompt' -- show modal
+        setAddedRepoPath(selectedPath);
+        setAddedRepoName(repoDetails.name);
+        setShowGenerationPrompt(true);
+        // Do NOT call onClose() -- the prompt modal handles it
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add repository');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const cleanupAndClose = () => {
+    setShowGenerationPrompt(false);
+    setAddedRepoPath(null);
+    setAddedRepoName(null);
+    setSelectedPath(null);
+    setRepoDetails(null);
+    setError(null);
+    onClose();
+  };
+
+  const handlePromptGenerate = () => {
+    if (addedRepoPath && addedRepoName) {
+      addJob(addedRepoPath, addedRepoName);
+      void window.reef.c4Generation.enqueue(addedRepoPath, addedRepoName);
+    }
+    cleanupAndClose();
+  };
+
+  const handlePromptSkip = () => {
+    cleanupAndClose();
+  };
+
+  const handlePromptAlwaysGenerate = async () => {
+    // Save preference
+    try {
+      const currentSettings = await window.reef.diagramSettings.get();
+      await window.reef.diagramSettings.set({ ...currentSettings, autoGenerateOnRepoAdd: 'always' });
+    } catch (err) {
+      console.error('Failed to save auto-generate preference:', err);
+    }
+    // Also generate for this repo
+    if (addedRepoPath && addedRepoName) {
+      addJob(addedRepoPath, addedRepoName);
+      void window.reef.c4Generation.enqueue(addedRepoPath, addedRepoName);
+    }
+    cleanupAndClose();
   };
 
   const handleCancel = () => {
@@ -96,10 +158,11 @@ const AddRepositoryModal: React.FC<AddRepositoryModalProps> = ({ isOpen, onClose
     onClose();
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && !showGenerationPrompt) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <>
+    {isOpen && <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-gray-900 rounded-lg shadow-xl w-full max-w-2xl mx-4">
         <div className="flex items-center justify-between p-6 border-b border-gray-800">
           <h2 className="text-xl font-semibold text-white">Add Repository</h2>
@@ -227,7 +290,20 @@ const AddRepositoryModal: React.FC<AddRepositoryModalProps> = ({ isOpen, onClose
           </button>
         </div>
       </div>
-    </div>
+    </div>}
+
+    <GenerationPromptModal
+      open={showGenerationPrompt}
+      onOpenChange={(open) => {
+        if (!open) handlePromptSkip();
+      }}
+      repoName={addedRepoName || ''}
+      repoPath={addedRepoPath || ''}
+      onGenerate={handlePromptGenerate}
+      onSkip={handlePromptSkip}
+      onAlwaysGenerate={handlePromptAlwaysGenerate}
+    />
+    </>
   );
 };
 
