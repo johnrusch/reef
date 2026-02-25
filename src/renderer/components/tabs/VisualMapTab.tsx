@@ -238,6 +238,21 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
       model: options?.model || modelType,
     };
 
+    // Get current level for state tracking
+    const level = finalOptions.type.replace('c4-', '');
+
+    // Update state to 'generating'
+    try {
+      await window.reef.c4Storage.updateState(
+        repository.path,
+        level,
+        'generating',
+        elementId
+      );
+    } catch (e) {
+      console.error('Failed to update state to generating:', e);
+    }
+
     try {
       const startTime = Date.now();
 
@@ -307,12 +322,37 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
         setMetadata(newMetadata);
         setViewMode('diagram');
         await detectChangedFiles();
+
+        // Update state to 'fresh' after successful generation
+        try {
+          await window.reef.c4Storage.updateState(
+            repository.path,
+            level,
+            'fresh',
+            elementId
+          );
+        } catch (e) {
+          console.error('Failed to update state to fresh:', e);
+        }
       } else {
         throw new Error(result.error || 'Failed to generate diagram');
       }
     } catch (error) {
       console.error('Diagram generation error:', error);
       setError(error instanceof Error ? error.message : 'Failed to generate diagram');
+
+      // Update state to 'error'
+      try {
+        await window.reef.c4Storage.updateState(
+          repository.path,
+          finalOptions.type.replace('c4-', ''),
+          'error',
+          elementId,
+          'Could not generate diagram. Please try again.'
+        );
+      } catch (e) {
+        console.error('Failed to update state to error:', e);
+      }
     } finally {
       setIsGenerating(false);
     }

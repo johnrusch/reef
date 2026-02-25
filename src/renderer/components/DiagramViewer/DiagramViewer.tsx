@@ -109,8 +109,14 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
     try {
       await onRegenerateDiagram(currentOptions);
 
-      // Note: The diagram generation service should update state to 'fresh' after successful generation
-      // If it doesn't, we could add: await window.reef.c4Storage.updateState(repoPath, level, 'fresh', elementId);
+      // Transition to 'fresh' after successful regeneration
+      if (repoPath) {
+        try {
+          await window.reef.c4Storage.updateState(repoPath, level, 'fresh', elementId);
+        } catch (e) {
+          console.error('Failed to update state to fresh:', e);
+        }
+      }
     } catch (error) {
       console.error('Diagram generation failed:', error);
 
