@@ -28,7 +28,7 @@ Requirements for v1.1 Persistent Diagrams with Change Visualization. Each maps t
 - [x] **CHNG-02**: Changed files map to specific C4 elements (Code, Component, Container)
 - [x] **CHNG-03**: Changes bubble up through hierarchy (Code change marks parent Component, Component change marks parent Container)
 - [x] **CHNG-04**: File changes are debounced and aggregated to prevent rapid-fire updates
-- [ ] **CHNG-05**: User can see count of changed elements at each C4 level
+- [x] **CHNG-05**: User can see count of changed elements at each C4 level
 
 ### Change Visualization
 
@@ -91,7 +91,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CHNG-02 | Phase 7 | Complete |
 | CHNG-03 | Phase 7 | Complete |
 | CHNG-04 | Phase 7 | Complete |
-| CHNG-05 | Phase 7 | Pending |
+| CHNG-05 | Phase 7 | Complete |
 | VISU-01 | Phase 8 | Pending |
 | VISU-02 | Phase 8 | Pending |
 | VISU-03 | Phase 8 | Pending |

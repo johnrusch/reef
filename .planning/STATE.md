@@ -23,9 +23,9 @@ See: .planning/PROJECT.md (updated 2026-02-24)
 ## Current Position
 
 Phase: 7 of 9 (Enhanced Change Detection)
-Plan: 1 of 3 (complete)
+Plan: 2 of 3 (complete)
 Status: Phase in progress
-Last activity: 2026-02-26 — Completed 07-01 ChangeTrackingService backend, shared types, SQLite change tracking table
+Last activity: 2026-02-26 — Completed 07-02 pipeline wiring: FileWatcherService->ChangeTrackingService, IPC handlers, diagramStateStore affectedElements
 
 Progress: [█████░░░░░] 56% (5/9 phases complete, Phase 7 in progress)
 
@@ -75,6 +75,7 @@ Progress: [█████░░░░░] 56% (5/9 phases complete, Phase 7 in 
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | 07-01 | 808s | 2 | 6 |
+| 07-02 | 513s | 3 | 7 |
 
 ## Accumulated Context
 
@@ -116,6 +117,10 @@ Recent decisions affecting current work:
 - [Phase 07]: sanitizeId exported as standalone utility from changeTrackingService — ensures element IDs match PlantUML IDs (Pitfall 6)
 - [Phase 07]: Context level excluded from element mapping: mapFilesToElements returns [] for 'context' (per CHNG-02 spec)
 - [Phase 07]: Schema user_version bumped to 2 — signals diagram_change_tracking table is present for future migration detection
+- [Phase 07-02]: FileWatcherService accepts optional ChangeTrackingService — backwards-compatible injection preserves existing tests
+- [Phase 07-02]: c4-storage:update-state auto-clears change tracking on fresh/generating — single location for clearing, no renderer-side clearChangeTracking calls needed
+- [Phase 07-02]: useDiagramStateStore.getState() in DiagramViewer IPC callback — avoids re-subscriptions from exhaustive-deps (consistent with Phase 06-03)
+- [Phase 07-02]: DiagramViewer loads all 4 C4 levels on repo change for cold launch — 4 SQLite reads, ensures any level has persisted tracking hydrated
 
 ### Pending Todos
 
@@ -129,9 +134,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-26 — Phase 7 Plan 1 complete: ChangeTrackingService backend, shared types, SQLite diagram_change_tracking table
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-02-26 — Phase 7 Plan 2 complete: end-to-end pipeline wired, diagramStateStore affectedElements Map, DiagramViewer cold-launch recovery
+Stopped at: Completed 07-02-PLAN.md
 Resume file: None
 
 ---
-*Next step: Execute Phase 7 Plan 02 (FileWatcherService integration).*
+*Next step: Execute Phase 7 Plan 03 (UI visualization / stale indicator display).*
