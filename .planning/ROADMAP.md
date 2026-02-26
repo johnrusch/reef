@@ -123,7 +123,7 @@ Plans:
 | 4. Polish & Advanced Features | v1.0 | 2/2 | Complete | 2026-02-24 |
 | 5. Persistent Storage Foundation | 8/8 | Complete   | 2026-02-25 | - |
 | 6. Auto-Generation on Repo Add | 3/3 | Complete   | 2026-02-25 | - |
-| 7. Enhanced Change Detection | v1.1 | 0/2 | Not started | - |
+| 7. Enhanced Change Detection | 1/2 | In Progress|  | - |
 | 8. Change Visualization | v1.1 | 0/TBD | Not started | - |
 | 9. Diagram-to-Diff Navigation | v1.1 | 0/TBD | Not started | - |
 
