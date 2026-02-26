@@ -52,6 +52,11 @@ export function registerC4StorageHandlers(): void {
   ipcMain.handle('c4-storage:update-state', async (_, repoPath: string, level: string, state: DiagramState, elementId?: string, errorMessage?: string) => {
     getStorageService().updateState(repoPath, level as C4Level, state, elementId, errorMessage);
 
+    // Clear change tracking when diagram becomes fresh or starts regenerating
+    if (state === 'fresh' || state === 'generating') {
+      getStorageService().clearChangeTracking(repoPath, level as C4Level);
+    }
+
     // Notify all windows of state change
     BrowserWindow.getAllWindows().forEach(win => {
       win.webContents.send('c4-storage:state-changed', {
@@ -91,6 +96,17 @@ export function registerC4StorageHandlers(): void {
   // Clear all diagrams (for Settings "Clear All" button)
   ipcMain.handle('c4-storage:clear-all', async () => {
     getStorageService().clearAllDiagrams();
+    return { success: true };
+  });
+
+  // Get change tracking data for a repo+level
+  ipcMain.handle('c4-storage:get-change-tracking', async (_, repoPath: string, level: string) => {
+    return getStorageService().getChangeTracking(repoPath, level as C4Level);
+  });
+
+  // Clear change tracking data (called when regenerating)
+  ipcMain.handle('c4-storage:clear-change-tracking', async (_, repoPath: string, level: string) => {
+    getStorageService().clearChangeTracking(repoPath, level as C4Level);
     return { success: true };
   });
 }

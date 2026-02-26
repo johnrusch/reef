@@ -93,6 +93,12 @@ export interface ReefAPI {
     getStats: () => Promise<{ path: string; sizeBytes: number; diagramCount: number }>;
     clearAll: () => Promise<{ success: boolean }>;
     onStateChanged: (callback: (event: any, data: any) => void) => () => void;
+    getChangeTracking: (repoPath: string, level: string) => Promise<{
+      changedFiles: string[];
+      affectedElements: import('../shared/types/changeTracking').AffectedElement[];
+      elementCounts: Record<string, number>;
+    } | null>;
+    clearChangeTracking: (repoPath: string, level: string) => Promise<{ success: boolean }>;
   };
   c4Generation: {
     enqueue: (repoPath: string, repoName: string) => Promise<{ queued: boolean }>;
@@ -213,6 +219,10 @@ const reefAPI: ReefAPI = {
       ipcRenderer.on('c4-storage:state-changed', callback);
       return () => ipcRenderer.removeListener('c4-storage:state-changed', callback);
     },
+    getChangeTracking: (repoPath: string, level: string) =>
+      ipcRenderer.invoke('c4-storage:get-change-tracking', repoPath, level),
+    clearChangeTracking: (repoPath: string, level: string) =>
+      ipcRenderer.invoke('c4-storage:clear-change-tracking', repoPath, level),
   },
   c4Generation: {
     enqueue: (repoPath: string, repoName: string) => ipcRenderer.invoke('c4-generation:enqueue', repoPath, repoName),
