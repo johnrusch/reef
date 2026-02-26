@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { DiagramState, DiagramStateEntry } from '@shared/types/diagramState';
 import type { C4Level } from '@main/services/c4/types/c4Types';
+import type { AffectedElement } from '@shared/types/changeTracking';
 
 /**
  * Key generation helper for Map storage
@@ -40,12 +41,28 @@ interface DiagramStateStore {
   /** Bulk operations */
   loadStatesFromBackend: (entries: DiagramStateEntry[]) => void;
   clearStatesForRepo: (repoPath: string) => void;
+
+  /** Map of "repoPath:level:" -> affected element list */
+  affectedElements: Map<string, AffectedElement[]>;
+
+  /** Set affected elements for a repo+level (called on enriched state-changed event) */
+  setAffectedElements: (repoPath: string, level: C4Level, elements: AffectedElement[]) => void;
+
+  /** Get count of direct changed elements at a specific level */
+  getChangedElementCount: (repoPath: string, level: C4Level) => number;
+
+  /** Get affected elements for a repo+level */
+  getAffectedElements: (repoPath: string, level: C4Level) => AffectedElement[];
+
+  /** Clear affected elements for a repo+level (called on fresh/generating transition) */
+  clearAffectedElements: (repoPath: string, level: C4Level) => void;
 }
 
 export const useDiagramStateStore = create<DiagramStateStore>()(
   devtools(
     (set, get) => ({
       states: new Map(),
+      affectedElements: new Map(),
 
       getState: (repoPath, level, elementId) => {
         const key = generateKey(repoPath, level, elementId);
@@ -82,10 +99,12 @@ export const useDiagramStateStore = create<DiagramStateStore>()(
 
       transitionToGenerating: (repoPath, level, elementId) => {
         get().setState(repoPath, level, 'generating', elementId);
+        get().clearAffectedElements(repoPath, level);
       },
 
       transitionToFresh: (repoPath, level, elementId) => {
         get().setState(repoPath, level, 'fresh', elementId);
+        get().clearAffectedElements(repoPath, level);
       },
 
       transitionToStale: (repoPath, level, elementId) => {
@@ -122,7 +141,42 @@ export const useDiagramStateStore = create<DiagramStateStore>()(
             }
           }
 
-          return { states: newStates };
+          const newAffected = new Map(prev.affectedElements);
+          for (const [key] of newAffected.entries()) {
+            if (key.startsWith(normalizedPath + ':')) {
+              newAffected.delete(key);
+            }
+          }
+
+          return { states: newStates, affectedElements: newAffected };
+        });
+      },
+      setAffectedElements: (repoPath, level, elements) => {
+        const key = generateKey(repoPath, level);
+        set((prev) => {
+          const newMap = new Map(prev.affectedElements);
+          newMap.set(key, elements);
+          return { affectedElements: newMap };
+        });
+      },
+
+      getChangedElementCount: (repoPath, level) => {
+        const key = generateKey(repoPath, level);
+        const elements = get().affectedElements.get(key) || [];
+        return elements.filter(e => e.level === level && e.isDirect).length;
+      },
+
+      getAffectedElements: (repoPath, level) => {
+        const key = generateKey(repoPath, level);
+        return get().affectedElements.get(key) || [];
+      },
+
+      clearAffectedElements: (repoPath, level) => {
+        const key = generateKey(repoPath, level);
+        set((prev) => {
+          const newMap = new Map(prev.affectedElements);
+          newMap.delete(key);
+          return { affectedElements: newMap };
         });
       },
     }),

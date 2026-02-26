@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useDiagramStateStore } from '@renderer/stores/diagramStateStore';
+import type { AffectedElement } from '@shared/types/changeTracking';
 
 describe('diagramStateStore', () => {
   beforeEach(() => {
@@ -8,6 +9,7 @@ describe('diagramStateStore', () => {
     const { result } = renderHook(() => useDiagramStateStore());
     act(() => {
       result.current.states.clear();
+      result.current.affectedElements.clear();
     });
   });
 
@@ -219,6 +221,102 @@ describe('diagramStateStore', () => {
 
       // Repo2 states should still exist
       expect(result.current.getState('/test/repo2', 'context')).toBe('generating');
+    });
+  });
+
+  describe('affected elements (CHNG-05)', () => {
+    const makeElements = (level: 'code' | 'component' | 'container' | 'context', isDirect = true): AffectedElement[] => [
+      { level, elementId: `elem_${level}_1`, elementName: `Element 1`, isDirect },
+    ];
+
+    it('setAffectedElements stores elements for repo+level', () => {
+      const { result } = renderHook(() => useDiagramStateStore());
+      const elements = makeElements('code');
+
+      act(() => {
+        result.current.setAffectedElements('/test/repo', 'code', elements);
+      });
+
+      expect(result.current.getAffectedElements('/test/repo', 'code')).toEqual(elements);
+    });
+
+    it('getChangedElementCount returns count of direct elements at level', () => {
+      const { result } = renderHook(() => useDiagramStateStore());
+
+      const elements: AffectedElement[] = [
+        { level: 'code', elementId: 'elem_a', elementName: 'A', isDirect: true },
+        { level: 'code', elementId: 'elem_b', elementName: 'B', isDirect: true },
+        { level: 'code', elementId: 'elem_c', elementName: 'C', isDirect: false },
+      ];
+
+      act(() => {
+        result.current.setAffectedElements('/test/repo', 'code', elements);
+      });
+
+      expect(result.current.getChangedElementCount('/test/repo', 'code')).toBe(2);
+    });
+
+    it('clearAffectedElements removes elements for repo+level', () => {
+      const { result } = renderHook(() => useDiagramStateStore());
+      const elements = makeElements('component');
+
+      act(() => {
+        result.current.setAffectedElements('/test/repo', 'component', elements);
+      });
+
+      act(() => {
+        result.current.clearAffectedElements('/test/repo', 'component');
+      });
+
+      expect(result.current.getAffectedElements('/test/repo', 'component')).toEqual([]);
+    });
+
+    it('transitionToFresh clears affected elements', () => {
+      const { result } = renderHook(() => useDiagramStateStore());
+      const elements = makeElements('container');
+
+      act(() => {
+        result.current.setAffectedElements('/test/repo', 'container', elements);
+        result.current.transitionToFresh('/test/repo', 'container');
+      });
+
+      expect(result.current.getAffectedElements('/test/repo', 'container')).toEqual([]);
+    });
+
+    it('transitionToGenerating clears affected elements', () => {
+      const { result } = renderHook(() => useDiagramStateStore());
+      const elements = makeElements('component');
+
+      act(() => {
+        result.current.setAffectedElements('/test/repo', 'component', elements);
+        result.current.transitionToGenerating('/test/repo', 'component');
+      });
+
+      expect(result.current.getAffectedElements('/test/repo', 'component')).toEqual([]);
+    });
+
+    it('clearStatesForRepo also clears affected elements', () => {
+      const { result } = renderHook(() => useDiagramStateStore());
+      const elements = makeElements('code');
+
+      act(() => {
+        result.current.setState('/test/repo1', 'code', 'stale');
+        result.current.setAffectedElements('/test/repo1', 'code', elements);
+        result.current.setState('/test/repo2', 'code', 'fresh');
+        result.current.setAffectedElements('/test/repo2', 'code', makeElements('code'));
+      });
+
+      act(() => {
+        result.current.clearStatesForRepo('/test/repo1');
+      });
+
+      // Repo1 states and affected elements should be gone
+      expect(result.current.getState('/test/repo1', 'code')).toBe('never_generated');
+      expect(result.current.getAffectedElements('/test/repo1', 'code')).toEqual([]);
+
+      // Repo2 should still have its data
+      expect(result.current.getState('/test/repo2', 'code')).toBe('fresh');
+      expect(result.current.getAffectedElements('/test/repo2', 'code')).toHaveLength(1);
     });
   });
 });

@@ -264,11 +264,40 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
     const unsubscribe = window.reef.c4Storage.onStateChanged((_, data) => {
       if (data.repoPath === repoPath) {
         setState(data.repoPath, data.level, data.state, data.elementId, data.errorMessage);
+
+        // Phase 7: Store enriched element mapping from ChangeTrackingService
+        if (data.affectedElements && data.affectedElements.length > 0) {
+          const { setAffectedElements } = useDiagramStateStore.getState();
+          setAffectedElements(data.repoPath, data.level, data.affectedElements);
+        }
       }
     });
 
     return unsubscribe;
   }, [_repository?.path, setState]);
+
+  // Load persisted change tracking data on mount/repo change
+  useEffect(() => {
+    const repoPath = _repository?.path;
+    if (!repoPath) return;
+
+    const loadChangeTracking = async () => {
+      const levels: Array<'context' | 'container' | 'component' | 'code'> = ['context', 'container', 'component', 'code'];
+      for (const level of levels) {
+        try {
+          const tracking = await window.reef.c4Storage.getChangeTracking(repoPath, level);
+          if (tracking && tracking.affectedElements.length > 0) {
+            const { setAffectedElements } = useDiagramStateStore.getState();
+            setAffectedElements(repoPath, level, tracking.affectedElements);
+          }
+        } catch (error) {
+          console.error(`Error loading change tracking for ${repoPath}:${level}:`, error);
+        }
+      }
+    };
+
+    void loadChangeTracking();
+  }, [_repository?.path]);
 
   // Subscribe to staleness events from main process
   useEffect(() => {
