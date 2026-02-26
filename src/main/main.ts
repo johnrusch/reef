@@ -15,6 +15,7 @@ import './services/diagramGeneratorServiceV2';
 import './services/plantUmlService';
 import './services/diagramSettingsService';
 import { initializeFileWatcherService, getFileWatcherService } from './services/fileWatcherService';
+import { ChangeTrackingService } from './services/changeTrackingService';
 import { C4CacheService } from './services/c4/c4CacheService';
 import type { C4Level } from './services/c4/types/c4Types';
 import { registerC4StorageHandlers, cleanupC4Storage, getStorageService } from './services/c4/c4StorageHandlers';
@@ -30,6 +31,7 @@ new GitService();
 new GitHubService();
 
 let mainWindow: BrowserWindow | null = null;
+let changeTrackingServiceInstance: ChangeTrackingService | null = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -247,8 +249,11 @@ app.whenReady().then(async () => {
   // Register generation queue handlers (after storage singleton is initialized)
   registerGenerationQueueHandlers();
 
-  // Initialize file watcher service with the C4 storage service
-  initializeFileWatcherService(getStorageService());
+  // Initialize change tracking service for enriched file-to-element mapping
+  changeTrackingServiceInstance = new ChangeTrackingService(getStorageService());
+
+  // Initialize file watcher with change tracking service
+  initializeFileWatcherService(getStorageService(), changeTrackingServiceInstance);
 
   createWindow();
 });
@@ -257,6 +262,11 @@ app.on('before-quit', () => {
   const fileWatcherService = getFileWatcherService();
   if (fileWatcherService) {
     fileWatcherService.stopAllWatchers();
+  }
+  // Shutdown change tracking (clear pending debounce timers)
+  if (changeTrackingServiceInstance) {
+    changeTrackingServiceInstance.shutdown();
+    changeTrackingServiceInstance = null;
   }
   // Cleanup C4 storage
   cleanupC4Storage();

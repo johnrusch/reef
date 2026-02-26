@@ -18,13 +18,16 @@ import { join } from 'path';
 import type { C4Level } from './c4/types/c4Types';
 import { C4StorageService } from './c4/c4StorageService';
 import type { DiagramState } from '../../shared/types/diagramState';
+import { ChangeTrackingService } from './changeTrackingService';
 
 export class FileWatcherService {
   private watchers: Map<string, FSWatcher> = new Map();
   private storageService: C4StorageService;
+  private changeTrackingService: ChangeTrackingService | null;
 
-  constructor(storageService: C4StorageService) {
+  constructor(storageService: C4StorageService, changeTrackingService?: ChangeTrackingService) {
     this.storageService = storageService;
+    this.changeTrackingService = changeTrackingService || null;
   }
 
   /**
@@ -189,11 +192,14 @@ export class FileWatcherService {
       if (fileStat.mtimeMs > lastGenTimestamp) {
         console.log(`File change detected: ${changedPath} for ${repoPath}:${level}`);
 
-        // Update state to 'stale' in the database
-        this.storageService.updateState(repoPath, level, 'stale');
-
-        // Emit state-changed event through the new pipeline
-        this.emitStateChangedEvent(repoPath, level, 'stale');
+        if (this.changeTrackingService) {
+          // Delegate to ChangeTrackingService for debounced, enriched processing
+          this.changeTrackingService.recordChange(repoPath, level, changedPath);
+        } else {
+          // Fallback: direct state update (backwards compatibility)
+          this.storageService.updateState(repoPath, level, 'stale');
+          this.emitStateChangedEvent(repoPath, level, 'stale');
+        }
       }
     } catch (error) {
       // File might have been deleted or inaccessible
@@ -307,9 +313,12 @@ export class FileWatcherService {
 // Note: This will be properly initialized in main.ts with the storage service
 let fileWatcherServiceInstance: FileWatcherService | null = null;
 
-export function initializeFileWatcherService(storageService: C4StorageService): FileWatcherService {
+export function initializeFileWatcherService(
+  storageService: C4StorageService,
+  changeTrackingService?: ChangeTrackingService
+): FileWatcherService {
   if (!fileWatcherServiceInstance) {
-    fileWatcherServiceInstance = new FileWatcherService(storageService);
+    fileWatcherServiceInstance = new FileWatcherService(storageService, changeTrackingService);
   }
   return fileWatcherServiceInstance;
 }
