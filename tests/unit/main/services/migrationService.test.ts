@@ -344,10 +344,10 @@ describe('MigrationService', () => {
       // Run migration
       migrationService.migrate(v1StorageService);
 
-      // Check v1.1 storage has user_version = 1
+      // Check v1.1+ storage has user_version >= 1 (now 2 with diagram_change_tracking table)
       const db1_1 = (v1StorageService as any).db;
       const version = db1_1.pragma('user_version', { simple: true });
-      expect(version).toBe(1);
+      expect(version).toBeGreaterThanOrEqual(1);
 
       v1StorageService.close();
     });

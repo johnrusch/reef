@@ -419,4 +419,76 @@ describe('C4StorageService', () => {
       newService.close();
     });
   });
+
+  describe('diagram change tracking (CHNG-05)', () => {
+    const sampleChangedFiles = ['/repo/src/main/services/gitService.ts'];
+    const sampleAffectedElements = [
+      { level: 'component' as const, elementId: 'Services', elementName: 'Services', isDirect: true },
+      { level: 'container' as const, elementId: 'Main_Process', elementName: 'Main Process', isDirect: false },
+    ];
+    const sampleElementCounts = { container: 1, component: 1, code: 0 };
+
+    it('upserts change tracking data', () => {
+      service.upsertChangeTracking(
+        '/test/repo',
+        'component',
+        sampleChangedFiles,
+        sampleAffectedElements,
+        sampleElementCounts
+      );
+
+      const result = service.getChangeTracking('/test/repo', 'component');
+
+      expect(result).not.toBeNull();
+      expect(result?.changedFiles).toEqual(sampleChangedFiles);
+      expect(result?.affectedElements).toEqual(sampleAffectedElements);
+      expect(result?.elementCounts).toEqual(sampleElementCounts);
+    });
+
+    it('replaces previous tracking data on upsert', () => {
+      service.upsertChangeTracking('/test/repo', 'component', ['/repo/file1.ts'], [], { component: 1 });
+      service.upsertChangeTracking('/test/repo', 'component', ['/repo/file2.ts'], sampleAffectedElements, { component: 2 });
+
+      const result = service.getChangeTracking('/test/repo', 'component');
+
+      expect(result).not.toBeNull();
+      // Latest data should be returned
+      expect(result?.changedFiles).toEqual(['/repo/file2.ts']);
+      expect(result?.elementCounts).toEqual({ component: 2 });
+    });
+
+    it('returns null for non-existent tracking data', () => {
+      const result = service.getChangeTracking('/nonexistent/repo', 'component');
+      expect(result).toBeNull();
+    });
+
+    it('clears change tracking data', () => {
+      service.upsertChangeTracking(
+        '/test/repo',
+        'component',
+        sampleChangedFiles,
+        sampleAffectedElements,
+        sampleElementCounts
+      );
+
+      service.clearChangeTracking('/test/repo', 'component');
+
+      const result = service.getChangeTracking('/test/repo', 'component');
+      expect(result).toBeNull();
+    });
+
+    it('stores and retrieves element counts correctly', () => {
+      const counts = { container: 1, component: 3, code: 7 };
+
+      service.upsertChangeTracking('/test/repo', 'code', sampleChangedFiles, sampleAffectedElements, counts);
+
+      const result = service.getChangeTracking('/test/repo', 'code');
+
+      expect(result).not.toBeNull();
+      expect(result?.elementCounts).toEqual(counts);
+      expect(result?.elementCounts.container).toBe(1);
+      expect(result?.elementCounts.component).toBe(3);
+      expect(result?.elementCounts.code).toBe(7);
+    });
+  });
 });

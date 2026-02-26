@@ -18,6 +18,7 @@ import * as fs from 'fs';
 import { app } from 'electron';
 import type { C4Level } from './types/c4Types';
 import type { DiagramState, StoredDiagram } from '../../../shared/types/diagramState';
+import type { AffectedElement } from '../../../shared/types/changeTracking';
 
 export class C4StorageService {
   private db: Database.Database;
@@ -138,12 +139,26 @@ export class C4StorageService {
 
       CREATE INDEX IF NOT EXISTS idx_repo_level ON diagram_storage(repo_path, level);
       CREATE INDEX IF NOT EXISTS idx_state ON diagram_storage(state);
+
+      CREATE TABLE IF NOT EXISTS diagram_change_tracking (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        repo_path TEXT NOT NULL,
+        level TEXT NOT NULL CHECK(level IN ('context','container','component','code')),
+        changed_files TEXT NOT NULL,
+        affected_elements TEXT NOT NULL,
+        element_counts TEXT NOT NULL,
+        recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(repo_path, level)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_change_tracking_repo
+        ON diagram_change_tracking(repo_path);
     `);
 
-    // Set user_version to 1 for v1.1 schema
+    // Set user_version to 2 for v1.2 schema (adds diagram_change_tracking table)
     const currentVersion = db.pragma('user_version', { simple: true }) as number;
-    if (currentVersion === 0) {
-      db.pragma('user_version = 1');
+    if (currentVersion < 2) {
+      db.pragma('user_version = 2');
     }
   }
 
@@ -342,6 +357,81 @@ export class C4StorageService {
       sizeBytes,
       diagramCount: countResult.count,
     };
+  }
+
+  /**
+   * Upsert change tracking data for a (repo, level) pair.
+   * Uses INSERT OR REPLACE to keep only the most recent snapshot.
+   * Called by ChangeTrackingService after each debounced flush.
+   */
+  upsertChangeTracking(
+    repoPath: string,
+    level: C4Level,
+    changedFiles: string[],
+    affectedElements: AffectedElement[],
+    elementCounts: Record<string, number>
+  ): void {
+    const normalizedPath = this.normalizePath(repoPath);
+
+    const stmt = this.db.prepare(`
+      INSERT OR REPLACE INTO diagram_change_tracking
+        (repo_path, level, changed_files, affected_elements, element_counts, recorded_at)
+      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `);
+
+    stmt.run(
+      normalizedPath,
+      level,
+      JSON.stringify(changedFiles),
+      JSON.stringify(affectedElements),
+      JSON.stringify(elementCounts)
+    );
+  }
+
+  /**
+   * Retrieve the most recent change tracking snapshot for a (repo, level) pair.
+   * Returns null if no tracking data exists.
+   */
+  getChangeTracking(
+    repoPath: string,
+    level: C4Level
+  ): { changedFiles: string[]; affectedElements: AffectedElement[]; elementCounts: Record<string, number> } | null {
+    const normalizedPath = this.normalizePath(repoPath);
+
+    const stmt = this.db.prepare(`
+      SELECT changed_files, affected_elements, element_counts
+      FROM diagram_change_tracking
+      WHERE repo_path = ? AND level = ?
+    `);
+
+    const result = stmt.get(normalizedPath, level) as
+      | { changed_files: string; affected_elements: string; element_counts: string }
+      | undefined;
+
+    if (!result) {
+      return null;
+    }
+
+    return {
+      changedFiles: JSON.parse(result.changed_files) as string[],
+      affectedElements: JSON.parse(result.affected_elements) as AffectedElement[],
+      elementCounts: JSON.parse(result.element_counts) as Record<string, number>,
+    };
+  }
+
+  /**
+   * Clear change tracking data for a (repo, level) pair.
+   * Called when state transitions to 'fresh' or 'generating' (diagram regenerated).
+   */
+  clearChangeTracking(repoPath: string, level: C4Level): void {
+    const normalizedPath = this.normalizePath(repoPath);
+
+    const stmt = this.db.prepare(`
+      DELETE FROM diagram_change_tracking
+      WHERE repo_path = ? AND level = ?
+    `);
+
+    stmt.run(normalizedPath, level);
   }
 
   /**
