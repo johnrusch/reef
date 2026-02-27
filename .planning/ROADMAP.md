@@ -78,11 +78,12 @@ Plans:
   3. Changes bubble up hierarchy visibly (Code change marks parent Component, Component marks parent Container)
   4. Multiple rapid file saves result in single aggregated update without API call spam
   5. User can see count of changed elements at each C4 level (e.g., "3 components changed")
-**Plans**: 2 plans (2 waves)
+**Plans**: 3 plans (2 waves + 1 gap closure)
 
 Plans:
-- [ ] 07-01-PLAN.md — Backend core: shared types, ChangeTrackingService, C4StorageService DB table extension (2 tasks, 4 files)
-- [ ] 07-02-PLAN.md — Integration: FileWatcherService wiring, IPC/preload, diagramStateStore extension, DiagramViewer handler (3 tasks, 7 files)
+- [x] 07-01-PLAN.md — Backend core: shared types, ChangeTrackingService, C4StorageService DB table extension (2 tasks, 4 files)
+- [x] 07-02-PLAN.md — Integration: FileWatcherService wiring, IPC/preload, diagramStateStore extension, DiagramViewer handler (3 tasks, 7 files)
+- [ ] 07-03-PLAN.md — Gap closure: Fix chokidar v4 glob incompatibility with directory-based watching and extension filtering (2 tasks, 2 files)
 
 ### Phase 8: Change Visualization
 **Goal**: Changed elements are visually distinct in diagrams
@@ -123,9 +124,9 @@ Plans:
 | 4. Polish & Advanced Features | v1.0 | 2/2 | Complete | 2026-02-24 |
 | 5. Persistent Storage Foundation | 8/8 | Complete   | 2026-02-25 | - |
 | 6. Auto-Generation on Repo Add | 3/3 | Complete   | 2026-02-25 | - |
-| 7. Enhanced Change Detection | 1/2 | In Progress|  | - |
+| 7. Enhanced Change Detection | 2/3 | In Progress|  | - |
 | 8. Change Visualization | v1.1 | 0/TBD | Not started | - |
 | 9. Diagram-to-Diff Navigation | v1.1 | 0/TBD | Not started | - |
 
 ---
-*Last updated: 2026-02-26 — Phase 7: Plans created (2 plans, 2 waves)*
+*Last updated: 2026-02-27 — Phase 7: Gap closure plan 07-03 added (chokidar v4 fix)*
