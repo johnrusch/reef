@@ -23,9 +23,9 @@ See: .planning/PROJECT.md (updated 2026-02-24)
 ## Current Position
 
 Phase: 7 of 9 (Enhanced Change Detection)
-Plan: 2 of 3 (complete)
-Status: Phase in progress
-Last activity: 2026-02-26 — Completed 07-02 pipeline wiring: FileWatcherService->ChangeTrackingService, IPC handlers, diagramStateStore affectedElements
+Plan: 3 of 3 (complete)
+Status: Phase complete
+Last activity: 2026-02-27 — Completed 07-03 chokidar v4 fix: directory-path watching, function predicate ignored, recursive staleness walk
 
 Progress: [█████░░░░░] 56% (5/9 phases complete, Phase 7 in progress)
 
@@ -76,6 +76,7 @@ Progress: [█████░░░░░] 56% (5/9 phases complete, Phase 7 in 
 |------|----------|-------|-------|
 | 07-01 | 808s | 2 | 6 |
 | 07-02 | 513s | 3 | 7 |
+| 07-03 | 187s | 2 | 2 |
 
 ## Accumulated Context
 
@@ -121,6 +122,10 @@ Recent decisions affecting current work:
 - [Phase 07-02]: c4-storage:update-state auto-clears change tracking on fresh/generating — single location for clearing, no renderer-side clearChangeTracking calls needed
 - [Phase 07-02]: useDiagramStateStore.getState() in DiagramViewer IPC callback — avoids re-subscriptions from exhaustive-deps (consistent with Phase 06-03)
 - [Phase 07-02]: DiagramViewer loads all 4 C4 levels on repo change for cold launch — 4 SQLite reads, ensures any level has persisted tracking hydrated
+- [Phase 07-03]: getWatchPaths returns concrete directory/file paths only — chokidar v4 removed glob support, directories watched recursively via depth option
+- [Phase 07-03]: ignored option uses function predicate — chokidar v4 anymatch uses exact string equality for string matchers, not glob expansion (globs silently match nothing)
+- [Phase 07-03]: isRelevantFile() extension filter in event handlers replaces glob-based path filtering
+- [Phase 07-03]: isDiagramStale() uses recursive hasNewerFiles() directory walk — startup staleness check previously skipped all glob patterns
 
 ### Pending Todos
 
@@ -134,9 +139,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-26 — Phase 7 Plan 2 complete: end-to-end pipeline wired, diagramStateStore affectedElements Map, DiagramViewer cold-launch recovery
-Stopped at: Completed 07-02-PLAN.md
+Last session: 2026-02-27 — Phase 7 Plan 3 complete: chokidar v4 fix (directory paths, function predicate, recursive staleness walk), 20 unit tests
+Stopped at: Completed 07-03-PLAN.md
 Resume file: None
 
 ---
-*Next step: Execute Phase 7 Plan 03 (UI visualization / stale indicator display).*
+*Phase 7 complete. Next: Phase 8 (Change Visualization UI) or further UAT validation.*

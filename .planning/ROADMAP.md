@@ -25,7 +25,7 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full details.
 
 - [x] **Phase 5: Persistent Storage Foundation** - Remove TTL expiration, establish diagram persistence across sessions (UAT gap closure in progress) (completed 2026-02-25)
 - [x] **Phase 6: Auto-Generation on Repo Add** - Prompt users to generate diagrams when adding repositories (completed 2026-02-25)
-- [ ] **Phase 7: Enhanced Change Detection** - Real-time file-to-element mapping with hierarchical propagation
+- [x] **Phase 7: Enhanced Change Detection** - Real-time file-to-element mapping with hierarchical propagation (completed 2026-02-27)
 - [ ] **Phase 8: Change Visualization** - Visual indicators for changed elements with tooltips and badges
 - [ ] **Phase 9: Diagram-to-Diff Navigation** - Contextual navigation from changed elements to diff viewer
 
@@ -124,7 +124,7 @@ Plans:
 | 4. Polish & Advanced Features | v1.0 | 2/2 | Complete | 2026-02-24 |
 | 5. Persistent Storage Foundation | 8/8 | Complete   | 2026-02-25 | - |
 | 6. Auto-Generation on Repo Add | 3/3 | Complete   | 2026-02-25 | - |
-| 7. Enhanced Change Detection | 2/3 | In Progress|  | - |
+| 7. Enhanced Change Detection | 3/3 | Complete   | 2026-02-27 | - |
 | 8. Change Visualization | v1.1 | 0/TBD | Not started | - |
 | 9. Diagram-to-Diff Navigation | v1.1 | 0/TBD | Not started | - |
 
