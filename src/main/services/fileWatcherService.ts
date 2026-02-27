@@ -2,18 +2,20 @@
  * File Watcher Service
  *
  * Monitors repository source files for changes and determines diagram staleness.
- * Uses chokidar for efficient file watching with level-specific patterns.
+ * Uses chokidar for efficient file watching with level-specific directory paths.
  *
  * Features:
- * - Level-specific file pattern watching (context/container/component/code)
+ * - Level-specific directory path watching (chokidar v4 compatible — no globs)
+ * - Extension filtering in event handlers per C4 level
+ * - Function predicate for ignored option (chokidar v4 anymatch uses exact string equality for strings)
  * - Debounced change detection (100ms stabilityThreshold)
  * - IPC event emission for stale diagrams via c4-storage:state-changed pipeline
- * - Startup staleness checks via generation timestamp comparison
+ * - Startup staleness checks via recursive directory walk (no glob expansion)
  */
 
 import chokidar, { FSWatcher } from 'chokidar';
 import { BrowserWindow } from 'electron';
-import { stat } from 'fs/promises';
+import { stat, readdir } from 'fs/promises';
 import { join } from 'path';
 import type { C4Level } from './c4/types/c4Types';
 import { C4StorageService } from './c4/c4StorageService';
@@ -43,20 +45,16 @@ export class FileWatcherService {
     }
 
     try {
-      const patterns = this.getFilePatterns(repoPath, level);
+      const paths = this.getWatchPaths(repoPath, level);
 
-      const watcher = chokidar.watch(patterns, {
+      const watcher = chokidar.watch(paths, {
         persistent: true,
         ignoreInitial: true, // Mark stale on new changes only
-        ignored: [
-          '**/node_modules/**',
-          '**/.git/**',
-          '**/dist/**',
-          '**/dist-electron/**',
-          '**/.cache/**',
-          '**/build/**',
-          '**/coverage/**',
-        ],
+        // CRITICAL: Must use a function predicate for chokidar v4.
+        // Chokidar v4 bundles anymatch which uses exact string equality for string matchers,
+        // NOT glob expansion. Glob strings like '**/node_modules/**' silently match nothing.
+        ignored: (filePath: string) =>
+          /node_modules|\.git[/\\]|[/\\]dist[/\\]|dist-electron|\.cache|[/\\]build[/\\]|[/\\]coverage[/\\]/.test(filePath),
         awaitWriteFinish: {
           stabilityThreshold: 100, // 100ms debounce
           pollInterval: 50,
@@ -64,17 +62,24 @@ export class FileWatcherService {
         depth: 10,
       });
 
+      // Filter events by extension before processing
+      const onFileEvent = (path: string) => {
+        if (this.isRelevantFile(path, level)) {
+          this.handleFileChange(repoPath, level, path);
+        }
+      };
+
       // Listen for file system events
-      watcher.on('change', (path) => this.handleFileChange(repoPath, level, path));
-      watcher.on('add', (path) => this.handleFileChange(repoPath, level, path));
-      watcher.on('unlink', (path) => this.handleFileChange(repoPath, level, path));
+      watcher.on('change', onFileEvent);
+      watcher.on('add', onFileEvent);
+      watcher.on('unlink', onFileEvent);
 
       watcher.on('error', (error) => {
         console.error(`File watcher error for ${key}:`, error);
       });
 
       this.watchers.set(key, watcher);
-      console.log(`Started watching ${key} with ${patterns.length} patterns`);
+      console.log(`Started watching ${key} with ${paths.length} paths`);
     } catch (error) {
       console.error(`Failed to start watching ${key}:`, error);
     }
@@ -159,6 +164,66 @@ export class FileWatcherService {
   // ========== Private Helper Methods ==========
 
   /**
+   * Get level-specific directory/file paths for chokidar v4 watching.
+   * Returns concrete file paths and directory paths — NO glob patterns.
+   * Chokidar v4 removed glob support; directories are watched recursively via depth option.
+   */
+  private getWatchPaths(repoPath: string, level: C4Level): string[] {
+    const paths: Record<C4Level, string[]> = {
+      // Context: System-level files (dependencies, config) and src directory for entry points
+      context: [
+        join(repoPath, 'package.json'),
+        join(repoPath, 'tsconfig.json'),
+        join(repoPath, 'src'), // directory - chokidar v4 recurses into it
+      ],
+
+      // Container: High-level structure (main process, renderer process directories)
+      container: [
+        join(repoPath, 'package.json'),
+        join(repoPath, 'src', 'main'),
+        join(repoPath, 'src', 'renderer'),
+      ],
+
+      // Component: All source files in src directory
+      component: [
+        join(repoPath, 'src'),
+      ],
+
+      // Code: All source files (most granular, same scope as component)
+      code: [
+        join(repoPath, 'src'),
+      ],
+    };
+
+    return paths[level];
+  }
+
+  /**
+   * Filter chokidar events by file extension per C4 level.
+   * Replaces glob patterns with event-handler filtering (chokidar v4 compatible).
+   */
+  private isRelevantFile(filePath: string, level: C4Level): boolean {
+    const ext = filePath.split('.').pop()?.toLowerCase() || '';
+
+    switch (level) {
+      case 'context':
+        // Context watches for main entry point and config files
+        return filePath.endsWith('package.json') ||
+               filePath.endsWith('tsconfig.json') ||
+               /main\.[jt]sx?$/.test(filePath);
+      case 'container':
+        // Container watches all files in main/renderer directories
+        return true;
+      case 'component':
+      case 'code':
+        // Component and code watch TypeScript/JavaScript source files
+        return ['ts', 'tsx', 'js', 'jsx'].includes(ext);
+      default:
+        return false;
+    }
+  }
+
+  /**
    * Handle file change events
    */
   private async handleFileChange(repoPath: string, level: C4Level, changedPath: string): Promise<void> {
@@ -233,46 +298,8 @@ export class FileWatcherService {
   }
 
   /**
-   * Get level-specific file patterns for watching
-   */
-  private getFilePatterns(repoPath: string, level: C4Level): string[] {
-    const patterns: Record<C4Level, string[]> = {
-      // Context: System-level files (dependencies, config, entry points)
-      context: [
-        join(repoPath, 'package.json'),
-        join(repoPath, 'tsconfig.json'),
-        join(repoPath, 'src/**/main.*'),
-      ],
-
-      // Container: High-level structure (main process, renderer process)
-      container: [
-        join(repoPath, 'package.json'),
-        join(repoPath, 'src/main/**/*'),
-        join(repoPath, 'src/renderer/**/*'),
-      ],
-
-      // Component: All source files in src
-      component: [
-        join(repoPath, 'src/**/*.ts'),
-        join(repoPath, 'src/**/*.tsx'),
-        join(repoPath, 'src/**/*.js'),
-        join(repoPath, 'src/**/*.jsx'),
-      ],
-
-      // Code: All source files (most granular)
-      code: [
-        join(repoPath, 'src/**/*.ts'),
-        join(repoPath, 'src/**/*.tsx'),
-        join(repoPath, 'src/**/*.js'),
-        join(repoPath, 'src/**/*.jsx'),
-      ],
-    };
-
-    return patterns[level];
-  }
-
-  /**
-   * Check if diagram is stale by comparing file mtimes to generation timestamp
+   * Check if diagram is stale by comparing file mtimes to generation timestamp.
+   * Walks watched directories recursively instead of relying on glob expansion.
    */
   private async isDiagramStale(
     repoPath: string,
@@ -280,31 +307,70 @@ export class FileWatcherService {
     generationTimestamp: number
   ): Promise<boolean> {
     try {
-      const patterns = this.getFilePatterns(repoPath, level);
+      const paths = this.getWatchPaths(repoPath, level);
 
-      for (const pattern of patterns) {
-        // Simple file check (non-glob patterns like package.json, tsconfig.json)
-        if (!pattern.includes('*')) {
-          try {
-            const fileStat = await stat(pattern);
+      for (const watchPath of paths) {
+        try {
+          const pathStat = await stat(watchPath);
+
+          if (pathStat.isFile()) {
+            // Concrete file — check directly
+            if (this.isRelevantFile(watchPath, level) && pathStat.mtimeMs > generationTimestamp) {
+              return true;
+            }
+          } else if (pathStat.isDirectory()) {
+            // Directory — walk recursively checking relevant files
+            if (await this.hasNewerFiles(watchPath, level, generationTimestamp)) {
+              return true;
+            }
+          }
+        } catch {
+          // Path doesn't exist, continue
+          continue;
+        }
+      }
+
+      return false;
+    } catch (error) {
+      console.error(`Error checking staleness for ${repoPath}:${level}:`, error);
+      return true; // Default to stale for safety
+    }
+  }
+
+  /**
+   * Recursively walk a directory looking for files newer than generationTimestamp.
+   * Skips node_modules, .git, dist, dist-electron, .cache, build, coverage directories.
+   */
+  private async hasNewerFiles(
+    dirPath: string,
+    level: C4Level,
+    generationTimestamp: number
+  ): Promise<boolean> {
+    const IGNORED_DIRS = new Set(['node_modules', '.git', 'dist', 'dist-electron', '.cache', 'build', 'coverage']);
+
+    try {
+      const entries = await readdir(dirPath, { withFileTypes: true });
+
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          if (IGNORED_DIRS.has(entry.name)) continue;
+          if (await this.hasNewerFiles(join(dirPath, entry.name), level, generationTimestamp)) {
+            return true;
+          }
+        } else if (entry.isFile()) {
+          const fullPath = join(dirPath, entry.name);
+          if (this.isRelevantFile(fullPath, level)) {
+            const fileStat = await stat(fullPath);
             if (fileStat.mtimeMs > generationTimestamp) {
               return true;
             }
-          } catch {
-            // File doesn't exist, continue
-            continue;
           }
         }
       }
 
-      // For glob patterns, we rely on the chokidar file watcher to detect changes
-      // at runtime. The startup check only validates non-glob files.
-      // This is acceptable because chokidar will catch glob-matched changes once watching starts.
       return false;
-    } catch (error) {
-      console.error(`Error checking staleness for ${repoPath}:${level}:`, error);
-      // Default to stale for safety
-      return true;
+    } catch {
+      return false;
     }
   }
 }
