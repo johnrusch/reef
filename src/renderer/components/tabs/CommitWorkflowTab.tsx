@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { EnhancedChangesPanel } from '../repository/EnhancedChangesPanel';
 import { CommitComposer } from '../repository/CommitComposer';
 import { CommitHistory } from '../repository/CommitHistory';
 import { DiffViewer } from '../repository/DiffViewer';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useDiagramNavigationStore } from '../../stores/diagramNavigationStore';
+import type { DiagramNavigationReturn } from '../../stores/diagramNavigationStore';
+import { useNavigationStore } from '../../stores/navigationStore';
+import { useRepositoryStore } from '../../stores/repositoryStore';
 
 interface CommitWorkflowTabProps {
   repository: any;
@@ -32,8 +36,18 @@ export const CommitWorkflowTab: React.FC<CommitWorkflowTabProps> = ({
   const [diffContent, setDiffContent] = useState<string>('');
   const [leftPanelView, setLeftPanelView] = useState<'changes' | 'history'>('changes');
   const [isCommitPanelExpanded, setIsCommitPanelExpanded] = useState(false);
+  const [highlightedFile, setHighlightedFile] = useState<string | null>(null);
+  const [diagramReturn, setDiagramReturn] = useState<DiagramNavigationReturn | null>(null);
+
+  const intent = useDiagramNavigationStore(s => s.intent);
+  const clearIntent = useDiagramNavigationStore(s => s.clearIntent);
 
   const handleViewDiff = async (file: string) => {
+    // Clear diagram highlight when user manually selects a different file
+    if (highlightedFile && file !== highlightedFile) {
+      setHighlightedFile(null);
+      setDiagramReturn(null);
+    }
     try {
       const diff = await onViewDiff(file);
       setSelectedDiffFile(file);
@@ -44,6 +58,40 @@ export const CommitWorkflowTab: React.FC<CommitWorkflowTabProps> = ({
       setDiffContent('Error loading diff. Please try again.');
     }
   };
+
+  // Consume diagram navigation intent — auto-open diff and highlight the target file
+  useEffect(() => {
+    if (!intent) return;
+    // Guard against stale intents older than 5 seconds
+    if (Date.now() - intent.createdAt > 5000) {
+      clearIntent();
+      return;
+    }
+    // Capture return info BEFORE clearing intent
+    setDiagramReturn({ returnStack: intent.returnStack, returnLevel: intent.returnLevel });
+    setHighlightedFile(intent.targetFile);
+    // Auto-open the diff for the target file (fire-and-forget)
+    void handleViewDiff(intent.targetFile);
+    clearIntent();
+  }, [intent]);
+
+  const handleBackToDiagram = useCallback(() => {
+    if (!diagramReturn) return;
+    const navStore = useNavigationStore.getState();
+    const repoStore = useRepositoryStore.getState();
+
+    // Restore diagram position using restoreStack (added in 09-01)
+    navStore.restoreStack(diagramReturn.returnStack);
+
+    // Switch back to visual map tab
+    repoStore.setActiveTab('visualmap');
+
+    // Clear navigation state
+    setDiagramReturn(null);
+    setHighlightedFile(null);
+    setSelectedDiffFile(null);
+    setDiffContent('');
+  }, [diagramReturn]);
 
   const handleRevertLines = async (lineChanges: any) => {
     if (!repository?.path) return;
@@ -175,6 +223,7 @@ export const CommitWorkflowTab: React.FC<CommitWorkflowTabProps> = ({
                   onUnstageFiles={onUnstageFiles}
                   onDiscardChanges={onDiscardChanges}
                   onViewDiff={handleViewDiff}
+                  highlightedFile={highlightedFile ?? undefined}
                 />
               ) : (
                 <CommitHistory
@@ -207,6 +256,8 @@ export const CommitWorkflowTab: React.FC<CommitWorkflowTabProps> = ({
                 }}
                 onRevertLines={handleRevertLines}
                 repoPath={repository?.path}
+                fromDiagram={diagramReturn !== null}
+                onBackToDiagram={handleBackToDiagram}
               />
             ) : (
               <div className="h-full w-full flex items-center justify-center">
