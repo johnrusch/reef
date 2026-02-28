@@ -126,7 +126,7 @@ Plans:
 | 5. Persistent Storage Foundation | 8/8 | Complete   | 2026-02-25 | - |
 | 6. Auto-Generation on Repo Add | 3/3 | Complete   | 2026-02-25 | - |
 | 7. Enhanced Change Detection | 3/3 | Complete   | 2026-02-27 | - |
-| 8. Change Visualization | v1.1 | 0/TBD | Not started | - |
+| 8. Change Visualization | 1/2 | In Progress|  | - |
 | 9. Diagram-to-Diff Navigation | v1.1 | 0/TBD | Not started | - |
 
 ---

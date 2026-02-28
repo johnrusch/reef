@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-02-24)
 
 ## Current Position
 
-Phase: 7 of 9 (Enhanced Change Detection)
-Plan: 3 of 3 (complete)
-Status: Phase complete
-Last activity: 2026-02-27 — Completed 07-03 chokidar v4 fix: directory-path watching, function predicate ignored, recursive staleness walk
+Phase: 8 of 9 (Change Visualization)
+Plan: 1 of 3 (complete)
+Status: Plan 1 complete
+Last activity: 2026-02-28 — Completed 08-01 SVG change highlighting: changedFiles store, applyChangeHighlighting(), amber fill/dashed border via data-changed attributes
 
-Progress: [█████░░░░░] 56% (5/9 phases complete, Phase 7 in progress)
+Progress: [██████░░░░] 61% (5/9 phases complete, Phase 8 Plan 1 in progress)
 
 ## Performance Metrics
 
@@ -78,6 +78,11 @@ Progress: [█████░░░░░] 56% (5/9 phases complete, Phase 7 in 
 | 07-02 | 513s | 3 | 7 |
 | 07-03 | 187s | 2 | 2 |
 
+**Phase 8 Details:**
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| 08-01 | 212s | 2 | 5 |
+
 ## Accumulated Context
 
 ### Decisions
@@ -126,6 +131,9 @@ Recent decisions affecting current work:
 - [Phase 07-03]: ignored option uses function predicate — chokidar v4 anymatch uses exact string equality for string matchers, not glob expansion (globs silently match nothing)
 - [Phase 07-03]: isRelevantFile() extension filter in event handlers replaces glob-based path filtering
 - [Phase 07-03]: isDiagramStale() uses recursive hasNewerFiles() directory walk — startup staleness check previously skipped all glob patterns
+- [Phase 08-01]: Export applyChangeHighlighting() as standalone testable function from PlantUMLRenderer — avoids complex async SVG generation mock in tests
+- [Phase 08-01]: Inject <style data-reef-changes> inside SVG for !important override of inline PlantUML presentation attributes — data-changed attribute CSS selectors with amber fill/stroke-dasharray
+- [Phase 08-01]: Keep changedFiles/showChanges in DiagramPanel interface but prefix destructured names with underscore — preserves callers while suppressing TS unused variable errors after legacy legend removal
 
 ### Pending Todos
 
@@ -139,9 +147,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-27 — Phase 7 Plan 3 complete: chokidar v4 fix (directory paths, function predicate, recursive staleness walk), 20 unit tests
-Stopped at: Completed 07-03-PLAN.md
+Last session: 2026-02-28 — Phase 8 Plan 1 complete: SVG change highlighting (changedFiles store, applyChangeHighlighting, amber fill/dashed border), 33 tests passing
+Stopped at: Completed 08-01-PLAN.md
 Resume file: None
 
 ---
-*Phase 7 complete. Next: Phase 8 (Change Visualization UI) or further UAT validation.*
+*Phase 8 Plan 1 complete. Next: Phase 8 Plan 2 (Tooltip overlay for changed element file paths).*
