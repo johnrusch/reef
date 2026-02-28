@@ -101,12 +101,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NAVG-03 | Phase 9 | Pending |
 | NAVG-04 | Phase 9 | Pending |
 | NAVG-05 | Phase 9 | Pending |
+| STOR-04 | Phase 10 | Integration fix |
+| AGEN-04 | Phase 10 | Integration fix |
+| AGEN-05 | Phase 10 | Integration fix |
 
 **Coverage:**
 - v1.1 requirements: 23 total
 - Mapped to phases: 23
 - Unmapped: 0
+- Integration fixes: 3 (STOR-04, AGEN-04, AGEN-05 via Phase 10)
 
 ---
 *Requirements defined: 2026-02-24*
-*Last updated: 2026-02-24 after roadmap creation*
+*Last updated: 2026-02-28 after gap closure phase creation*

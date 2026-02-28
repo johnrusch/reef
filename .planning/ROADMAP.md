@@ -28,6 +28,7 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full details.
 - [x] **Phase 7: Enhanced Change Detection** - Real-time file-to-element mapping with hierarchical propagation (completed 2026-02-27)
 - [x] **Phase 8: Change Visualization** - Visual indicators for changed elements with tooltips and badges (completed 2026-02-28)
 - [ ] **Phase 9: Diagram-to-Diff Navigation** - Contextual navigation from changed elements to diff viewer
+- [ ] **Phase 10: State Transition Wiring & Cleanup** - Fix integration gaps: state transitions after background generation, singleton usage, dead listener removal (Gap Closure)
 
 ## Phase Details
 
@@ -115,6 +116,20 @@ Plans:
 Plans:
 - [ ] 09-01: TBD
 
+### Phase 10: State Transition Wiring & Cleanup
+**Goal**: Fix cross-phase integration gaps so background generation correctly updates UI state
+**Depends on**: Phase 6 (code changes target generationQueueService, C4AnalyzerService, DiagramViewer)
+**Requirements**: STOR-04 (integration fix), AGEN-04 (integration fix), AGEN-05 (integration fix)
+**Gap Closure**: Closes integration issues 1-3 and Flow 3 from v1.1 audit
+**Success Criteria** (what must be TRUE):
+  1. DiagramStateBadge updates to "generating" then "fresh" after background auto-generation completes
+  2. C4AnalyzerService writes go through the storage singleton, triggering IPC state notifications
+  3. No dead IPC listeners remain in renderer code
+**Plans**: TBD
+
+Plans:
+- [ ] 10-01: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -128,6 +143,7 @@ Plans:
 | 7. Enhanced Change Detection | 3/3 | Complete   | 2026-02-27 | - |
 | 8. Change Visualization | 2/2 | Complete   | 2026-02-28 | - |
 | 9. Diagram-to-Diff Navigation | v1.1 | 0/TBD | Not started | - |
+| 10. State Transition Wiring & Cleanup | v1.1 | 0/TBD | Not started | - |
 
 ---
-*Last updated: 2026-02-27 — Phase 7: Gap closure plan 07-03 added (chokidar v4 fix)*
+*Last updated: 2026-02-28 — Phase 10 added for integration gap closure (audit findings)*
