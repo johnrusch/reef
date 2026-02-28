@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-02-24)
 
 ## Current Position
 
-Phase: 8 of 9 (Change Visualization)
-Plan: 2 of 3 (complete)
-Status: Plan 2 complete
-Last activity: 2026-02-28 — Completed 08-02 ChangeBadge component: amber badge with direct/inherited counts, portal tooltip listing changed file names, wired into DiagramPanel stale state header
+Phase: 9 of 9 (Diagram-to-Diff Navigation)
+Plan: 1 of 2 (complete)
+Status: Plan 1 complete
+Last activity: 2026-02-28 — Completed 09-01: diagramNavigationStore + restoreStack + DiagramViewer code-level click intercept
 
-Progress: [██████░░░░] 61% (5/9 phases complete, Phase 8 Plan 1 in progress)
+Progress: [████████░░] 78% (8/9 phases complete, Phase 9 Plan 1 complete)
 
 ## Performance Metrics
 
@@ -84,6 +84,11 @@ Progress: [██████░░░░] 61% (5/9 phases complete, Phase 8 Pla
 | 08-01 | 212s | 2 | 5 |
 | 08-02 | 99s | 2 | 4 |
 
+**Phase 9 Details:**
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| 09-01 | 81s | 2 | 3 |
+
 ## Accumulated Context
 
 ### Decisions
@@ -138,6 +143,10 @@ Recent decisions affecting current work:
 - [Phase 08-02]: Conditionally render portal only when showTooltip===true — tooltip DOM absent before hover, required for VISU-03 test case 7
 - [Phase 08-02]: Fixed-position tooltip via getBoundingClientRect escapes DiagramPanel overflow-hidden without Radix Tooltip dependency
 - [Phase 08-02]: ChangeBadge renders in DiagramPanel only when diagramState === 'stale', and returns null itself when both counts are zero
+- [Phase 09-01]: No persist middleware on diagramNavigationStore — intent consumed once, must not survive restart (consistent with toastStore)
+- [Phase 09-01]: setIntent called BEFORE setActiveTab to prevent race condition where consumer reads empty intent (Pitfall 3)
+- [Phase 09-01]: handleNavigateToDiff uses .getState() pattern consistent with Phase 06-03 and 07-02 decisions
+- [Phase 09-01]: Code-level click defaults to changedFilePaths[0] — first changed file is reasonable default per research Option A
 
 ### Pending Todos
 
@@ -151,9 +160,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-28 — Phase 8 Plan 2 complete: ChangeBadge with amber badge, portal tooltip listing changed file names; 40 tests passing
-Stopped at: Completed 08-02-PLAN.md
+Last session: 2026-02-28 — Phase 9 Plan 1 complete: diagramNavigationStore (ephemeral intent store), restoreStack on navigationStore, DiagramViewer code-level click intercept wired to commit tab
+Stopped at: Completed 09-01-PLAN.md
 Resume file: None
 
 ---
-*Phase 8 Plan 2 complete. Next: Phase 8 Plan 3.*
+*Phase 9 Plan 1 complete. Next: Phase 9 Plan 2 (CommitWorkflowTab consume side).*

@@ -143,7 +143,7 @@ Plans:
 | 6. Auto-Generation on Repo Add | 3/3 | Complete   | 2026-02-25 | - |
 | 7. Enhanced Change Detection | 3/3 | Complete   | 2026-02-27 | - |
 | 8. Change Visualization | 2/2 | Complete   | 2026-02-28 | - |
-| 9. Diagram-to-Diff Navigation | v1.1 | 0/TBD | Not started | - |
+| 9. Diagram-to-Diff Navigation | 1/2 | In Progress|  | - |
 | 10. State Transition Wiring & Cleanup | v1.1 | 0/TBD | Not started | - |
 
 ---
