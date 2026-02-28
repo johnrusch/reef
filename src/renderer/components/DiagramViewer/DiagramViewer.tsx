@@ -10,6 +10,8 @@ import { CommandPalette } from './CommandPalette';
 import { GeneratePromptCard } from './GeneratePromptCard';
 import { useNavigationStore, getNextLevel, type DiagramSearchItem } from '../../stores/navigationStore';
 import { useDiagramStateStore } from '../../stores/diagramStateStore';
+import { useDiagramNavigationStore } from '../../stores/diagramNavigationStore';
+import { useRepositoryStore } from '../../stores/repositoryStore';
 import { Loader2, AlertCircle } from 'lucide-react';
 
 export type DiagramType = 'component' | 'class' | 'sequence' | 'c4-context' | 'c4-container' | 'c4-component' | 'c4-code';
@@ -169,6 +171,23 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
     await onRegenerateDiagram({ ...currentOptions });
   }, [currentOptions, onRegenerateDiagram]);
 
+  const handleNavigateToDiff = useCallback((filePath: string) => {
+    const { setIntent } = useDiagramNavigationStore.getState();
+    const { setActiveTab } = useRepositoryStore.getState();
+
+    // Snapshot current diagram position for back navigation
+    // CRITICAL: setIntent BEFORE setActiveTab to avoid race condition (Pitfall 3)
+    setIntent({
+      targetFile: filePath,
+      returnStack: [...navigationStore.stack],
+      returnLevel: currentOptions.type,
+      createdAt: Date.now(),
+    });
+
+    // Switch to commit tab after intent is set
+    setActiveTab('commit');
+  }, [navigationStore.stack, currentOptions.type]);
+
   const handleBreadcrumbNavigate = useCallback(async (index: number) => {
     const targetLevel = navigationStore.stack[index];
     navigationStore.navigateTo(index);
@@ -192,9 +211,12 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
     const currentNavLevel = navigationStore.currentLevel();
     const nextLevel = getNextLevel(currentNavLevel.level);
 
-    // Can't drill down from Code level
+    // Code level: check if this element has changes — navigate to diff viewer
     if (!nextLevel) {
-      console.log('Already at Code level, cannot drill down further');
+      const isChangedElement = directChangedIds.includes(elementId) || inheritedChangedIds.includes(elementId);
+      if (isChangedElement && changedFilePaths.length > 0) {
+        handleNavigateToDiff(changedFilePaths[0]);
+      }
       return;
     }
 
@@ -228,7 +250,7 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
       navigationStore.pop();
       console.error('Failed to drill down:', error);
     }
-  }, [isGenerating, currentOptions, navigationStore, onRegenerateDiagram]);
+  }, [isGenerating, currentOptions, navigationStore, onRegenerateDiagram, directChangedIds, inheritedChangedIds, changedFilePaths, handleNavigateToDiff]);
 
   const handleCommandPaletteNavigate = useCallback(async (item: DiagramSearchItem) => {
     // Reset navigation to context first
