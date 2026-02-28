@@ -111,10 +111,11 @@ Plans:
   3. Diff viewer displays context banner indicating navigation came from diagram
   4. User can click back button in diff viewer to return to exact diagram position
   5. Changed files are visually highlighted in changes panel when navigating from diagram
-**Plans**: TBD
+**Plans**: 2 plans (2 waves)
 
 Plans:
-- [ ] 09-01: TBD
+- [ ] 09-01-PLAN.md — Navigation intent store, navigationStore restoreStack, DiagramViewer code-level click intercept (2 tasks, 3 files)
+- [ ] 09-02-PLAN.md — CommitWorkflowTab intent consumption, DiffViewer context banner, EnhancedChangesPanel file highlighting (2 tasks, 3 files)
 
 ### Phase 10: State Transition Wiring & Cleanup
 **Goal**: Fix cross-phase integration gaps so background generation correctly updates UI state
