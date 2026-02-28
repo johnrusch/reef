@@ -353,23 +353,6 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
     void loadChangeTracking();
   }, [_repository?.path]);
 
-  // Subscribe to staleness events from main process
-  useEffect(() => {
-    const handleStaleEvent = (_event: any, data: { repoPath: string; level: string }) => {
-      // Check if this event is for current diagram
-      const currentLevel = currentOptions.type.replace('c4-', '');
-      if (data.level === currentLevel) {
-        setIsStale(true);
-      }
-    };
-
-    window.reef.ipc.on('diagram:stale', handleStaleEvent);
-
-    return () => {
-      window.reef.ipc.off('diagram:stale', handleStaleEvent);
-    };
-  }, [currentOptions.type]);
-
   // Start/stop file watcher when diagram type changes
   useEffect(() => {
     // Only watch for C4 diagram types
