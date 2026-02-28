@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-02-24)
 ## Current Position
 
 Phase: 9 of 9 (Diagram-to-Diff Navigation)
-Plan: 1 of 2 (complete)
-Status: Plan 1 complete
-Last activity: 2026-02-28 — Completed 09-01: diagramNavigationStore + restoreStack + DiagramViewer code-level click intercept
+Plan: 2 of 2 (complete)
+Status: Phase 9 complete — all plans done
+Last activity: 2026-02-28 — Completed 09-02: CommitWorkflowTab consume side, amber file highlight, DiffViewer context banner, back-to-diagram round-trip
 
-Progress: [████████░░] 78% (8/9 phases complete, Phase 9 Plan 1 complete)
+Progress: [██████████] 100% (9/9 phases complete, Phase 9 Plan 2 complete)
 
 ## Performance Metrics
 
@@ -88,6 +88,7 @@ Progress: [████████░░] 78% (8/9 phases complete, Phase 9 Pla
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | 09-01 | 81s | 2 | 3 |
+| 09-02 | ~300s | 2 | 3 |
 
 ## Accumulated Context
 
@@ -147,6 +148,10 @@ Recent decisions affecting current work:
 - [Phase 09-01]: setIntent called BEFORE setActiveTab to prevent race condition where consumer reads empty intent (Pitfall 3)
 - [Phase 09-01]: handleNavigateToDiff uses .getState() pattern consistent with Phase 06-03 and 07-02 decisions
 - [Phase 09-01]: Code-level click defaults to changedFilePaths[0] — first changed file is reasonable default per research Option A
+- [Phase 09-02]: Intent consumption useEffect has 5-second stale guard to prevent stale intents from mis-navigating on re-mount
+- [Phase 09-02]: diagramReturn captured before clearIntent() to avoid race condition where intent is null when read in callback
+- [Phase 09-02]: handleBackToDiagram uses .getState() pattern — consistent with Phase 06-03 and 07-02 decisions
+- [Phase 09-02]: Manual file selection clears diagramReturn and highlightedFile — banner and amber highlight disappear on intentional user navigation
 
 ### Pending Todos
 
@@ -160,9 +165,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-28 — Phase 9 Plan 1 complete: diagramNavigationStore (ephemeral intent store), restoreStack on navigationStore, DiagramViewer code-level click intercept wired to commit tab
-Stopped at: Completed 09-01-PLAN.md
+Last session: 2026-02-28 — Phase 9 Plan 2 complete: CommitWorkflowTab consume side wired (intent consumption, amber file highlight, DiffViewer context banner, back-to-diagram round-trip)
+Stopped at: Completed 09-02-PLAN.md
 Resume file: None
 
 ---
-*Phase 9 Plan 1 complete. Next: Phase 9 Plan 2 (CommitWorkflowTab consume side).*
+*Phase 9 complete. All 9 phases done. v1.1 milestone: Persistent Diagrams with Change Visualization + Diagram-to-Diff Navigation — COMPLETE.*
