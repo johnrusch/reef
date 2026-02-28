@@ -87,8 +87,23 @@ export function registerGenerationQueueHandlers(): void {
         const percent = Math.round(((i + 1) / C4_LEVELS.length) * 100);
 
         try {
+          // Emit 'generating' state before starting each level.
+          // Note (Pitfall 2): updateState may UPDATE zero rows if no diagram_storage row exists
+          // yet for this level (first-ever generation). This is acceptable — the IPC broadcast
+          // still fires and the renderer's Zustand store updates to 'generating'. The 'fresh'
+          // state fires after storeDiagram() creates the row, so that call is safe.
+          getStorageService().updateState(repoPath, level, 'generating');
+          getStorageService().clearChangeTracking(repoPath, level);
+          broadcastToAll('c4-storage:state-changed', { repoPath, level, state: 'generating' });
+
           await analyzer.generateC4Diagram(repoPath, level);
           completedLevels.push(level);
+
+          // Emit 'fresh' state after each level completes
+          getStorageService().updateState(repoPath, level, 'fresh');
+          getStorageService().clearChangeTracking(repoPath, level);
+          broadcastToAll('c4-storage:state-changed', { repoPath, level, state: 'fresh' });
+
           broadcastToAll('c4-generation:progress', {
             repoPath,
             repoName,
@@ -98,6 +113,8 @@ export function registerGenerationQueueHandlers(): void {
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : String(err);
           console.error(`[GenerationQueue] Failed to generate ${level} diagram:`, errorMessage);
+          getStorageService().updateState(repoPath, level, 'error', undefined, errorMessage);
+          broadcastToAll('c4-storage:state-changed', { repoPath, level, state: 'error', errorMessage });
           broadcastToAll('c4-generation:complete', {
             repoPath,
             repoName,

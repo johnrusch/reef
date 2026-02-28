@@ -13,7 +13,7 @@
 import { StaticAnalyzerService } from './staticAnalyzerService';
 import { AIEnricherService } from './aiEnricherService';
 import { C4PlantUMLGenerator } from './c4PlantUMLGenerator';
-import { C4StorageService } from './c4StorageService';
+import { getStorageService } from './c4StorageHandlers';
 import type { C4Level } from './types/c4Types';
 import type { DiagramResult } from '../../../shared/types/diagram';
 import type { AnalysisResult } from './types/analysisTypes';
@@ -23,13 +23,11 @@ export class C4AnalyzerService {
   private staticAnalyzer: StaticAnalyzerService;
   private aiEnricher: AIEnricherService;
   private generator: C4PlantUMLGenerator;
-  private storage: C4StorageService;
 
   constructor(apiKey: string) {
     this.staticAnalyzer = new StaticAnalyzerService();
     this.aiEnricher = new AIEnricherService(apiKey);
     this.generator = new C4PlantUMLGenerator();
-    this.storage = new C4StorageService();
   }
 
   /**
@@ -43,7 +41,7 @@ export class C4AnalyzerService {
   ): Promise<DiagramResult> {
     try {
       // Check persistent storage first
-      const cached = this.storage.getDiagram(repoPath, level, elementId);
+      const cached = getStorageService().getDiagram(repoPath, level, elementId);
 
       if (cached && cached.diagramContent) {
         console.log(`[C4 Analyzer] Storage hit for ${level} diagram`);
@@ -110,7 +108,7 @@ export class C4AnalyzerService {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      this.storage.storeDiagram(storedDiagram);
+      getStorageService().storeDiagram(storedDiagram);
 
       console.log(`[C4 Analyzer] Successfully generated ${level} diagram`);
 
@@ -172,7 +170,7 @@ export class C4AnalyzerService {
    * Clears stored diagrams for a repository
    */
   clearRepositoryCache(repoPath: string): void {
-    this.storage.deleteDiagramsForRepo(repoPath);
+    getStorageService().deleteDiagramsForRepo(repoPath);
     console.log(`[C4 Analyzer] Cleared diagrams for ${repoPath}`);
   }
 
@@ -262,9 +260,11 @@ export class C4AnalyzerService {
   }
 
   /**
-   * Closes storage database connection
+   * No-op: storage lifecycle managed by cleanupC4Storage() singleton in main.ts.
+   * Calling .close() on the shared singleton would close the connection and break
+   * all subsequent storage operations — singleton lifecycle is managed at app shutdown.
    */
   close(): void {
-    this.storage.close();
+    // No-op: storage lifecycle managed by cleanupC4Storage() singleton in main.ts
   }
 }
