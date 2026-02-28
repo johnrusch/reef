@@ -31,6 +31,7 @@ interface NavigationState {
   navigateTo: (index: number) => void;
   reset: (repositoryPath?: string) => void;
   setRepository: (path: string) => void;
+  restoreStack: (stack: NavigationLevel[]) => void;
 }
 
 const LEVEL_ORDER = ['context', 'container', 'component', 'code'] as const;
@@ -140,6 +141,10 @@ export const useNavigationStore = create<NavigationState>()(
             stack: initialStack
           });
         }
+      },
+
+      restoreStack: (stack: NavigationLevel[]) => {
+        set({ stack: [...stack] });
       },
     }),
     {
