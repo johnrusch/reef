@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import { PlantUMLRenderer } from '../PlantUMLRenderer';
 import { Maximize2, Minimize2, Download, Copy, Info } from 'lucide-react';
 import type { DiagramMetadata } from './DiagramViewer';
@@ -18,6 +18,8 @@ interface DiagramPanelProps {
   diagramState?: DiagramState;
   diagramErrorMessage?: string;
   onRegenerateFromBadge?: () => void;
+  directChangedIds?: string[];
+  inheritedChangedIds?: string[];
 }
 
 import { DiagramStateBadge } from './DiagramStateBadge';
@@ -25,8 +27,8 @@ import { DiagramStateBadge } from './DiagramStateBadge';
 export const DiagramPanel: React.FC<DiagramPanelProps> = ({
   content,
   metadata,
-  changedFiles = [],
-  showChanges = false,
+  changedFiles: _changedFiles = [],
+  showChanges: _showChanges = false,
   isFullscreen,
   onToggleFullscreen,
   onExport,
@@ -35,44 +37,11 @@ export const DiagramPanel: React.FC<DiagramPanelProps> = ({
   diagramState,
   diagramErrorMessage,
   onRegenerateFromBadge,
+  directChangedIds = [],
+  inheritedChangedIds = [],
 }) => {
-  const [highlightedContent, setHighlightedContent] = useState(content);
   const [showLegend, setShowLegend] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const highlightChangesInDiagram = () => {
-      let modifiedContent = content;
-      
-      changedFiles.forEach(file => {
-        const componentName = extractComponentName(file);
-        if (componentName) {
-          const highlightPattern = new RegExp(
-            `(class|component|participant|entity|interface)\\s+(${componentName})`,
-            'gi'
-          );
-          modifiedContent = modifiedContent.replace(
-            highlightPattern,
-            (_match, type, name) => `${type} ${name} #FFE4B5`
-          );
-        }
-      });
-
-      setHighlightedContent(modifiedContent);
-    };
-
-    if (showChanges && changedFiles.length > 0) {
-      highlightChangesInDiagram();
-    } else {
-      setHighlightedContent(content);
-    }
-  }, [content, changedFiles, showChanges]);
-
-  const extractComponentName = (filePath: string): string => {
-    const parts = filePath.split('/');
-    const fileName = parts[parts.length - 1];
-    return fileName.replace(/\.(ts|tsx|js|jsx)$/, '');
-  };
 
   const handleCopyDiagram = () => {
     navigator.clipboard.writeText(content).then(() => {
@@ -141,31 +110,8 @@ export const DiagramPanel: React.FC<DiagramPanelProps> = ({
         </button>
       </div>
 
-      {showLegend && showChanges && (
-        <div className="absolute top-16 right-4 z-10 bg-gray-900/90 rounded-lg p-3 border border-gray-700">
-          <h4 className="text-xs font-semibold text-gray-300 mb-2">Legend</h4>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-[#FFE4B5] rounded" />
-              <span className="text-xs text-gray-400">Changed Components</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-gray-600 rounded" />
-              <span className="text-xs text-gray-400">Unchanged Components</span>
-            </div>
-          </div>
-          {changedFiles.length > 0 && (
-            <div className="mt-2 pt-2 border-t border-gray-700">
-              <p className="text-xs text-gray-500">
-                {changedFiles.length} file{changedFiles.length !== 1 ? 's' : ''} changed
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
       <PlantUMLRenderer
-        content={highlightedContent}
+        content={content}
         metadata={{
           tokensUsed: metadata.tokensUsed,
           generatedAt: metadata.generatedAt,
@@ -174,6 +120,8 @@ export const DiagramPanel: React.FC<DiagramPanelProps> = ({
         className="h-full"
         onElementClick={onElementClick}
         isClickable={isClickable}
+        directChangedIds={directChangedIds}
+        inheritedChangedIds={inheritedChangedIds}
       />
 
       {isFullscreen && (

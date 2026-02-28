@@ -90,6 +90,19 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
   const currentState = getState(_repository?.path || '', currentLevel, currentElementId);
   const stateEntry = useDiagramStateStore(s => s.getEntry(_repository?.path || '', currentLevel, currentElementId));
 
+  // Compute highlight element IDs for SVG change visualization
+  const affectedElements = useDiagramStateStore(
+    s => s.getAffectedElements(_repository?.path || '', currentLevel)
+  );
+  const directChangedIds = useMemo(
+    () => affectedElements.filter(e => e.isDirect).map(e => e.elementId),
+    [affectedElements]
+  );
+  const inheritedChangedIds = useMemo(
+    () => affectedElements.filter(e => !e.isDirect).map(e => e.elementId),
+    [affectedElements]
+  );
+
   const handleControlChange = (updates: Partial<typeof currentOptions>) => {
     setCurrentOptions(prev => ({ ...prev, ...updates }));
   };
@@ -270,6 +283,12 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
           const { setAffectedElements } = useDiagramStateStore.getState();
           setAffectedElements(data.repoPath, data.level, data.affectedElements);
         }
+
+        // Phase 8: Store changed file paths for tooltip display
+        if (data.changedFiles && data.changedFiles.length > 0) {
+          const { setChangedFiles } = useDiagramStateStore.getState();
+          setChangedFiles(data.repoPath, data.level, data.changedFiles);
+        }
       }
     });
 
@@ -287,8 +306,12 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
         try {
           const tracking = await window.reef.c4Storage.getChangeTracking(repoPath, level);
           if (tracking && tracking.affectedElements.length > 0) {
-            const { setAffectedElements } = useDiagramStateStore.getState();
+            const { setAffectedElements, setChangedFiles } = useDiagramStateStore.getState();
             setAffectedElements(repoPath, level, tracking.affectedElements);
+            // Also load changedFiles for tooltip display
+            if (tracking.changedFiles && tracking.changedFiles.length > 0) {
+              setChangedFiles(repoPath, level, tracking.changedFiles);
+            }
           }
         } catch (error) {
           console.error(`Error loading change tracking for ${repoPath}:${level}:`, error);
@@ -465,6 +488,8 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
           diagramState={currentState}
           diagramErrorMessage={stateEntry?.errorMessage}
           onRegenerateFromBadge={handleRegenerateFromBadge}
+          directChangedIds={directChangedIds}
+          inheritedChangedIds={inheritedChangedIds}
         />
         <StalenessBadge
           isStale={isStale}
