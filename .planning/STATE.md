@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Persistent Diagrams with Change Visualization
 status: unknown
-last_updated: "2026-02-28T23:24:22.190Z"
+last_updated: "2026-02-28T23:39:39.456Z"
 progress:
   total_phases: 6
-  completed_phases: 5
-  total_plans: 18
-  completed_plans: 18
+  completed_phases: 6
+  total_plans: 19
+  completed_plans: 19
 ---
 
 # Project State
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-02-24)
 
 ## Current Position
 
-Phase: 9 of 9 (Diagram-to-Diff Navigation)
-Plan: 2 of 2 (complete)
-Status: Phase 9 complete — all plans done
-Last activity: 2026-02-28 — Completed 09-02: CommitWorkflowTab consume side, amber file highlight, DiffViewer context banner, back-to-diagram round-trip
+Phase: 10 of 10 (State Transition Wiring)
+Plan: 1 of 1 (complete)
+Status: Phase 10 complete — all plans done
+Last activity: 2026-02-28 — Completed 10-01: Wire state transitions in generationQueueService, switch C4AnalyzerService to singleton, remove dead diagram:stale listener
 
-Progress: [██████████] 100% (9/9 phases complete, Phase 9 Plan 2 complete)
+Progress: [██████████] 100% (10/10 phases complete, Phase 10 Plan 1 complete)
 
 ## Performance Metrics
 
@@ -89,6 +89,7 @@ Progress: [██████████] 100% (9/9 phases complete, Phase 9 Pl
 |------|----------|-------|-------|
 | 09-01 | 81s | 2 | 3 |
 | 09-02 | ~300s | 2 | 3 |
+| Phase 10-state-transition-wiring P01 | 83 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -152,6 +153,9 @@ Recent decisions affecting current work:
 - [Phase 09-02]: diagramReturn captured before clearIntent() to avoid race condition where intent is null when read in callback
 - [Phase 09-02]: handleBackToDiagram uses .getState() pattern — consistent with Phase 06-03 and 07-02 decisions
 - [Phase 09-02]: Manual file selection clears diagramReturn and highlightedFile — banner and amber highlight disappear on intentional user navigation
+- [Phase 10-01]: State transitions replicate three-step logic (updateState + clearChangeTracking + broadcastToAll) from c4StorageHandlers — not via c4-storage:update-state IPC handler
+- [Phase 10-01]: C4AnalyzerService.close() is now a no-op: singleton lifecycle managed by cleanupC4Storage() at app shutdown to prevent shared SQLite connection from closing
+- [Phase 10-01]: updateState('generating') before first-ever generation may update zero rows (Pitfall 2) — acceptable, IPC broadcast still fires and renderer Zustand store updates
 
 ### Pending Todos
 
@@ -165,9 +169,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-28 — Phase 9 Plan 2 complete: CommitWorkflowTab consume side wired (intent consumption, amber file highlight, DiffViewer context banner, back-to-diagram round-trip)
-Stopped at: Completed 09-02-PLAN.md
+Last session: 2026-02-28 — Phase 10 Plan 1 complete: State transitions wired into generationQueueService, C4AnalyzerService switched to singleton, dead diagram:stale listener removed
+Stopped at: Completed 10-01-PLAN.md
 Resume file: None
 
 ---
-*Phase 9 complete. All 9 phases done. v1.1 milestone: Persistent Diagrams with Change Visualization + Diagram-to-Diff Navigation — COMPLETE.*
+*Phase 10 complete. All 10 phases done. v1.1 milestone: Persistent Diagrams with Change Visualization + Diagram-to-Diff Navigation + State Transition Wiring — COMPLETE.*

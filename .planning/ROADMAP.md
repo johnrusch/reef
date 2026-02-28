@@ -28,7 +28,7 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full details.
 - [x] **Phase 7: Enhanced Change Detection** - Real-time file-to-element mapping with hierarchical propagation (completed 2026-02-27)
 - [x] **Phase 8: Change Visualization** - Visual indicators for changed elements with tooltips and badges (completed 2026-02-28)
 - [x] **Phase 9: Diagram-to-Diff Navigation** - Contextual navigation from changed elements to diff viewer (completed 2026-02-28)
-- [ ] **Phase 10: State Transition Wiring & Cleanup** - Fix integration gaps: state transitions after background generation, singleton usage, dead listener removal (Gap Closure)
+- [x] **Phase 10: State Transition Wiring & Cleanup** - Fix integration gaps: state transitions after background generation, singleton usage, dead listener removal (Gap Closure) (completed 2026-02-28)
 
 ## Phase Details
 
@@ -129,7 +129,7 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 10-01: TBD
+- [ ] 10-01-PLAN.md — State transition wiring: generationQueueService state broadcasts, C4AnalyzerService singleton switch, dead listener removal (2 tasks, 3 files)
 
 ## Progress
 
@@ -144,7 +144,7 @@ Plans:
 | 7. Enhanced Change Detection | 3/3 | Complete   | 2026-02-27 | - |
 | 8. Change Visualization | 2/2 | Complete   | 2026-02-28 | - |
 | 9. Diagram-to-Diff Navigation | 2/2 | Complete   | 2026-02-28 | - |
-| 10. State Transition Wiring & Cleanup | v1.1 | 0/TBD | Not started | - |
+| 10. State Transition Wiring & Cleanup | 1/1 | Complete   | 2026-02-28 | - |
 
 ---
 *Last updated: 2026-02-28 — Phase 10 added for integration gap closure (audit findings)*
