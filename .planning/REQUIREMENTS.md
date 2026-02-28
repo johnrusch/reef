@@ -32,10 +32,10 @@ Requirements for v1.1 Persistent Diagrams with Change Visualization. Each maps t
 
 ### Change Visualization
 
-- [ ] **VISU-01**: Changed elements in diagram are visually highlighted (amber/orange styling)
-- [ ] **VISU-02**: User can see change badge on diagram elements showing number of changed children
-- [ ] **VISU-03**: User can hover on change badge to see tooltip listing affected files
-- [ ] **VISU-04**: User can distinguish between direct changes and inherited changes (children changed)
+- [x] **VISU-01**: Changed elements in diagram are visually highlighted (amber/orange styling)
+- [x] **VISU-02**: User can see change badge on diagram elements showing number of changed children
+- [x] **VISU-03**: User can hover on change badge to see tooltip listing affected files
+- [x] **VISU-04**: User can distinguish between direct changes and inherited changes (children changed)
 
 ### Navigation
 
@@ -92,10 +92,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CHNG-03 | Phase 7 | Complete |
 | CHNG-04 | Deferred | v1.2 |
 | CHNG-05 | Phase 7 | Complete |
-| VISU-01 | Phase 8 | Pending |
-| VISU-02 | Phase 8 | Pending |
-| VISU-03 | Phase 8 | Pending |
-| VISU-04 | Phase 8 | Pending |
+| VISU-01 | Phase 8 | Complete |
+| VISU-02 | Phase 8 | Complete |
+| VISU-03 | Phase 8 | Complete |
+| VISU-04 | Phase 8 | Complete |
 | NAVG-01 | Phase 9 | Pending |
 | NAVG-02 | Phase 9 | Pending |
 | NAVG-03 | Phase 9 | Pending |

@@ -23,9 +23,9 @@ See: .planning/PROJECT.md (updated 2026-02-24)
 ## Current Position
 
 Phase: 8 of 9 (Change Visualization)
-Plan: 1 of 3 (complete)
-Status: Plan 1 complete
-Last activity: 2026-02-28 — Completed 08-01 SVG change highlighting: changedFiles store, applyChangeHighlighting(), amber fill/dashed border via data-changed attributes
+Plan: 2 of 3 (complete)
+Status: Plan 2 complete
+Last activity: 2026-02-28 — Completed 08-02 ChangeBadge component: amber badge with direct/inherited counts, portal tooltip listing changed file names, wired into DiagramPanel stale state header
 
 Progress: [██████░░░░] 61% (5/9 phases complete, Phase 8 Plan 1 in progress)
 
@@ -82,6 +82,7 @@ Progress: [██████░░░░] 61% (5/9 phases complete, Phase 8 Pla
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | 08-01 | 212s | 2 | 5 |
+| 08-02 | 99s | 2 | 4 |
 
 ## Accumulated Context
 
@@ -134,6 +135,9 @@ Recent decisions affecting current work:
 - [Phase 08-01]: Export applyChangeHighlighting() as standalone testable function from PlantUMLRenderer — avoids complex async SVG generation mock in tests
 - [Phase 08-01]: Inject <style data-reef-changes> inside SVG for !important override of inline PlantUML presentation attributes — data-changed attribute CSS selectors with amber fill/stroke-dasharray
 - [Phase 08-01]: Keep changedFiles/showChanges in DiagramPanel interface but prefix destructured names with underscore — preserves callers while suppressing TS unused variable errors after legacy legend removal
+- [Phase 08-02]: Conditionally render portal only when showTooltip===true — tooltip DOM absent before hover, required for VISU-03 test case 7
+- [Phase 08-02]: Fixed-position tooltip via getBoundingClientRect escapes DiagramPanel overflow-hidden without Radix Tooltip dependency
+- [Phase 08-02]: ChangeBadge renders in DiagramPanel only when diagramState === 'stale', and returns null itself when both counts are zero
 
 ### Pending Todos
 
@@ -147,9 +151,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-28 — Phase 8 Plan 1 complete: SVG change highlighting (changedFiles store, applyChangeHighlighting, amber fill/dashed border), 33 tests passing
-Stopped at: Completed 08-01-PLAN.md
+Last session: 2026-02-28 — Phase 8 Plan 2 complete: ChangeBadge with amber badge, portal tooltip listing changed file names; 40 tests passing
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None
 
 ---
-*Phase 8 Plan 1 complete. Next: Phase 8 Plan 2 (Tooltip overlay for changed element file paths).*
+*Phase 8 Plan 2 complete. Next: Phase 8 Plan 3.*
