@@ -56,6 +56,15 @@ interface DiagramStateStore {
 
   /** Clear affected elements for a repo+level (called on fresh/generating transition) */
   clearAffectedElements: (repoPath: string, level: C4Level) => void;
+
+  /** Map of "repoPath:level:" -> list of changed file paths (for tooltip display) */
+  changedFiles: Map<string, string[]>;
+
+  /** Set changed files for a repo+level (called on enriched state-changed event) */
+  setChangedFiles: (repoPath: string, level: C4Level, files: string[]) => void;
+
+  /** Get changed files for a repo+level */
+  getChangedFiles: (repoPath: string, level: C4Level) => string[];
 }
 
 export const useDiagramStateStore = create<DiagramStateStore>()(
@@ -63,6 +72,7 @@ export const useDiagramStateStore = create<DiagramStateStore>()(
     (set, get) => ({
       states: new Map(),
       affectedElements: new Map(),
+      changedFiles: new Map(),
 
       getState: (repoPath, level, elementId) => {
         const key = generateKey(repoPath, level, elementId);
@@ -100,11 +110,23 @@ export const useDiagramStateStore = create<DiagramStateStore>()(
       transitionToGenerating: (repoPath, level, elementId) => {
         get().setState(repoPath, level, 'generating', elementId);
         get().clearAffectedElements(repoPath, level);
+        const key = generateKey(repoPath, level);
+        set((prev) => {
+          const newMap = new Map(prev.changedFiles);
+          newMap.delete(key);
+          return { changedFiles: newMap };
+        });
       },
 
       transitionToFresh: (repoPath, level, elementId) => {
         get().setState(repoPath, level, 'fresh', elementId);
         get().clearAffectedElements(repoPath, level);
+        const key = generateKey(repoPath, level);
+        set((prev) => {
+          const newMap = new Map(prev.changedFiles);
+          newMap.delete(key);
+          return { changedFiles: newMap };
+        });
       },
 
       transitionToStale: (repoPath, level, elementId) => {
@@ -148,7 +170,14 @@ export const useDiagramStateStore = create<DiagramStateStore>()(
             }
           }
 
-          return { states: newStates, affectedElements: newAffected };
+          const newChangedFiles = new Map(prev.changedFiles);
+          for (const [key] of newChangedFiles.entries()) {
+            if (key.startsWith(normalizedPath + ':')) {
+              newChangedFiles.delete(key);
+            }
+          }
+
+          return { states: newStates, affectedElements: newAffected, changedFiles: newChangedFiles };
         });
       },
       setAffectedElements: (repoPath, level, elements) => {
@@ -178,6 +207,20 @@ export const useDiagramStateStore = create<DiagramStateStore>()(
           newMap.delete(key);
           return { affectedElements: newMap };
         });
+      },
+
+      setChangedFiles: (repoPath, level, files) => {
+        const key = generateKey(repoPath, level);
+        set((prev) => {
+          const newMap = new Map(prev.changedFiles);
+          newMap.set(key, files);
+          return { changedFiles: newMap };
+        });
+      },
+
+      getChangedFiles: (repoPath, level) => {
+        const key = generateKey(repoPath, level);
+        return get().changedFiles.get(key) || [];
       },
     }),
     {

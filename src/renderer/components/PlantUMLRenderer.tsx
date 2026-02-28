@@ -15,6 +15,63 @@ interface PlantUMLRendererProps {
   className?: string;
   onElementClick?: (elementId: string) => void;  // Add this
   isClickable?: boolean;  // Add this - controls whether click detection is active
+  directChangedIds?: string[];
+  inheritedChangedIds?: string[];
+}
+
+/**
+ * Applies change highlighting to SVG DOM elements.
+ * Exported for unit testing.
+ *
+ * @param container - The diagram-wrapper element containing the SVG
+ * @param directIds - Element IDs for directly changed elements (amber fill)
+ * @param inheritedIds - Element IDs for inherited change elements (dashed amber border)
+ */
+export function applyChangeHighlighting(
+  container: Element,
+  directIds: string[],
+  inheritedIds: string[]
+): void {
+  // Remove existing reef change style block
+  container.querySelector('style[data-reef-changes]')?.remove();
+
+  // Reset all previously set data-changed attributes
+  const allHighlighted = container.querySelectorAll('[data-changed]');
+  allHighlighted.forEach(el => el.removeAttribute('data-changed'));
+
+  // Apply direct changes
+  for (const elementId of directIds) {
+    const group = container.querySelector(`[id="elem_${elementId}"]`);
+    if (group) group.setAttribute('data-changed', 'direct');
+  }
+
+  // Apply inherited changes
+  for (const elementId of inheritedIds) {
+    const group = container.querySelector(`[id="elem_${elementId}"]`);
+    if (group) group.setAttribute('data-changed', 'inherited');
+  }
+
+  // Inject amber styling into SVG
+  const svgEl = container.querySelector('svg');
+  if (svgEl) {
+    const styleEl = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+    styleEl.setAttribute('data-reef-changes', '');
+    styleEl.textContent = `
+      [data-changed="direct"] rect,
+      [data-changed="direct"] polygon {
+        fill: rgba(251, 191, 36, 0.25) !important;
+        stroke: rgb(245, 158, 11) !important;
+        stroke-width: 2 !important;
+      }
+      [data-changed="inherited"] rect,
+      [data-changed="inherited"] polygon {
+        stroke: rgb(245, 158, 11) !important;
+        stroke-width: 2 !important;
+        stroke-dasharray: 4 2 !important;
+      }
+    `;
+    svgEl.prepend(styleEl);
+  }
 }
 
 export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
@@ -23,6 +80,8 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
   className = '',
   onElementClick,
   isClickable = false,
+  directChangedIds = [],
+  inheritedChangedIds = [],
 }) => {
   const [svgContent, setSvgContent] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
@@ -164,6 +223,16 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
   useEffect(() => {
     generateDiagram();
   }, [generateDiagram]);
+
+  // Apply SVG DOM change highlighting after SVG content is rendered
+  useEffect(() => {
+    if (!svgContent || !containerRef.current) return;
+
+    const wrapper = containerRef.current.querySelector('.diagram-wrapper');
+    if (!wrapper) return;
+
+    applyChangeHighlighting(wrapper, directChangedIds, inheritedChangedIds);
+  }, [svgContent, directChangedIds, inheritedChangedIds]);
 
   const handleZoomIn = () => {
     setZoom(prev => Math.min(prev + 0.25, 3));

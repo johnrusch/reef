@@ -10,6 +10,7 @@ describe('diagramStateStore', () => {
     act(() => {
       result.current.states.clear();
       result.current.affectedElements.clear();
+      result.current.changedFiles.clear();
     });
   });
 
@@ -317,6 +318,35 @@ describe('diagramStateStore', () => {
       // Repo2 should still have its data
       expect(result.current.getState('/test/repo2', 'code')).toBe('fresh');
       expect(result.current.getAffectedElements('/test/repo2', 'code')).toHaveLength(1);
+    });
+  });
+
+  describe('changedFiles', () => {
+    it('setChangedFiles stores data', () => {
+      const { result } = renderHook(() => useDiagramStateStore());
+
+      act(() => {
+        result.current.setChangedFiles('/test/repo', 'container', ['src/a.ts', 'src/b.ts']);
+      });
+
+      expect(result.current.getChangedFiles('/test/repo', 'container')).toEqual(['src/a.ts', 'src/b.ts']);
+    });
+
+    it('getChangedFiles returns empty array for unknown key', () => {
+      const { result } = renderHook(() => useDiagramStateStore());
+
+      expect(result.current.getChangedFiles('unknown', 'context')).toEqual([]);
+    });
+
+    it('transitionToFresh clears changedFiles', () => {
+      const { result } = renderHook(() => useDiagramStateStore());
+
+      act(() => {
+        result.current.setChangedFiles('/test/repo', 'component', ['src/a.ts']);
+        result.current.transitionToFresh('/test/repo', 'component');
+      });
+
+      expect(result.current.getChangedFiles('/test/repo', 'component')).toEqual([]);
     });
   });
 });
