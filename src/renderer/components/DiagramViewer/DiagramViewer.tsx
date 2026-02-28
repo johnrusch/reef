@@ -103,6 +103,15 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
     [affectedElements]
   );
 
+  // Compute counts for ChangeBadge display
+  const directCount = directChangedIds.length;
+  const inheritedCount = inheritedChangedIds.length;
+
+  // Read changed file paths from store for tooltip display
+  const changedFilePaths = useDiagramStateStore(
+    s => s.getChangedFiles(_repository?.path || '', currentLevel)
+  );
+
   const handleControlChange = (updates: Partial<typeof currentOptions>) => {
     setCurrentOptions(prev => ({ ...prev, ...updates }));
   };
@@ -490,6 +499,9 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
           onRegenerateFromBadge={handleRegenerateFromBadge}
           directChangedIds={directChangedIds}
           inheritedChangedIds={inheritedChangedIds}
+          directCount={directCount}
+          inheritedCount={inheritedCount}
+          changedFilePaths={changedFilePaths}
         />
         <StalenessBadge
           isStale={isStale}

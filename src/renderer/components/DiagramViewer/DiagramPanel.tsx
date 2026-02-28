@@ -20,9 +20,13 @@ interface DiagramPanelProps {
   onRegenerateFromBadge?: () => void;
   directChangedIds?: string[];
   inheritedChangedIds?: string[];
+  directCount?: number;
+  inheritedCount?: number;
+  changedFilePaths?: string[];
 }
 
 import { DiagramStateBadge } from './DiagramStateBadge';
+import { ChangeBadge } from './ChangeBadge';
 
 export const DiagramPanel: React.FC<DiagramPanelProps> = ({
   content,
@@ -39,6 +43,9 @@ export const DiagramPanel: React.FC<DiagramPanelProps> = ({
   onRegenerateFromBadge,
   directChangedIds = [],
   inheritedChangedIds = [],
+  directCount = 0,
+  inheritedCount = 0,
+  changedFilePaths = [],
 }) => {
   const [showLegend, setShowLegend] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -61,16 +68,23 @@ export const DiagramPanel: React.FC<DiagramPanelProps> = ({
       className="relative h-full bg-gray-800 border border-gray-700 rounded-lg overflow-hidden"
       onWheel={handlePanZoom}
     >
-      {/* State Badge in header (top-left) */}
-      {diagramState && onRegenerateFromBadge && (
-        <div className="absolute top-4 left-4 z-10">
+      {/* State and change badges in header (top-left) */}
+      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+        {diagramState && onRegenerateFromBadge && (
           <DiagramStateBadge
             state={diagramState}
             errorMessage={diagramErrorMessage}
             onRegenerate={onRegenerateFromBadge}
           />
-        </div>
-      )}
+        )}
+        {diagramState === 'stale' && (
+          <ChangeBadge
+            directCount={directCount}
+            inheritedCount={inheritedCount}
+            changedFiles={changedFilePaths}
+          />
+        )}
+      </div>
 
       <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
         <button
