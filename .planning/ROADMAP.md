@@ -94,10 +94,11 @@ Plans:
   2. Elements with changed children display badge showing count of affected descendants
   3. User can hover on change badge to see tooltip listing specific affected files
   4. User can distinguish between direct changes (files in this element) and inherited changes (descendant elements changed)
-**Plans**: TBD
+**Plans**: 2 plans (2 waves)
 
 Plans:
-- [ ] 08-01: TBD
+- [ ] 08-01-PLAN.md — SVG element highlighting (amber fill for direct, dashed border for inherited) and diagramStateStore changedFiles extension (2 tasks, 4 files)
+- [ ] 08-02-PLAN.md — ChangeBadge component with file-list tooltip, DiagramPanel wiring, DiagramViewer data passing (2 tasks, 4 files)
 
 ### Phase 9: Diagram-to-Diff Navigation
 **Goal**: Contextual navigation from diagram changes to code diff viewer
