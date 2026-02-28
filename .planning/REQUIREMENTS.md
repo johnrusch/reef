@@ -41,9 +41,9 @@ Requirements for v1.1 Persistent Diagrams with Change Visualization. Each maps t
 
 - [x] **NAVG-01**: User can click stale indicator or button to regenerate diagram
 - [x] **NAVG-02**: User can click on changed code-level element to navigate to diff viewer
-- [ ] **NAVG-03**: Diff viewer shows context banner indicating navigation source (from diagram)
-- [ ] **NAVG-04**: User can click back button in diff viewer to return to diagram position
-- [ ] **NAVG-05**: Changed files are highlighted in the changes panel when navigating from diagram
+- [x] **NAVG-03**: Diff viewer shows context banner indicating navigation source (from diagram)
+- [x] **NAVG-04**: User can click back button in diff viewer to return to diagram position
+- [x] **NAVG-05**: Changed files are highlighted in the changes panel when navigating from diagram
 
 ## Future Requirements
 
@@ -98,9 +98,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VISU-04 | Phase 8 | Complete |
 | NAVG-01 | Phase 9 | Complete |
 | NAVG-02 | Phase 9 | Complete |
-| NAVG-03 | Phase 9 | Pending |
-| NAVG-04 | Phase 9 | Pending |
-| NAVG-05 | Phase 9 | Pending |
+| NAVG-03 | Phase 9 | Complete |
+| NAVG-04 | Phase 9 | Complete |
+| NAVG-05 | Phase 9 | Complete |
 | STOR-04 | Phase 10 | Integration fix |
 | AGEN-04 | Phase 10 | Integration fix |
 | AGEN-05 | Phase 10 | Integration fix |
