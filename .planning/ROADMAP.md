@@ -73,10 +73,10 @@ Plans:
 **Depends on**: Phase 6
 **Requirements**: CHNG-01, CHNG-02, CHNG-03, CHNG-04, CHNG-05
 **Success Criteria** (what must be TRUE):
-  1. User sees stale indicator appear within 2 seconds of saving changed files
+  1. ~~User sees stale indicator appear within 2 seconds of saving changed files~~ — **Deferred to v1.2**
   2. Changed files accurately map to specific Code, Component, or Container elements in diagrams
   3. Changes bubble up hierarchy visibly (Code change marks parent Component, Component marks parent Container)
-  4. Multiple rapid file saves result in single aggregated update without API call spam
+  4. ~~Multiple rapid file saves result in single aggregated update without API call spam~~ — **Deferred to v1.2**
   5. User can see count of changed elements at each C4 level (e.g., "3 components changed")
 **Plans**: 3 plans (2 waves + 1 gap closure)
 
