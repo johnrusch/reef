@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   FileText,
   ChevronDown,
@@ -26,6 +26,7 @@ interface EnhancedChangesPanelProps {
   onUnstageFiles: (files: string[]) => Promise<void>;
   onDiscardChanges?: (files: string[]) => Promise<void>;
   onViewDiff?: (file: string) => void;
+  highlightedFile?: string;  // NEW: file to visually highlight (from diagram navigation)
 }
 
 export const EnhancedChangesPanel: React.FC<EnhancedChangesPanelProps> = ({
@@ -36,11 +37,20 @@ export const EnhancedChangesPanel: React.FC<EnhancedChangesPanelProps> = ({
   onUnstageFiles,
   onDiscardChanges,
   onViewDiff,
+  highlightedFile,
 }) => {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(['staged', 'unstaged'])
   );
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+
+  const highlightedRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (highlightedFile && highlightedRef.current) {
+      highlightedRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [highlightedFile]);
 
   const categorizeFiles = useMemo(() => {
     if (!supportsCategorization || displayMode === 'flat') {
@@ -98,13 +108,19 @@ export const EnhancedChangesPanel: React.FC<EnhancedChangesPanelProps> = ({
 
   const renderFileItem = (file: FileChange) => {
     const isSelected = selectedFiles.has(file.path);
-    
+    const isHighlighted = highlightedFile != null && (
+      file.path === highlightedFile ||
+      file.path.endsWith('/' + highlightedFile) ||
+      highlightedFile.endsWith('/' + file.path)
+    );
+
     return (
       <div
         key={file.path}
+        ref={isHighlighted ? highlightedRef : undefined}
         className={`flex items-center justify-between px-3 py-2 hover:bg-gray-800 rounded transition-colors ${
           isSelected ? 'bg-gray-800' : ''
-        }`}
+        } ${isHighlighted ? 'ring-1 ring-amber-500/50 bg-amber-500/10' : ''}`}
       >
         <div className="flex items-center space-x-3 flex-1 min-w-0">
           <input

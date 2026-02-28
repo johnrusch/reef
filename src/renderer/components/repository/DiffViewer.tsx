@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { X, Copy, FileText, Undo2, RotateCcw } from 'lucide-react';
+import { X, Copy, FileText, Undo2, RotateCcw, ArrowLeft, Map } from 'lucide-react';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 // Basic HTML entity escaping for security
@@ -15,6 +15,8 @@ interface DiffViewerProps {
   onClose?: () => void;
   onRevertLines?: (lineChanges: LineRevertData) => Promise<void>;
   repoPath?: string;
+  fromDiagram?: boolean;           // NEW: show context banner when navigated from diagram
+  onBackToDiagram?: () => void;    // NEW: back button callback to return to diagram
 }
 
 export interface LineRevertData {
@@ -27,7 +29,7 @@ export interface LineRevertData {
   hunkHeader?: string;
 }
 
-export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, fileName, onClose, onRevertLines }) => {
+export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, fileName, onClose, onRevertLines, fromDiagram, onBackToDiagram }) => {
   const [confirmRevert, setConfirmRevert] = useState<{
     open: boolean;
     lines: any[];
@@ -250,6 +252,20 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, fileName, onClose,
 
   return (
     <div className="h-full w-full flex flex-col bg-gray-900 rounded-lg border border-gray-700 overflow-hidden" style={{ contain: 'layout size' }}>
+      {/* Diagram Navigation Context Banner */}
+      {fromDiagram && onBackToDiagram && (
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border-b border-blue-500/20 text-xs text-blue-300">
+          <Map className="w-3 h-3" />
+          <span>Navigated from Visual Map</span>
+          <button
+            onClick={onBackToDiagram}
+            className="ml-auto flex items-center gap-1 hover:text-white transition-colors"
+          >
+            <ArrowLeft className="w-3 h-3" />
+            Back to diagram
+          </button>
+        </div>
+      )}
       {/* Header */}
       <div className="flex-shrink-0 bg-gray-800 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center space-x-2 min-w-0">
