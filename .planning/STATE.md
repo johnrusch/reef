@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 Milestone: v1.1 complete (shipped 2026-02-28)
 Status: Milestone archived, ready for `/gsd:new-milestone`
-Last activity: 2026-02-28 — v1.1 milestone completion and archival
+Last activity: 2026-03-01 - Completed quick task 1: Create test repo for C4 diagramming functionality
 
 Progress: [██████████] 100% (v1.0: 4 phases, v1.1: 6 phases — all complete)
 
@@ -60,6 +60,12 @@ None.
 ### Blockers/Concerns
 
 None — milestone complete.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 1 | Create test repo for C4 diagramming functionality | 2026-03-01 | b70a95f | [1-make-a-test-repo-inside-this-codebase-th](./quick/1-make-a-test-repo-inside-this-codebase-th/) |
 
 ## Session Continuity
 
