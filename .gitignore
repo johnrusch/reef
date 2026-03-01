@@ -48,3 +48,8 @@ Desktop.ini
 *.tmp
 *.temp
 .cache/
+
+# Test repositories
+test-repos/*/node_modules/
+test-repos/*/dist/
+test-repos/*/.git/
