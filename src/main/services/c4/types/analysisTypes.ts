@@ -7,6 +7,42 @@
  */
 
 /**
+ * Information about an exported function
+ */
+export interface FunctionInfo {
+  /** Function name */
+  readonly name: string;
+  /** Absolute file path */
+  readonly file: string;
+  /** Return type text */
+  readonly returnType: string;
+  /** Whether the function is async */
+  readonly isAsync: boolean;
+  /** Whether the function is exported */
+  readonly isExported: boolean;
+  /** Whether the function is architecturally significant */
+  readonly isSignificant: boolean;
+  /** JSDoc description if present */
+  readonly jsDocDescription?: string;
+}
+
+/**
+ * Group of related components (for C4 component grouping)
+ */
+export interface ComponentGroup {
+  /** Raw directory/module name */
+  readonly rawName: string;
+  /** Human-readable label */
+  readonly label: string;
+  /** Files in this group */
+  readonly files: readonly string[];
+  /** Number of classes in this group */
+  readonly classCount: number;
+  /** Number of functions in this group */
+  readonly functionCount: number;
+}
+
+/**
  * Information about a TypeScript class
  */
 export interface ClassInfo {
@@ -26,6 +62,10 @@ export interface ClassInfo {
   readonly isAbstract?: boolean;
   /** Parent class name if extends another class */
   readonly extends?: string;
+  /** Decorator names applied to this class */
+  readonly decorators: readonly string[];
+  /** First JSDoc description if present */
+  readonly description?: string;
 }
 
 /**
@@ -78,6 +118,8 @@ export interface ProjectStructure {
   readonly imports: readonly ImportInfo[];
   /** All exported symbols (names only) */
   readonly exports: readonly string[];
+  /** All exported functions found in the project */
+  readonly functions: readonly FunctionInfo[];
 }
 
 /**
@@ -140,9 +182,17 @@ export interface AnalysisResult {
     readonly timestamp: string;
     /** Analysis duration in milliseconds */
     readonly duration?: number;
+    /** Quality level of analysis performed */
+    readonly analysisQuality: 'full-ast' | 'js-ast' | 'file-structure';
+    /** Warning message if analysis quality was degraded */
+    readonly analysisWarning?: string;
+    /** Whether results are partial (e.g., due to maxFiles limit) */
+    readonly partialResults?: boolean;
   };
   /** Error message if analysis failed */
   readonly error?: string;
+  /** Component groups for C4 diagram generation */
+  readonly componentGroups?: readonly ComponentGroup[];
 }
 
 /**
