@@ -6,6 +6,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { StaticAnalyzerService } from '../../../src/main/services/c4/staticAnalyzerService';
+import { FunctionInfo } from '../../../src/main/services/c4/types/analysisTypes';
 import { join } from 'path';
 
 describe('StaticAnalyzerService', () => {
@@ -169,5 +170,107 @@ describe('StaticAnalyzerService', () => {
     // Both should work without error
     expect(resultWithoutTests.error).toBeUndefined();
     expect(resultWithTests.error).toBeUndefined();
+  });
+
+  // --- New enrichment tests (Task 1 & 2) ---
+
+  it('AnalysisResult.structure has a functions array', async () => {
+    const result = await analyzer.analyzeProject(fixtureRepoPath);
+
+    expect(result.error).toBeUndefined();
+    expect(result.structure.functions).toBeDefined();
+    expect(Array.isArray(result.structure.functions)).toBe(true);
+  });
+
+  it('FunctionInfo has required fields', async () => {
+    const result = await analyzer.analyzeProject(fixtureRepoPath);
+
+    expect(result.error).toBeUndefined();
+    const functions: FunctionInfo[] = result.structure.functions;
+    expect(functions.length).toBeGreaterThan(0);
+
+    const fn = functions[0];
+    expect(fn).toHaveProperty('name');
+    expect(fn).toHaveProperty('file');
+    expect(fn).toHaveProperty('returnType');
+    expect(fn).toHaveProperty('isAsync');
+    expect(fn).toHaveProperty('isExported');
+    expect(fn).toHaveProperty('isSignificant');
+  });
+
+  it('ClassInfo has decorators and description fields', async () => {
+    const result = await analyzer.analyzeProject(fixtureRepoPath);
+
+    expect(result.error).toBeUndefined();
+    const decoratedClass = result.structure.classes.find(c => c.name === 'DecoratedService');
+    expect(decoratedClass).toBeDefined();
+    expect(decoratedClass).toHaveProperty('decorators');
+    expect(decoratedClass).toHaveProperty('description');
+  });
+
+  it('AnalysisResult.metadata has analysisQuality field', async () => {
+    const result = await analyzer.analyzeProject(fixtureRepoPath);
+
+    expect(result.error).toBeUndefined();
+    expect(result.metadata).toHaveProperty('analysisQuality');
+    expect(result.metadata.analysisQuality).toBe('full-ast');
+  });
+
+  it('extracts decorators from classes', async () => {
+    const result = await analyzer.analyzeProject(fixtureRepoPath);
+
+    expect(result.error).toBeUndefined();
+    const decoratedService = result.structure.classes.find(c => c.name === 'DecoratedService');
+    expect(decoratedService).toBeDefined();
+    expect(decoratedService?.decorators).toContain('Injectable');
+  });
+
+  it('extracts JSDoc descriptions from classes', async () => {
+    const result = await analyzer.analyzeProject(fixtureRepoPath);
+
+    expect(result.error).toBeUndefined();
+    const decoratedService = result.structure.classes.find(c => c.name === 'DecoratedService');
+    expect(decoratedService).toBeDefined();
+    expect(typeof decoratedService?.description).toBe('string');
+    expect(decoratedService?.description).not.toBe('');
+  });
+
+  it('extracts exported functions', async () => {
+    const result = await analyzer.analyzeProject(fixtureRepoPath);
+
+    expect(result.error).toBeUndefined();
+    const fnNames = result.structure.functions.map(f => f.name);
+    expect(fnNames).toContain('useTestHook');
+    expect(fnNames).toContain('formatValue');
+  });
+
+  it('classifies function significance correctly', async () => {
+    const result = await analyzer.analyzeProject(fixtureRepoPath);
+
+    expect(result.error).toBeUndefined();
+    const useTestHook = result.structure.functions.find(f => f.name === 'useTestHook');
+    expect(useTestHook).toBeDefined();
+    expect(useTestHook?.isSignificant).toBe(true);
+
+    const formatValue = result.structure.functions.find(f => f.name === 'formatValue');
+    expect(formatValue).toBeDefined();
+    expect(formatValue?.isSignificant).toBe(false);
+  });
+
+  it('extracts function return types', async () => {
+    const result = await analyzer.analyzeProject(fixtureRepoPath);
+
+    expect(result.error).toBeUndefined();
+    const useTestHook = result.structure.functions.find(f => f.name === 'useTestHook');
+    expect(useTestHook).toBeDefined();
+    expect(useTestHook?.returnType).toBeDefined();
+    expect(useTestHook?.returnType.length).toBeGreaterThan(0);
+  });
+
+  it('includes analysisQuality in metadata', async () => {
+    const result = await analyzer.analyzeProject(fixtureRepoPath);
+
+    expect(result.error).toBeUndefined();
+    expect(result.metadata.analysisQuality).toBe('full-ast');
   });
 });
