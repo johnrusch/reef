@@ -449,9 +449,38 @@ export class C4PlantUMLGenerator {
   }
 
   /**
-   * Detects components within a container
+   * Detects components within a container.
+   * Prefers pre-computed componentGroups from StaticAnalyzerService (ANLZ-03),
+   * falls back to legacy class-directory-grouping for backward compatibility.
    */
   private detectComponents(staticData: AnalysisResult, containerPath: string): Array<{
+    name: string;
+    description: string;
+    tech: string;
+  }> {
+    // Prefer pre-computed componentGroups from StaticAnalyzerService (ANLZ-03)
+    if (staticData.componentGroups && staticData.componentGroups.length > 0) {
+      return staticData.componentGroups
+        .filter(group => {
+          // Filter to groups that have files within the container path
+          return group.files.some(f => f.includes(containerPath));
+        })
+        .map(group => ({
+          name: group.label,  // "Service Layer" not "services"
+          description: `${group.classCount} classes, ${group.functionCount} functions`,
+          tech: this.inferTechFromQuality(staticData),
+        }));
+    }
+
+    // Legacy fallback for AnalysisResult without componentGroups
+    return this.detectComponentsLegacy(staticData, containerPath);
+  }
+
+  /**
+   * Legacy component detection using class-directory-grouping.
+   * Preserved for backward compatibility with cached AnalysisResult without componentGroups.
+   */
+  private detectComponentsLegacy(staticData: AnalysisResult, containerPath: string): Array<{
     name: string;
     description: string;
     tech: string;
@@ -491,6 +520,16 @@ export class C4PlantUMLGenerator {
     }
 
     return components;
+  }
+
+  /**
+   * Infers technology label from analysis quality indicator
+   */
+  private inferTechFromQuality(staticData: AnalysisResult): string {
+    const quality = staticData.metadata?.analysisQuality;
+    if (quality === 'js-ast') return 'JavaScript';
+    if (quality === 'file-structure') return 'File Structure';
+    return 'TypeScript';
   }
 
   /**
