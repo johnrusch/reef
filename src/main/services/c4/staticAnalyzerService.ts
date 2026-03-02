@@ -11,6 +11,7 @@
  */
 
 import { Project, SourceFile } from 'ts-morph';
+import { JsxEmit } from 'typescript';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import {
@@ -21,10 +22,41 @@ import {
   InterfaceInfo,
   ImportInfo,
   FunctionInfo,
+  ComponentGroup,
   DependencyGraph,
   DependencyNode,
   DependencyEdge,
 } from './types/analysisTypes';
+
+/**
+ * Maps common directory names to semantic architectural labels
+ */
+const DIRECTORY_ROLE_MAP: Record<string, string> = {
+  'root': 'Entry Points',
+  'services': 'Service Layer',
+  'service': 'Service Layer',
+  'controllers': 'API Controllers',
+  'controller': 'API Controllers',
+  'stores': 'State Management',
+  'store': 'State Management',
+  'hooks': 'React Hooks',
+  'hook': 'React Hooks',
+  'components': 'UI Components',
+  'component': 'UI Components',
+  'pages': 'Pages',
+  'page': 'Pages',
+  'routes': 'Route Handlers',
+  'route': 'Route Handlers',
+  'middleware': 'Middleware',
+  'models': 'Data Models',
+  'model': 'Data Models',
+  'repositories': 'Data Access',
+  'repository': 'Data Access',
+  'utils': 'Utilities',
+  'helpers': 'Utilities',
+  'types': 'Type Definitions',
+  'interfaces': 'Type Definitions',
+};
 
 export class StaticAnalyzerService {
   /**
@@ -108,6 +140,9 @@ export class StaticAnalyzerService {
       // Find entry points
       const entryPoints = this.findEntryPoints(filesToAnalyze);
 
+      // Build component groups from directory structure
+      const componentGroups = this.buildComponentGroups(classes, functions, repoPath, interfaces, entryPoints);
+
       const duration = Date.now() - startTime;
 
       return {
@@ -115,6 +150,7 @@ export class StaticAnalyzerService {
         dependencies,
         technologies,
         entryPoints,
+        componentGroups,
         metadata: {
           projectName,
           filesAnalyzed: filesToAnalyze.length,
@@ -127,6 +163,20 @@ export class StaticAnalyzerService {
     } catch (error) {
       // Handle missing tsconfig.json or other errors gracefully
       const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Fallback 1: Try JavaScript analysis (no tsconfig needed)
+      if (errorMessage.includes('tsconfig') || errorMessage.includes('ENOENT') || errorMessage.includes('File not found')) {
+        try {
+          return await this.analyzeJavaScriptProject(repoPath, options, startTime);
+        } catch {
+          // Fallback 2: File-structure-only analysis
+          try {
+            return await this.fileStructureScan(repoPath, startTime);
+          } catch {
+            // Fall through to return empty error result
+          }
+        }
+      }
 
       return {
         structure: {
@@ -500,6 +550,214 @@ export class StaticAnalyzerService {
       // If package.json doesn't exist or can't be read, use directory name
       return repoPath.split('/').pop() || 'Unknown Project';
     }
+  }
+
+  /**
+   * Builds component groups from classes, interfaces, functions, and entry points organized by directory
+   */
+  private buildComponentGroups(
+    classes: ClassInfo[],
+    functions: FunctionInfo[],
+    repoPath: string,
+    interfaces?: InterfaceInfo[],
+    entryPoints?: string[]
+  ): ComponentGroup[] {
+    const groupMap = new Map<string, { files: Set<string>; classCount: number; functionCount: number }>();
+
+    // Helper: get group key from file path
+    const getGroupKey = (filePath: string): { rawName: string; label: string } => {
+      const relativePath = filePath.replace(repoPath, '').replace(/^\//, '');
+      const segments = relativePath.split('/').filter(Boolean);
+
+      // Skip top-level structural dirs: 'src', 'main', 'renderer', 'lib', 'app'
+      const skipDirs = new Set(['src', 'main', 'renderer', 'lib', 'app']);
+      for (const segment of segments) {
+        if (skipDirs.has(segment)) continue;
+        if (segment.includes('.')) continue; // skip files
+        const label = DIRECTORY_ROLE_MAP[segment.toLowerCase()] || segment.charAt(0).toUpperCase() + segment.slice(1);
+        return { rawName: segment, label };
+      }
+      return { rawName: 'root', label: 'Entry Points' };
+    };
+
+    // Helper: ensure group exists
+    const ensureGroup = (filePath: string) => {
+      const { rawName } = getGroupKey(filePath);
+      if (!groupMap.has(rawName)) {
+        groupMap.set(rawName, { files: new Set(), classCount: 0, functionCount: 0 });
+      }
+      return rawName;
+    };
+
+    // Group classes
+    for (const cls of classes) {
+      const rawName = ensureGroup(cls.file);
+      const group = groupMap.get(rawName)!;
+      group.files.add(cls.file);
+      group.classCount++;
+    }
+
+    // Group functions
+    for (const func of functions) {
+      const rawName = ensureGroup(func.file);
+      const group = groupMap.get(rawName)!;
+      group.files.add(func.file);
+      group.functionCount++;
+    }
+
+    // Group interfaces (for type-only directories)
+    if (interfaces) {
+      for (const iface of interfaces) {
+        const rawName = ensureGroup(iface.file);
+        const group = groupMap.get(rawName)!;
+        group.files.add(iface.file);
+      }
+    }
+
+    // Ensure entry points produce a group even if they have no classes/functions/interfaces
+    if (entryPoints) {
+      for (const ep of entryPoints) {
+        ensureGroup(ep);
+        const { rawName } = getGroupKey(ep);
+        groupMap.get(rawName)!.files.add(ep);
+      }
+    }
+
+    // Convert to ComponentGroup array
+    return Array.from(groupMap.entries()).map(([rawName, data]) => ({
+      rawName,
+      label: DIRECTORY_ROLE_MAP[rawName.toLowerCase()] || rawName.charAt(0).toUpperCase() + rawName.slice(1),
+      files: Array.from(data.files),
+      classCount: data.classCount,
+      functionCount: data.functionCount,
+    }));
+  }
+
+  /**
+   * Analyzes a JavaScript-only project using ts-morph with allowJs enabled
+   */
+  private async analyzeJavaScriptProject(
+    repoPath: string,
+    options: AnalysisOptions,
+    startTime: number
+  ): Promise<AnalysisResult> {
+    const project = new Project({
+      compilerOptions: {
+        allowJs: true,
+        jsx: JsxEmit.React,
+        strict: false,
+        skipLibCheck: true,
+        noEmit: true,
+      },
+      skipFileDependencyResolution: true,
+    });
+
+    // Add JS/JSX files
+    const includePatterns = options.includePatterns || ['src/**/*.{js,jsx}'];
+    for (const pattern of includePatterns) {
+      try {
+        project.addSourceFilesAtPaths([
+          join(repoPath, pattern),
+          `!${join(repoPath, '**/*.test.{js,jsx}')}`,
+          `!${join(repoPath, '**/*.spec.{js,jsx}')}`,
+        ]);
+      } catch { /* continue */ }
+    }
+
+    const sourceFiles = project.getSourceFiles();
+    if (sourceFiles.length === 0) {
+      throw new Error('No JavaScript files found');
+    }
+
+    // Reuse existing extraction methods (they work on any SourceFile)
+    const classes = this.extractClasses(sourceFiles);
+    const interfaces = this.extractInterfaces(sourceFiles);
+    const imports = this.extractImports(sourceFiles);
+    const exports = this.extractExports(sourceFiles);
+    const functions = this.extractFunctions(sourceFiles);
+
+    const structure: ProjectStructure = { classes, interfaces, imports, exports, functions };
+    const dependencies = this.buildDependencyGraph(imports, classes, interfaces);
+    const technologies = await this.detectTechnologies(repoPath);
+    const projectName = await this.getProjectName(repoPath);
+    const entryPoints = this.findEntryPoints(sourceFiles);
+    const componentGroups = this.buildComponentGroups(classes, functions, repoPath, interfaces, entryPoints);
+
+    return {
+      structure,
+      dependencies,
+      technologies,
+      entryPoints,
+      componentGroups,
+      metadata: {
+        projectName,
+        filesAnalyzed: sourceFiles.length,
+        totalFiles: sourceFiles.length,
+        timestamp: new Date().toISOString(),
+        duration: Date.now() - startTime,
+        analysisQuality: 'js-ast',
+        analysisWarning: `Analyzed as JavaScript (no tsconfig.json found). ${sourceFiles.length} files parsed.`,
+      },
+    };
+  }
+
+  /**
+   * Produces a file-structure-only analysis for non-JS repos (e.g. Python)
+   */
+  private async fileStructureScan(repoPath: string, startTime: number): Promise<AnalysisResult> {
+    const { readdir } = await import('fs/promises');
+
+    const srcPath = join(repoPath, 'src');
+    const entries = await readdir(srcPath, { recursive: true, withFileTypes: true });
+    const files = entries
+      .filter(e => e.isFile() && !e.name.startsWith('.'))
+      .map(e => join(e.parentPath, e.name));
+
+    // Build component groups from directory structure
+    const dirGroups = new Map<string, string[]>();
+    for (const file of files) {
+      const relativePath = file.replace(repoPath, '').replace(/^\//, '');
+      const segments = relativePath.split('/').filter(Boolean);
+      const skipDirs = new Set(['src', 'main', 'renderer', 'lib', 'app']);
+      let groupName = 'root';
+      for (const segment of segments) {
+        if (skipDirs.has(segment)) continue;
+        if (segment.includes('.')) continue;
+        groupName = segment;
+        break;
+      }
+      if (!dirGroups.has(groupName)) dirGroups.set(groupName, []);
+      dirGroups.get(groupName)!.push(file);
+    }
+
+    const componentGroups: ComponentGroup[] = Array.from(dirGroups.entries()).map(([rawName, groupFiles]) => ({
+      rawName,
+      label: DIRECTORY_ROLE_MAP[rawName.toLowerCase()] || rawName.charAt(0).toUpperCase() + rawName.slice(1),
+      files: groupFiles,
+      classCount: 0,
+      functionCount: 0,
+    }));
+
+    const projectName = await this.getProjectName(repoPath);
+    const technologies = await this.detectTechnologies(repoPath);
+
+    return {
+      structure: { classes: [], interfaces: [], imports: [], exports: [], functions: [] },
+      dependencies: { nodes: [], edges: [] },
+      technologies,
+      entryPoints: [],
+      componentGroups,
+      metadata: {
+        projectName,
+        filesAnalyzed: files.length,
+        totalFiles: files.length,
+        timestamp: new Date().toISOString(),
+        duration: Date.now() - startTime,
+        analysisQuality: 'file-structure',
+        analysisWarning: `Generated from file structure — add TypeScript for richer analysis. ${files.length} files discovered.`,
+        partialResults: true,
+      },
+    };
   }
 
   /**
