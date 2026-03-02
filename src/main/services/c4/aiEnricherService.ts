@@ -1,19 +1,31 @@
 /**
  * AI Enrichment Service
  *
- * Uses Claude API with prompt caching to add architectural insights
- * to static analysis results. Implements 90% cost reduction and 85%
- * latency reduction through cache_control parameter.
+ * Uses Claude API with structured output (messages.parse + zodOutputFormat)
+ * to return typed per-level C4 architectural data. Implements 90% cost
+ * reduction and 85% latency reduction through cache_control parameter.
  *
  * Caching strategy:
  * - System prompts cached with ephemeral control
  * - Static analysis data cached with ephemeral control
  * - User messages remain uncached for flexibility
+ *
+ * Output: Typed structured objects per C4 level (not free-text strings).
+ * - context  → EnrichedContextLevel   (actors, externalSystems, relationships)
+ * - container → EnrichedContainerLevel (containers, relationships, externalSystems)
+ * - component → EnrichedComponentLevel (components, relationships)
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import type { AnalysisResult } from './types/analysisTypes';
 import type { C4Level } from './types/c4Types';
+import {
+  ContextLevelSchema,
+  ContainerLevelSchema,
+  ComponentLevelSchema,
+  type EnrichedArchitecture,
+} from './types/enrichmentTypes';
 
 export class AIEnricherService {
   private client: Anthropic;
@@ -23,22 +35,38 @@ export class AIEnricherService {
   }
 
   /**
-   * Enriches static analysis data with architectural insights using Claude
-   * Implements prompt caching for cost and latency optimization
+   * Enriches static analysis data with architectural insights using Claude.
+   * Returns a typed structured object validated by Zod — not a free-text string.
+   *
+   * @param staticData - Static analysis result for the project
+   * @param level - C4 abstraction level (context | container | component | code)
+   * @param elementId - Optional element identifier for focused analysis
+   * @returns Typed per-level enrichment object
+   * @throws Error with descriptive message if parsed_output is null
    */
   async enrichArchitecture(
     staticData: AnalysisResult,
     level: C4Level,
     elementId?: string
-  ): Promise<string> {
+  ): Promise<EnrichedArchitecture> {
+    // Code level uses static analysis only — no AI enrichment
+    if (level === 'code') {
+      throw new Error('Code level uses static analysis only — AI enrichment is not supported for code-level diagrams');
+    }
+
+    // Select per-level Zod schema
+    const schema = this.getSchema(level);
+
     try {
-      const response = await this.client.messages.create({
+      const message = await (this.client.messages as unknown as {
+        parse: (params: unknown) => Promise<{ parsed_output: unknown; usage: { input_tokens: number; output_tokens: number; cache_creation_input_tokens?: number | null; cache_read_input_tokens?: number | null } }>
+      }).parse({
         model: 'claude-sonnet-4-5-20250929',
         max_tokens: 4096,
         system: [
           {
             type: 'text',
-            text: this.getC4SystemPrompt(level),
+            text: this.getSystemPrompt(level, staticData.technologies),
             cache_control: { type: 'ephemeral' },
           },
           {
@@ -50,25 +78,34 @@ export class AIEnricherService {
         messages: [
           {
             role: 'user',
-            content: `Analyze this ${level}-level architecture and provide architectural insights for C4 diagram enrichment. Focus on: ${this.getLevelFocus(level)}${elementId ? ` Specifically analyze element: ${elementId}` : ''}`,
+            content: this.getUserPrompt(level, staticData, elementId),
           },
         ],
+        output_config: {
+          format: zodOutputFormat(schema),
+        },
       });
 
       // Log cache metrics for debugging and optimization
-      this.logCacheMetrics(response.usage, level);
+      this.logCacheMetrics(message.usage, level);
 
-      // Extract text from response
-      const content = response.content[0];
-      if (content.type !== 'text') {
-        throw new Error('Unexpected response type from Claude API');
+      // Null-check parsed_output
+      if (message.parsed_output === null || message.parsed_output === undefined) {
+        throw new Error(
+          'AI enrichment returned invalid structured output — falling back to static analysis'
+        );
       }
 
-      return content.text;
+      return message.parsed_output as EnrichedArchitecture;
     } catch (error) {
-      if (error instanceof Anthropic.APIError) {
-        const status = error.status || 'unknown';
-        const message = error.message || 'Unknown API error';
+      if (error instanceof Error && error.message.includes('AI enrichment returned invalid structured output')) {
+        throw error;
+      }
+      // Re-throw AIError-like errors with context
+      const err = error as { status?: number; message?: string };
+      if (err.status !== undefined) {
+        const status = err.status ?? 'unknown';
+        const message = err.message ?? 'Unknown API error';
 
         if (status === 429) {
           throw new Error(`Rate limit exceeded: ${message}`);
@@ -86,23 +123,50 @@ export class AIEnricherService {
   }
 
   /**
-   * Gets C4 system prompt based on abstraction level
-   * Each level has specific focus areas and concerns
+   * Returns the Zod schema for the given C4 level.
    */
-  private getC4SystemPrompt(level: C4Level): string {
+  private getSchema(level: C4Level) {
+    switch (level) {
+      case 'context':
+        return ContextLevelSchema;
+      case 'container':
+        return ContainerLevelSchema;
+      case 'component':
+        return ComponentLevelSchema;
+      default:
+        throw new Error(`No schema defined for level: ${level}`);
+    }
+  }
+
+  /**
+   * Builds the system prompt combining C4-level instructions and framework context.
+   * Prompt branches on detected technologies so Electron, React, Express etc.
+   * each receive tailored architectural guidance.
+   */
+  private getSystemPrompt(level: C4Level, technologies: readonly string[]): string {
+    return `${this.getBasePrompt(level)}\n\n## Framework Context\n${this.getFrameworkContext(technologies)}`;
+  }
+
+  /**
+   * Returns C4-level-specific base instruction without framework details.
+   */
+  private getBasePrompt(level: C4Level): string {
     const prompts: Record<C4Level, string> = {
       context: `You are an expert software architect analyzing system context.
 
 Identify system boundaries, external dependencies (GitHub API, file system, external services), and primary actors.
 
 Key principles:
-- External systems are black boxes - don't model their internals
+- External systems are black boxes — do not model their internals
 - Focus on what the system does, not how it does it
 - Identify all people (actors) who interact with the system
 - Identify all external systems the target system depends on
 - Describe relationships in terms of purpose and data flow
 
-Output: Concise architectural insights about system boundaries, key actors, and external dependencies.`,
+Return structured JSON with:
+- actors: array of { name, description }
+- externalSystems: array of { name, description, relationship, technology? }
+- relationships: array of { from, to, label, technology? }`,
 
       container: `You are an expert software architect analyzing container architecture.
 
@@ -110,12 +174,14 @@ Identify deployable units: separate processes, databases, applications.
 
 Key principles:
 - Container = runtime construct that can be deployed independently
-- For Electron apps: main process, renderer process, preload script are separate containers
 - Identify databases, file stores, and message queues as separate containers
 - Focus on runtime deployment units, not code organization
 - Describe technology choices and why they were made
 
-Output: Concise architectural insights about deployable units, technology stack, and runtime organization.`,
+Return structured JSON with:
+- containers: array of { name, technology, description, type: 'process'|'database'|'queue'|'storage' }
+- relationships: array of { from, to, label, technology? }
+- externalSystems: array of { name, description, relationship, technology? }`,
 
       component: `You are an expert software architect analyzing component structure.
 
@@ -128,41 +194,82 @@ Key principles:
 - Focus on responsibilities and cohesion
 - Describe component boundaries and dependencies
 
-Output: Concise architectural insights about logical groupings, responsibilities, and component interactions.`,
+Return structured JSON with:
+- components: array of { name, role, description, technology? }
+- relationships: array of { from, to, label, technology? }`,
 
-      code: `You are an expert software architect analyzing code structure.
-
-Extract class-level implementation details: class relationships, key methods, interfaces implemented.
-
-Key principles:
-- Use standard UML class diagram notation
-- Focus on public APIs and key methods
-- Show inheritance and interface implementation
-- Include important properties and method signatures
-- Highlight design patterns in use
-
-Output: Concise architectural insights about class design, relationships, and implementation patterns.`,
+      code: `Code level uses static analysis only. AI enrichment is not supported.`,
     };
 
     return prompts[level];
   }
 
   /**
-   * Gets level-specific focus areas for user prompt
+   * Returns framework-specific context string based on detected technologies.
+   * Ensures system prompt adapts to Electron, Next.js, Express, Vue, React, or generic apps.
    */
-  private getLevelFocus(level: C4Level): string {
-    const focus: Record<C4Level, string> = {
+  private getFrameworkContext(technologies: readonly string[]): string {
+    const isElectron = technologies.includes('Electron');
+    const isReact = technologies.includes('React');
+    const isExpress = technologies.includes('Express');
+    const isNextJs = technologies.includes('Next.js');
+    const isVue = technologies.includes('Vue');
+
+    if (isElectron) {
+      return 'This is an Electron desktop application. Containers typically include: Main Process (Node.js), Renderer Process (Chromium/React), and Preload Script (IPC bridge). Databases may use electron-store or SQLite.';
+    } else if (isNextJs) {
+      return 'This is a Next.js application. Containers typically include: Next.js Server (SSR/API routes), React Client (browser hydration), and any backend databases or services.';
+    } else if (isExpress) {
+      return 'This is an Express.js API server. Containers typically include: the Express app server, any databases, message queues, and client applications.';
+    } else if (isVue) {
+      return 'This is a Vue.js application. Containers typically include: the Vue client app, any backend API server, and databases.';
+    } else if (isReact) {
+      return 'This is a React application. Containers typically include: the React client app (browser SPA), any backend API server, and databases.';
+    } else {
+      return 'Infer the architectural pattern from the static analysis data provided. Identify deployable units, databases, and external services.';
+    }
+  }
+
+  /**
+   * Builds the user message with level-specific focus and analysis quality awareness.
+   */
+  private getUserPrompt(level: C4Level, staticData: AnalysisResult, elementId?: string): string {
+    const qualityContext = this.getAnalysisQualityContext(staticData.metadata.analysisQuality);
+
+    const levelFocus: Record<C4Level, string> = {
       context: 'system boundaries, external dependencies, actors, and high-level purpose',
       container: 'deployable units, technology choices, runtime processes, and data stores',
       component: 'logical groupings, service responsibilities, component boundaries, and internal organization',
       code: 'class structures, design patterns, key methods, and implementation details',
     };
 
-    return focus[level];
+    const elementClause = elementId ? ` Specifically analyze element: ${elementId}` : '';
+
+    return `Analyze this ${level}-level architecture and provide structured architectural insights for C4 diagram generation.
+
+Focus on: ${levelFocus[level]}${elementClause}
+
+Analysis quality: ${qualityContext}`;
   }
 
   /**
-   * Logs cache metrics for monitoring and optimization
+   * Returns a human-readable description of analysis quality for use in user prompts.
+   */
+  private getAnalysisQualityContext(quality: AnalysisResult['metadata']['analysisQuality']): string {
+    switch (quality) {
+      case 'full-ast':
+        return 'Static analysis provides complete AST-level data including classes, functions, decorators, and JSDoc.';
+      case 'js-ast':
+        return 'Static analysis provides JavaScript-level AST data (no TypeScript type information).';
+      case 'file-structure':
+        return 'Static analysis provides only file and directory structure (no AST). Rely on directory names and file patterns to infer architecture.';
+      default:
+        return 'Static analysis data available.';
+    }
+  }
+
+  /**
+   * Logs cache metrics for monitoring and optimization.
    */
   private logCacheMetrics(
     usage: {
