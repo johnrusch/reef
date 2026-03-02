@@ -106,7 +106,7 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full details.
 | 8. Change Visualization | v1.1 | 2/2 | Complete | 2026-02-28 |
 | 9. Diagram-to-Diff Navigation | v1.1 | 2/2 | Complete | 2026-02-28 |
 | 10. State Transition Wiring & Cleanup | v1.1 | 1/1 | Complete | 2026-02-28 |
-| 11. Static Analysis Depth | v1.2 | 0/2 | Planned | - |
+| 11. Static Analysis Depth | 1/2 | In Progress|  | - |
 | 12. AI Enrichment Pipeline | v1.2 | 0/TBD | Not started | - |
 | 13. Drill-Down Navigation Fix | v1.2 | 0/TBD | Not started | - |
 | 14. Rendering Performance | v1.2 | 0/TBD | Not started | - |
