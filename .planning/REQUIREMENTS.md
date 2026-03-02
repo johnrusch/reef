@@ -17,9 +17,9 @@ Requirements for "Diagrams That Deliver" milestone. Each maps to roadmap phases.
 ### AI Enrichment
 
 - [ ] **ENRCH-01**: AI enrichment output is consumed by the PlantUML generator (fix _enrichedData discard bug)
-- [ ] **ENRCH-02**: AI returns structured JSON with typed containers, components, and relationships (not free-text prose)
+- [x] **ENRCH-02**: AI returns structured JSON with typed containers, components, and relationships (not free-text prose)
 - [ ] **ENRCH-03**: AI provides meaningful component and container names based on domain understanding
-- [ ] **ENRCH-04**: AI prompts adapt per detected framework/repo type for domain-specific enrichment
+- [x] **ENRCH-04**: AI prompts adapt per detected framework/repo type for domain-specific enrichment
 
 ### Drill-Down Navigation
 
@@ -83,9 +83,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ANLZ-03 | Phase 11 | Complete |
 | ANLZ-04 | Phase 11 | Complete |
 | ENRCH-01 | Phase 12 | Pending |
-| ENRCH-02 | Phase 12 | Pending |
+| ENRCH-02 | Phase 12 | Complete |
 | ENRCH-03 | Phase 12 | Pending |
-| ENRCH-04 | Phase 12 | Pending |
+| ENRCH-04 | Phase 12 | Complete |
 | NAV-01 | Phase 13 | Pending |
 | NAV-02 | Phase 13 | Pending |
 | NAV-03 | Phase 13 | Pending |

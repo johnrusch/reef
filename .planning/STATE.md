@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Diagrams That Deliver
-status: unknown
-last_updated: "2026-03-02T21:42:56.854Z"
+status: in_progress
+last_updated: "2026-03-02T14:20:00Z"
 progress:
-  total_phases: 1
+  total_phases: 4
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 8
+  completed_plans: 3
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Users can quickly grasp unfamiliar codebase architecture through AI-generated C4 diagrams that update as code changes
-**Current focus:** v1.2 — Phase 11: Static Analysis Depth
+**Current focus:** v1.2 — Phase 12: AI Enrichment Pipeline
 
 ## Current Position
 
-Phase: 11 of 14 (Static Analysis Depth)
-Plan: 2 of 2 completed — Phase 11 COMPLETE
+Phase: 12 of 14 (AI Enrichment Pipeline)
+Plan: 1 of 2 complete — Phase 12 in progress
 Status: In Progress
-Last activity: 2026-03-02 — Plan 11-02 complete (component grouping + non-TS fallback)
+Last activity: 2026-03-02 — Plan 12-01 complete (structured AI output + framework-aware prompts)
 
-Progress: [██░░░░░░░░] 25% (v1.2: 1/4 phases complete, phase 12 next)
+Progress: [███░░░░░░░] 38% (v1.2: 1.5/4 phases, phase 12-01 done)
 
 ## Performance Metrics
 
@@ -53,6 +53,9 @@ v1.2 key decisions:
 - Plan 11-02: JsxEmit imported from 'typescript' package not 'ts-morph' (not exported by ts-morph)
 - Plan 11-02: buildComponentGroups() processes interfaces and entryPoints in addition to classes/functions so type-only dirs and root-level files get groups
 - Plan 11-02: 'root' added to DIRECTORY_ROLE_MAP -> 'Entry Points' for consistent single-source label lookup
+- Plan 12-01: zodOutputFormat from zod v4 takes 1 argument (not 2 as in v3) — second label arg removed
+- Plan 12-01: Code level throws immediately — code-level diagrams use static analysis only, no AI enrichment
+- Plan 12-01: messages.parse accessed via type cast to avoid TS SDK type limitations — preserves correct runtime behavior
 
 ### Pending Todos
 
@@ -60,13 +63,13 @@ None.
 
 ### Blockers/Concerns
 
-- Phase 12 (AI enrichment): Exact JSON schema per C4 level needs validation against real repo responses — research flags a spike before full implementation
 - Phase 13 (navigation): ElementIdRegistry persistence strategy (metadata column vs. rebuild on start) is undecided — choice affects cold-start performance
+- c4AnalyzerService.ts:76 has expected type error (string vs EnrichedArchitecture) — will be fixed in Plan 12-02
 
 ## Session Continuity
 
-Last session: 2026-03-02 — Plan 11-02 executed (component grouping + non-TS fallback, 30 tests pass)
-Stopped at: Completed 11-02-PLAN.md — Phase 11 complete, ready for Phase 12
+Last session: 2026-03-02 — Plan 12-01 executed (Zod schemas + structured AI output, 8 tests pass)
+Stopped at: Completed 12-01-PLAN.md — Plan 12-01 complete, ready for Plan 12-02
 Resume file: None
 
 ---
