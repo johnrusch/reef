@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Diagrams That Deliver
 status: active
-last_updated: "2026-03-02T21:27:11Z"
+last_updated: "2026-03-02T21:37:00Z"
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 11 of 14 (Static Analysis Depth)
-Plan: 1 of 2 completed
+Plan: 2 of 2 completed — Phase 11 COMPLETE
 Status: In Progress
-Last activity: 2026-03-02 — Plan 11-01 complete (forgetDescendants fix + enriched extraction)
+Last activity: 2026-03-02 — Plan 11-02 complete (component grouping + non-TS fallback)
 
-Progress: [█░░░░░░░░░] 13% (v1.2: 0/4 phases, phase 11 plan 1/2 done)
+Progress: [██░░░░░░░░] 25% (v1.2: 1/4 phases complete, phase 12 next)
 
 ## Performance Metrics
 
@@ -50,6 +50,9 @@ v1.2 key decisions:
 - Phases 13 and 14 can be parallelized if needed — they touch different files except for additive-only C4StorageService changes
 - Plan 11-01: formatValue fixture placed in utils/ (not hooks/) so directory heuristic correctly classifies it as non-significant
 - Plan 11-01: analysisQuality set to 'full-ast' on success, 'file-structure' on error path for graceful degradation signaling
+- Plan 11-02: JsxEmit imported from 'typescript' package not 'ts-morph' (not exported by ts-morph)
+- Plan 11-02: buildComponentGroups() processes interfaces and entryPoints in addition to classes/functions so type-only dirs and root-level files get groups
+- Plan 11-02: 'root' added to DIRECTORY_ROLE_MAP -> 'Entry Points' for consistent single-source label lookup
 
 ### Pending Todos
 
@@ -62,8 +65,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-02 — Plan 11-01 executed (static analysis depth, type extensions + bug fix)
-Stopped at: Completed 11-01-PLAN.md — ready for Plan 11-02
+Last session: 2026-03-02 — Plan 11-02 executed (component grouping + non-TS fallback, 30 tests pass)
+Stopped at: Completed 11-02-PLAN.md — Phase 11 complete, ready for Phase 12
 Resume file: None
 
 ---

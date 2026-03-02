@@ -11,8 +11,8 @@ Requirements for "Diagrams That Deliver" milestone. Each maps to roadmap phases.
 
 - [x] **ANLZ-01**: Static analysis multi-pass extraction produces accurate results (fix forgetDescendants call order)
 - [x] **ANLZ-02**: User sees richer diagram content from extracted functions, decorators, JSDoc, parameter types, and return types
-- [ ] **ANLZ-03**: User sees components grouped by directory structure and architectural role, not just class suffix matching
-- [ ] **ANLZ-04**: User can generate diagrams for non-TypeScript repos using file structure heuristics and AI-only analysis
+- [x] **ANLZ-03**: User sees components grouped by directory structure and architectural role, not just class suffix matching
+- [x] **ANLZ-04**: User can generate diagrams for non-TypeScript repos using file structure heuristics and AI-only analysis
 
 ### AI Enrichment
 
@@ -80,8 +80,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | ANLZ-01 | Phase 11 | Complete |
 | ANLZ-02 | Phase 11 | Complete |
-| ANLZ-03 | Phase 11 | Pending |
-| ANLZ-04 | Phase 11 | Pending |
+| ANLZ-03 | Phase 11 | Complete |
+| ANLZ-04 | Phase 11 | Complete |
 | ENRCH-01 | Phase 12 | Pending |
 | ENRCH-02 | Phase 12 | Pending |
 | ENRCH-03 | Phase 12 | Pending |

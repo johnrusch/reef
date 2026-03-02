@@ -38,7 +38,7 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full details.
 
 **Milestone Goal:** Fix diagram quality across all C4 levels so drill-down works end-to-end with rich, accurate content, and cached diagrams load fast.
 
-- [ ] **Phase 11: Static Analysis Depth** - Fix multi-pass extraction and enrich with functions, decorators, JSDoc, directory structure, and non-TypeScript fallback
+- [x] **Phase 11: Static Analysis Depth** - Fix multi-pass extraction and enrich with functions, decorators, JSDoc, directory structure, and non-TypeScript fallback (completed 2026-03-02)
 - [ ] **Phase 12: AI Enrichment Pipeline** - Wire AI output into PlantUML generation with structured JSON schemas and framework-aware prompts
 - [ ] **Phase 13: Drill-Down Navigation Fix** - Establish a canonical element ID registry and fix SVG click detection end-to-end
 - [ ] **Phase 14: Rendering Performance** - Store pre-rendered SVG in SQLite and add in-process LRU cache for sub-500ms cached diagram display
@@ -106,7 +106,7 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full details.
 | 8. Change Visualization | v1.1 | 2/2 | Complete | 2026-02-28 |
 | 9. Diagram-to-Diff Navigation | v1.1 | 2/2 | Complete | 2026-02-28 |
 | 10. State Transition Wiring & Cleanup | v1.1 | 1/1 | Complete | 2026-02-28 |
-| 11. Static Analysis Depth | 1/2 | In Progress|  | - |
+| 11. Static Analysis Depth | 2/2 | Complete   | 2026-03-02 | - |
 | 12. AI Enrichment Pipeline | v1.2 | 0/TBD | Not started | - |
 | 13. Drill-Down Navigation Fix | v1.2 | 0/TBD | Not started | - |
 | 14. Rendering Performance | v1.2 | 0/TBD | Not started | - |
