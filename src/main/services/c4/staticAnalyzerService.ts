@@ -20,6 +20,7 @@ import {
   ClassInfo,
   InterfaceInfo,
   ImportInfo,
+  FunctionInfo,
   DependencyGraph,
   DependencyNode,
   DependencyEdge,
@@ -85,12 +86,14 @@ export class StaticAnalyzerService {
       const interfaces = this.extractInterfaces(filesToAnalyze);
       const imports = this.extractImports(filesToAnalyze);
       const exports = this.extractExports(filesToAnalyze);
+      const functions = this.extractFunctions(filesToAnalyze);
 
       const structure: ProjectStructure = {
         classes,
         interfaces,
         imports,
         exports,
+        functions,
       };
 
       // Build dependency graph
@@ -118,6 +121,7 @@ export class StaticAnalyzerService {
           totalFiles,
           timestamp: new Date().toISOString(),
           duration,
+          analysisQuality: 'full-ast',
         },
       };
     } catch (error) {
@@ -130,6 +134,7 @@ export class StaticAnalyzerService {
           interfaces: [],
           imports: [],
           exports: [],
+          functions: [],
         },
         dependencies: {
           nodes: [],
@@ -143,6 +148,7 @@ export class StaticAnalyzerService {
           totalFiles: 0,
           timestamp: new Date().toISOString(),
           duration: Date.now() - startTime,
+          analysisQuality: 'file-structure',
         },
         error: `Analysis failed: ${errorMessage}`,
       };
@@ -156,9 +162,6 @@ export class StaticAnalyzerService {
     const classes: ClassInfo[] = [];
 
     for (const sourceFile of sourceFiles) {
-      // Use forgetNodesCreatedInBlock for memory optimization
-      sourceFile.forgetDescendants();
-
       const classDeclarations = sourceFile.getClasses();
 
       for (const classDecl of classDeclarations) {
@@ -179,6 +182,11 @@ export class StaticAnalyzerService {
 
         const extendsClause = classDecl.getExtends();
 
+        // Extract decorators and JSDoc BEFORE forgetDescendants
+        const decorators = classDecl.getDecorators().map(d => d.getName());
+        const jsDocs = classDecl.getJsDocs();
+        const description = jsDocs[0]?.getDescription().trim() || undefined;
+
         classes.push({
           name,
           file: sourceFile.getFilePath(),
@@ -188,8 +196,13 @@ export class StaticAnalyzerService {
           isExported: classDecl.isExported(),
           isAbstract: classDecl.isAbstract(),
           extends: extendsClause?.getText(),
+          decorators,
+          description,
         });
       }
+
+      // Release memory after all data extracted
+      sourceFile.forgetDescendants();
     }
 
     return classes;
@@ -202,8 +215,6 @@ export class StaticAnalyzerService {
     const interfaces: InterfaceInfo[] = [];
 
     for (const sourceFile of sourceFiles) {
-      sourceFile.forgetDescendants();
-
       const interfaceDeclarations = sourceFile.getInterfaces();
 
       for (const interfaceDecl of interfaceDeclarations) {
@@ -227,6 +238,9 @@ export class StaticAnalyzerService {
           isExported: interfaceDecl.isExported(),
         });
       }
+
+      // Release memory after all data extracted
+      sourceFile.forgetDescendants();
     }
 
     return interfaces;
@@ -239,8 +253,6 @@ export class StaticAnalyzerService {
     const imports: ImportInfo[] = [];
 
     for (const sourceFile of sourceFiles) {
-      sourceFile.forgetDescendants();
-
       const importDeclarations = sourceFile.getImportDeclarations();
 
       for (const importDecl of importDeclarations) {
@@ -260,6 +272,9 @@ export class StaticAnalyzerService {
           isTypeOnly: importDecl.isTypeOnly(),
         });
       }
+
+      // Release memory after all data extracted
+      sourceFile.forgetDescendants();
     }
 
     return imports;
@@ -272,17 +287,74 @@ export class StaticAnalyzerService {
     const exports: string[] = [];
 
     for (const sourceFile of sourceFiles) {
-      sourceFile.forgetDescendants();
-
       // Get exported declarations
       const exportedDeclarations = sourceFile.getExportedDeclarations();
 
       for (const [name] of exportedDeclarations) {
         exports.push(name);
       }
+
+      // Release memory after all data extracted
+      sourceFile.forgetDescendants();
     }
 
     return [...new Set(exports)]; // Deduplicate
+  }
+
+  /**
+   * Extracts all exported functions from source files
+   */
+  private extractFunctions(sourceFiles: SourceFile[]): FunctionInfo[] {
+    const functions: FunctionInfo[] = [];
+
+    for (const sourceFile of sourceFiles) {
+      const filePath = sourceFile.getFilePath();
+      const functionDeclarations = sourceFile.getFunctions();
+
+      for (const funcDecl of functionDeclarations) {
+        const name = funcDecl.getName();
+        if (!name) continue; // Skip anonymous functions
+
+        // Only include exported functions
+        if (!funcDecl.isExported()) continue;
+
+        const returnType = funcDecl.getReturnType().getText();
+        const isAsync = funcDecl.isAsync();
+        const jsDocs = funcDecl.getJsDocs();
+        const jsDocDescription = jsDocs[0]?.getDescription().trim() || undefined;
+
+        const isSignificant = this.classifyFunctionSignificance(name, filePath);
+
+        functions.push({
+          name,
+          file: filePath,
+          returnType,
+          isAsync,
+          isExported: true,
+          isSignificant,
+          jsDocDescription,
+        });
+      }
+
+      // Release memory after all data extracted
+      sourceFile.forgetDescendants();
+    }
+
+    return functions;
+  }
+
+  /**
+   * Classifies whether a function is architecturally significant
+   */
+  private classifyFunctionSignificance(name: string, filePath: string): boolean {
+    // React hooks: start with "use" + uppercase letter
+    if (/^use[A-Z]/.test(name)) return true;
+    // Handler patterns
+    if (/Handler$|Controller$|Route$|Middleware$/.test(name)) return true;
+    // File location: files in significant directories
+    if (/\/(services|routes|api|controllers|hooks|middleware)\//i.test(filePath)) return true;
+    // Default: not significant
+    return false;
   }
 
   /**

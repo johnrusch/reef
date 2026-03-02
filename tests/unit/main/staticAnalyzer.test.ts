@@ -21,7 +21,7 @@ describe('StaticAnalyzerService', () => {
     const result = await analyzer.analyzeProject(fixtureRepoPath);
 
     expect(result.error).toBeUndefined();
-    expect(result.structure.classes).toHaveLength(2);
+    expect(result.structure.classes).toHaveLength(3);
 
     // Find TestService class
     const testService = result.structure.classes.find(c => c.name === 'TestService');
@@ -108,7 +108,7 @@ describe('StaticAnalyzerService', () => {
 
     // Verify nodes contain classes and interfaces
     const classNodes = result.dependencies.nodes.filter(n => n.type === 'class');
-    expect(classNodes.length).toBe(2);
+    expect(classNodes.length).toBe(3);
 
     const interfaceNodes = result.dependencies.nodes.filter(n => n.type === 'interface');
     expect(interfaceNodes.length).toBe(2);
