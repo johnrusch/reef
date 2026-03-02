@@ -54,7 +54,9 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full details.
   2. User can generate diagrams for a JavaScript or Python repo without an error — a partial diagram is produced instead of a crash
   3. Component groupings reflect directory structure and architectural roles (e.g., "services", "controllers") rather than only class-name suffix matches
   4. Code-level diagram includes functions, decorated classes, and JSDoc-annotated symbols alongside plain classes
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 11-01-PLAN.md — Fix forgetDescendants bug + enrich extraction with functions, decorators, JSDoc (ANLZ-01, ANLZ-02)
+- [ ] 11-02-PLAN.md — Directory-based component grouping + non-TypeScript repo fallback + PlantUML consumption (ANLZ-03, ANLZ-04)
 
 ### Phase 12: AI Enrichment Pipeline
 **Goal**: AI enrichment output is consumed by the PlantUML generator, producing named technology components and relationships across all four C4 levels
@@ -104,10 +106,10 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full details.
 | 8. Change Visualization | v1.1 | 2/2 | Complete | 2026-02-28 |
 | 9. Diagram-to-Diff Navigation | v1.1 | 2/2 | Complete | 2026-02-28 |
 | 10. State Transition Wiring & Cleanup | v1.1 | 1/1 | Complete | 2026-02-28 |
-| 11. Static Analysis Depth | v1.2 | 0/TBD | Not started | - |
+| 11. Static Analysis Depth | v1.2 | 0/2 | Planned | - |
 | 12. AI Enrichment Pipeline | v1.2 | 0/TBD | Not started | - |
 | 13. Drill-Down Navigation Fix | v1.2 | 0/TBD | Not started | - |
 | 14. Rendering Performance | v1.2 | 0/TBD | Not started | - |
 
 ---
-*Last updated: 2026-03-02 — v1.2 roadmap created*
+*Last updated: 2026-03-02 — Phase 11 planned (2 plans)*
