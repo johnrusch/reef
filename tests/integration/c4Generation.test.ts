@@ -17,24 +17,76 @@ import { writeFile, mkdir, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
-// Mock Anthropic SDK
+// Mock Anthropic SDK — uses messages.parse with structured zodOutputFormat responses
 vi.mock('@anthropic-ai/sdk', () => {
   return {
     default: class MockAnthropic {
       messages = {
-        create: vi.fn().mockResolvedValue({
-          content: [
-            {
-              type: 'text',
-              text: 'Architectural insights: Reef is a desktop application for managing GitHub repositories. It uses Electron for cross-platform support and separates concerns between main and renderer processes.',
+        create: vi.fn(), // kept for backward compat if anything still calls it
+        parse: vi.fn().mockImplementation(async (params: any) => {
+          // Return level-appropriate structured data based on the user prompt
+          const userContent = params.messages?.[0]?.content || '';
+
+          if (userContent.includes('context')) {
+            return {
+              parsed_output: {
+                actors: [{ name: 'Developer', description: 'Uses the system to manage repositories' }],
+                externalSystems: [
+                  { name: 'GitHub', description: 'Source code hosting', relationship: 'Fetches repositories', technology: 'REST API' },
+                ],
+                relationships: [
+                  { from: 'Developer', to: 'reef', label: 'Uses' },
+                  { from: 'reef', to: 'GitHub', label: 'Fetches repositories', technology: 'REST API' },
+                ],
+              },
+              usage: { input_tokens: 1000, output_tokens: 200, cache_creation_input_tokens: 500, cache_read_input_tokens: 0 },
+            };
+          }
+
+          if (userContent.includes('container')) {
+            return {
+              parsed_output: {
+                containers: [
+                  { name: 'Electron Main Process', technology: 'Node.js/Electron', description: 'Application lifecycle and IPC', type: 'process' },
+                  { name: 'Renderer Process', technology: 'React/TypeScript', description: 'User interface', type: 'process' },
+                  { name: 'SQLite Storage', technology: 'better-sqlite3', description: 'Diagram and config persistence', type: 'database' },
+                ],
+                relationships: [
+                  { from: 'Electron Main Process', to: 'Renderer Process', label: 'IPC communication', technology: 'Electron IPC' },
+                  { from: 'Electron Main Process', to: 'SQLite Storage', label: 'Reads/writes diagrams' },
+                ],
+                externalSystems: [
+                  { name: 'GitHub', description: 'Source code hosting', relationship: 'Fetches repositories', technology: 'REST API' },
+                ],
+              },
+              usage: { input_tokens: 1000, output_tokens: 200, cache_creation_input_tokens: 500, cache_read_input_tokens: 0 },
+            };
+          }
+
+          if (userContent.includes('component')) {
+            return {
+              parsed_output: {
+                components: [
+                  { name: 'C4 Analyzer', role: 'Orchestrates diagram generation pipeline', description: 'Coordinates static analysis, AI enrichment, and PlantUML rendering', technology: 'TypeScript' },
+                  { name: 'Static Analyzer', role: 'Extracts code structure', description: 'Uses ts-morph for AST analysis', technology: 'ts-morph' },
+                ],
+                relationships: [
+                  { from: 'C4 Analyzer', to: 'Static Analyzer', label: 'Analyzes project' },
+                ],
+              },
+              usage: { input_tokens: 1000, output_tokens: 200, cache_creation_input_tokens: 500, cache_read_input_tokens: 0 },
+            };
+          }
+
+          // Default fallback
+          return {
+            parsed_output: {
+              actors: [{ name: 'User', description: 'Uses the system' }],
+              externalSystems: [],
+              relationships: [],
             },
-          ],
-          usage: {
-            input_tokens: 1000,
-            output_tokens: 200,
-            cache_creation_input_tokens: 500,
-            cache_read_input_tokens: 0,
-          },
+            usage: { input_tokens: 500, output_tokens: 100, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+          };
         }),
       };
     },
@@ -148,7 +200,10 @@ export default function App() {
     expect(result.diagram).toContain('@enduml');
     expect(result.diagram).toContain('!include <C4/C4_Context>');
     expect(result.diagram).toContain('System(reef,');
-    expect(result.diagram).toContain('Person(user,');
+    // AI-provided actor "Developer" (not static "User")
+    expect(result.diagram).toContain('Developer');
+    // AI-provided external system "GitHub"
+    expect(result.diagram).toContain('GitHub');
     expect(result.diagram).toContain('SHOW_LEGEND()');
   });
 
@@ -160,8 +215,9 @@ export default function App() {
     expect(result.diagram).toContain('@startuml');
     expect(result.diagram).toContain('@enduml');
     expect(result.diagram).toContain('!include <C4/C4_Container>');
-    expect(result.diagram).toContain('Container(Main_Process,');
-    expect(result.diagram).toContain('Container(Renderer_Process,');
+    // AI-provided container names (not heuristic "Main Process")
+    expect(result.diagram).toContain('Electron Main Process');
+    expect(result.diagram).toContain('SQLite Storage');
     expect(result.diagram).toContain('System_Boundary(reef,');
   });
 
@@ -174,7 +230,8 @@ export default function App() {
     expect(result.diagram).toContain('@enduml');
     expect(result.diagram).toContain('!include <C4/C4_Component>');
     expect(result.diagram).toContain('Container_Boundary(');
-    expect(result.diagram).toContain('Component(');
+    // AI-provided component name
+    expect(result.diagram).toContain('C4 Analyzer');
   });
 
   it('generates C4 Code diagram with class details', async () => {
@@ -268,6 +325,16 @@ app.on('ready', () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain('elementId');
   });
+
+  it('AI-enriched content appears in rendered Container diagram', async () => {
+    const result = await analyzer.generateC4Diagram(testRepoPath, 'container');
+    expect(result.success).toBe(true);
+    // These names come from AI, not heuristics
+    expect(result.diagram).toContain('Electron Main Process');
+    expect(result.diagram).toContain('React/TypeScript');
+    expect(result.diagram).toContain('SQLite Storage');
+    expect(result.diagram).toContain('IPC communication');
+  });
 });
 
 describe('Static Analyzer Service', () => {
@@ -350,18 +417,20 @@ describe('C4 PlantUML Generator', () => {
 
   it('generates valid PlantUML syntax', () => {
     const mockData = {
-      structure: { classes: [], interfaces: [], imports: [], exports: [] },
+      structure: { classes: [], interfaces: [], imports: [], exports: [], functions: [] },
       dependencies: { nodes: [], edges: [] },
       technologies: ['React', 'Electron'],
       entryPoints: ['src/main/main.ts'],
       metadata: {
+        projectName: 'test-project',
         filesAnalyzed: 1,
         totalFiles: 1,
         timestamp: new Date().toISOString(),
+        analysisQuality: 'full-ast' as const,
       },
     };
 
-    const diagram = generator.generateContextDiagram('test enrichment', mockData);
+    const diagram = generator.generateContextDiagram(null, mockData);
 
     expect(diagram.startsWith('@startuml')).toBe(true);
     expect(diagram.endsWith('@enduml')).toBe(true);
