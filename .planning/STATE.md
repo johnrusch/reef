@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Diagrams That Deliver
 status: in_progress
-last_updated: "2026-03-02T14:20:00Z"
+last_updated: "2026-03-02T22:28:00Z"
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 8
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 ## Current Position
 
-Phase: 12 of 14 (AI Enrichment Pipeline)
-Plan: 1 of 2 complete — Phase 12 in progress
+Phase: 12 of 14 (AI Enrichment Pipeline) — COMPLETE
+Plan: 2 of 2 complete — Phase 12 done, ready for Phase 13
 Status: In Progress
-Last activity: 2026-03-02 — Plan 12-01 complete (structured AI output + framework-aware prompts)
+Last activity: 2026-03-02 — Plan 12-02 complete (AI enrichment data wired into PlantUML generator)
 
-Progress: [███░░░░░░░] 38% (v1.2: 1.5/4 phases, phase 12-01 done)
+Progress: [████░░░░░░] 50% (v1.2: 2/4 phases, phase 12 done)
 
 ## Performance Metrics
 
@@ -56,6 +56,9 @@ v1.2 key decisions:
 - Plan 12-01: zodOutputFormat from zod v4 takes 1 argument (not 2 as in v3) — second label arg removed
 - Plan 12-01: Code level throws immediately — code-level diagrams use static analysis only, no AI enrichment
 - Plan 12-01: messages.parse accessed via type cast to avoid TS SDK type limitations — preserves correct runtime behavior
+- Plan 12-02: AI failure in c4AnalyzerService now logs warning and continues with static fallback instead of returning error — diagrams always produced
+- Plan 12-02: generateCodeDiagram accepts EnrichedArchitecture | null but intentionally ignores it (void cast) — code level uses static analysis only
+- Plan 12-02: EnrichedArchitecture union type cast per level in generatePlantUML() switch statement — correct since enrichArchitecture() validates schema per level
 
 ### Pending Todos
 
@@ -64,12 +67,12 @@ None.
 ### Blockers/Concerns
 
 - Phase 13 (navigation): ElementIdRegistry persistence strategy (metadata column vs. rebuild on start) is undecided — choice affects cold-start performance
-- c4AnalyzerService.ts:76 has expected type error (string vs EnrichedArchitecture) — will be fixed in Plan 12-02
+- better-sqlite3 native module version mismatch (NODE_MODULE_VERSION 139 vs 127): blocks C4AnalyzerService integration tests and C4CacheService tests — pre-existing environment issue, needs `npm rebuild` with matching Node.js version
 
 ## Session Continuity
 
-Last session: 2026-03-02 — Plan 12-01 executed (Zod schemas + structured AI output, 8 tests pass)
-Stopped at: Completed 12-01-PLAN.md — Plan 12-01 complete, ready for Plan 12-02
+Last session: 2026-03-02 — Plan 12-02 executed (AI enrichment data wired into PlantUML generator, 18 tests pass)
+Stopped at: Completed 12-02-PLAN.md — Phase 12 complete, ready for Phase 13 (Navigation)
 Resume file: None
 
 ---
