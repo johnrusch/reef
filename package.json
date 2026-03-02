@@ -97,6 +97,7 @@
     "tailwindcss": "^3.4.1",
     "tiktoken": "^1.0.22",
     "ts-morph": "^23.0.0",
+    "zod": "^4.3.6",
     "zustand": "^4.4.7"
   },
   "build": {
