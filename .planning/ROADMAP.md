@@ -67,7 +67,9 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full details.
   2. Component diagram shows logical architectural roles (e.g., "Generation Queue", "IPC Handler") rather than raw directory names
   3. Regenerating a diagram for a React app produces different, framework-specific component names than regenerating for an Express API
   4. AI enrichment cost is incurred and AI-provided elements appear in the rendered SVG (no silent discard)
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 12-01-PLAN.md — Structured output schemas, AIEnricherService rewrite with messages.parse + zodOutputFormat, framework-aware prompts (ENRCH-02, ENRCH-04)
+- [ ] 12-02-PLAN.md — Wire enrichment into PlantUML generator, fix _enrichedData discard bug, update integration tests (ENRCH-01, ENRCH-03)
 
 ### Phase 13: Drill-Down Navigation Fix
 **Goal**: User can click any element in Context, Container, or Component diagrams and reliably drill into the next level for any repository
@@ -107,9 +109,9 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full details.
 | 9. Diagram-to-Diff Navigation | v1.1 | 2/2 | Complete | 2026-02-28 |
 | 10. State Transition Wiring & Cleanup | v1.1 | 1/1 | Complete | 2026-02-28 |
 | 11. Static Analysis Depth | 2/2 | Complete    | 2026-03-02 | - |
-| 12. AI Enrichment Pipeline | v1.2 | 0/TBD | Not started | - |
+| 12. AI Enrichment Pipeline | v1.2 | 0/2 | Planned | - |
 | 13. Drill-Down Navigation Fix | v1.2 | 0/TBD | Not started | - |
 | 14. Rendering Performance | v1.2 | 0/TBD | Not started | - |
 
 ---
-*Last updated: 2026-03-02 — Phase 11 planned (2 plans)*
+*Last updated: 2026-03-02 — Phase 12 planned (2 plans, 2 waves)*
