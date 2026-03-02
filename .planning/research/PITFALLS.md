@@ -1,271 +1,232 @@
 # Pitfalls Research
 
-**Domain:** Adding persistent storage, real-time change visualization, and contextual navigation to C4 diagram tools
-**Researched:** 2026-02-24
-**Confidence:** MEDIUM
+**Domain:** Improving C4 diagram quality, rendering performance, and drill-down navigation in an Electron desktop tool
+**Researched:** 2026-03-02
+**Confidence:** HIGH
+
+> **Context:** This document supersedes the v1.1 PITFALLS.md and focuses on v1.2 goals: fixing shallow/empty diagrams, repairing Component drill-down navigation (elementId passing broken), and improving cached rendering speed from 5+ seconds.
+
+---
 
 ## Critical Pitfalls
 
-### Pitfall 1: Migration Without Backward Compatibility Strategy
+### Pitfall 1: forgetDescendants Destroys Analysis Data Mid-Loop
 
 **What goes wrong:**
-When migrating from TTL-based caching to persistent storage, existing cached diagrams become orphaned or lost. Users lose all generated diagrams on upgrade, forcing expensive regeneration of every repository's diagrams. In production, migration errors can corrupt the database, making the app unusable.
+The current `staticAnalyzerService.ts` calls `sourceFile.forgetDescendants()` at the top of each extraction loop (`extractClasses`, `extractInterfaces`, `extractImports`, `extractExports`). This causes each subsequent loop to receive "forgotten" node references — nodes whose traversal throws errors rather than returning data. The result: one extraction method gets data, then invalidates it for the next. The actual production symptom is that class information is extracted but then import relationships are empty or vice versa, producing incomplete dependency graphs that make Container and Component diagrams appear sparse.
 
 **Why it happens:**
-Developers focus on the new storage schema without planning how to preserve or migrate existing cached data. SQLite doesn't support many common schema operations (like renaming columns), and attempting unsupported operations throws NotSupportedException. The "just create tables on startup" approach fails on upgrade paths.
+`forgetDescendants()` is documented as a performance optimization that stops tracking a node's descendants in the wrapped cache. The ts-morph docs label it an "Advanced" technique. Developers add it because large codebases can accumulate thousands of tracked nodes causing memory pressure — but the side effect is that any previously accessed node reference becomes invalid and throws on access. Calling it per-file inside a loop that runs multiple analysis passes over the same files means each extraction phase partially undermines the next.
 
 **How to avoid:**
-- Create a `schema_migrations` table to track database version
-- Store an integer version and apply migrations in sequential order
-- For SQLite limitations (rename/drop columns), use the create-copy-drop pattern: create new table with desired schema, copy data from old table, drop old table, rename new one
-- Before migration, export existing cache entries with metadata (repo path, diagram level, timestamp)
-- Provide fallback: if migration fails, preserve old cache in read-only mode and warn user
-- Test migration path with realistic data (repos with all 4 C4 levels cached)
+Call `forgetDescendants()` only AFTER all extractions for a given source file are complete — not before. Structure each pass as: (1) extract everything you need from a file, (2) call `forgetDescendants()`, (3) move to the next file. Alternatively, restructure into a single-pass extractor that collects classes, interfaces, imports, and exports in one traversal per file, then releases memory. Benchmark before adding this optimization at all — medium-sized codebases (under 500 files) rarely need it.
 
 **Warning signs:**
-- Migration script not tested with existing cache database
-- No rollback strategy if migration fails
-- Schema changes made directly without version tracking
-- "Clean install works, upgrade crashes" bug reports
+- Import data is empty or contains only a fraction of actual imports
+- Classes are extracted but component relationship edges are missing
+- Dependency graph shows nodes but no edges between them
+- Container diagram shows only the system boundary with no containers inside
 
 **Phase to address:**
-Phase 1 (Persistent Storage Foundation) — before any persistent storage code is written
+Phase 1 (Static Analysis Depth) — fix before any other quality work; all higher levels depend on accurate static data.
 
 ---
 
-### Pitfall 2: Race Conditions in File Watcher + Regeneration Pipeline
+### Pitfall 2: AI Enrichment Output Discarded Instead of Parsed
 
 **What goes wrong:**
-File watcher fires "modify" event, but file contents are empty when read because the write hasn't completed. Multiple rapid file changes trigger overlapping regeneration jobs, wasting API calls and causing incorrect diagram states. Chokidar can lose file events during startup when watching large nested folder structures.
+The `aiEnricherService.ts` returns a freeform text string labeled `enrichedData`. The `c4PlantUMLGenerator.ts` receives this string as parameter `_enrichedData` (note the underscore — TypeScript "unused variable" convention) and proceeds to generate diagrams entirely from `staticData` alone. The AI's architectural insights — logical container groupings, component responsibilities, relationship labels, system descriptions — are computed, API costs are incurred, but the output is never parsed or applied. Container diagrams show only what heuristic detection from entry points and package.json can find, which for any project with non-standard structure (monorepos, workspaces, unusual entry point naming) produces only "Main Process + Renderer Process" or nothing.
 
 **Why it happens:**
-File systems don't provide atomic "write complete" notifications. Editors save files in multiple operations (write temp, rename, delete original). Chokidar fires events immediately, not after write completion. Without debouncing, every keystroke in a file triggers a full diagram regeneration costing API credits.
+The enricher was designed to produce structured diagram content, but the generator evolved independently to use static data directly. The `_enrichedData` parameter documents the intent but the integration was never completed. The free-text response format also makes parsing unreliable — LLMs do not consistently output parseable structures without explicit schema enforcement.
 
 **How to avoid:**
-- Implement debounce (500ms-2s) for file change events: wait for changes to "settle" before regenerating
-- Use file hash comparison: only regenerate if content actually changed (catches rename/touch operations)
-- Queue regeneration jobs with deduplication: if job for same diagram level already queued, skip duplicate
-- Add retry logic with exponential backoff for empty file reads
-- For chokidar on large repos: use `awaitWriteFinish` option with `stabilityThreshold` (1000ms)
-- Consider throttling: limit to one regeneration per diagram level per time window
+Redesign AI enrichment to return a typed object (not raw text) that the generator uses directly. Use structured output via `tool_use` or JSON mode to guarantee parseable results. Define a `C4EnrichedInsights` schema that maps to what each diagram level needs — for Container: list of `{ name, tech, description, type }` items; for Component: list of `{ name, description, groupPath }` items. Generator merges structured enrichment with static data, with static data providing factual structure and AI providing descriptions and relationships that static analysis cannot infer.
 
 **Warning signs:**
-- CPU spikes during file editing sessions
-- "Empty diagram generated" errors
-- Multiple API calls for single file save
-- Regeneration jobs backing up in queue
-- High API costs from duplicate work
+- The `_enrichedData` parameter is prefixed with `_` in generator methods
+- Container diagram always produces the same set of containers regardless of codebase content
+- AI enrichment increases generation time and cost but diagram content is identical to what static analysis alone would produce
+- AI call succeeds (logged) but diagram quality does not improve
 
 **Phase to address:**
-Phase 2 (Real-Time Change Detection) — file watching logic must include debouncing from day one
+Phase 2 (AI Enrichment Pipeline) — redesign the AI-to-generator interface before prompting improvements matter.
 
 ---
 
-### Pitfall 3: Database Lock Deadlocks from Concurrent Writes
+### Pitfall 3: elementId Mismatch Between Container Diagram and Component Drill-Down
 
 **What goes wrong:**
-Multiple renderer processes or background jobs attempt to write diagram data simultaneously, causing SQLite "database is locked" errors. Regeneration jobs fail silently, leaving diagrams stale. In worst case, write contention causes the app to freeze or crash.
+The Container diagram generates PlantUML elements with IDs produced by `sanitizeId()` — e.g., `Main_Process`, `Renderer_Process`. When a user clicks on "Main Process" in the SVG, the `handleElementClick` in `DiagramViewer.tsx` extracts the SVG `elem_` ID (e.g., `Main_Process`) and passes it as `elementId` to the Component diagram generator. The generator's `getContainerPath()` method expects human-readable names like `"Main Process"` to look up in a hardcoded `pathMap` object. The sanitized ID `Main_Process` never matches any `pathMap` key, so `containerPath` defaults to `containerId.toLowerCase()` (i.e., `"main_process"`), which matches no source file paths. The result: Component diagram shows an empty container boundary — the bug the milestone describes as "Component diagram requires elementId (container name)."
 
 **Why it happens:**
-SQLite only allows one write operation at a time. In Electron, if renderer processes write directly to the database, each browser tab could modify state while others keep outdated UI. Better-sqlite3 in Electron must run in main process, but developers sometimes try to access it from renderer, causing locks.
+There are two naming conventions operating without coordination: PlantUML IDs (sanitized, underscores) and container path keys (human-readable, spaces). The generator that creates the Container diagram does not document what ID format it uses, and the generator that creates the Component diagram does not document what format it expects. This mismatch is invisible during development because both run in the same function chain but the error only manifests at the Component level where the ID is actually used for filtering.
 
 **How to avoid:**
-- ALL database operations MUST run in main process via IPC
-- Implement write queue with single-threaded executor: serialize all writes through one channel
-- Use WAL (Write-Ahead Logging) mode: `PRAGMA journal_mode=WAL` for better concurrency
-- Set reasonable busy timeout: `PRAGMA busy_timeout=5000` (5 seconds)
-- For reads from renderer: use IPC to request data from main process
-- Consider eventual consistency: renderer can work with slightly stale data, sync when convenient
-- Never open multiple database connections from different processes
+Establish a single canonical identifier for each container that flows through the entire pipeline. When a Container diagram element is emitted, embed a `data-*` attribute or use a PlantUML alias (`$alias`) that maps back to the canonical container path (e.g., `src/main`). When the SVG click extracts an element ID, it should retrieve the canonical path, not the sanitized display name. Alternatively, maintain an explicit ID registry: the Container generator builds a `Map<sanitizedId, containerPath>` at generation time and persists it with the stored diagram so the Component generator can look up the correct path from the clicked ID.
 
 **Warning signs:**
-- "Database is locked" error messages
-- Intermittent write failures that succeed on retry
-- App hangs when multiple repos regenerate simultaneously
-- Database file grows but writes don't appear
-- Corruption errors after concurrent operations
+- `getContainerPath()` has a hardcoded map with a limited set of names that may not match generated IDs
+- Component diagram is requested but shows an empty container boundary
+- Error message "Component diagram requires elementId (container name)" thrown from `c4AnalyzerService.ts` — but this is thrown only when `elementId` is `undefined`; when elementId IS passed but wrong format, the diagram silently renders empty
+- Clicking any Container diagram element produces the same (empty) Component diagram regardless of what was clicked
 
 **Phase to address:**
-Phase 1 (Persistent Storage Foundation) — architecture must enforce single-process writes
+Phase 3 (Drill-Down Navigation Fix) — highest priority bug; requires coordinated fix across generator, storage, and click handler.
 
 ---
 
-### Pitfall 4: Cache Invalidation That Never Fires
+### Pitfall 4: Container Detection Fails on Non-Standard Project Structures
 
 **What goes wrong:**
-Diagrams become permanently stale because invalidation logic has bugs. Users see outdated architecture even after major code refactors. The QueryPilot team at Readyset (2026) discovered their metadata cache was never invalidated and stayed permanently stale, causing repeated failures.
+`detectContainers()` in `c4PlantUMLGenerator.ts` identifies containers exclusively by inspecting `staticData.entryPoints` for filenames matching `main.ts`, `App.tsx`, and `main.tsx`. For projects without these exact entry point names — Next.js apps (no `main.ts`), monorepos, backend-only Node services, or repos with non-standard structure — no containers are detected. The Container diagram renders with an empty system boundary. This is the direct cause of the "Container diagram nearly empty — just 'system' + 'User'" bug.
 
 **Why it happens:**
-Cache invalidation is genuinely hard. Developers implement TTL or event-based invalidation but miss edge cases: file renamed (not modified), git branch switch, external file changes, dependency updates. Invalidation code is often write-once and rarely tested with real scenarios.
+Entry point detection is a heuristic that was designed for Electron apps and partially generalized. The fallback case (no entry points found, infer from class file paths) exists but only fires if the entry point array is empty, and even then it groups by the first path segment under `src/`, which produces directory names rather than meaningful container names. For any codebase without a file literally named `main.ts` or `App.tsx`, the heuristic silently fails.
 
 **How to avoid:**
-- Multiple invalidation triggers, not just file modification time:
-  - File content hash changes
-  - Git HEAD changes (branch switch, pull)
-  - Dependency file changes (package.json, go.mod)
-  - Explicit user-triggered refresh
-- Add "generated at" timestamp to diagram metadata, show age in UI
-- Provide manual "force regenerate" option as escape hatch
-- Log invalidation decisions for debugging: "Invalidated diagram X because Y"
-- Test invalidation with realistic scenarios: rename files, switch branches, merge conflicts
-- Consider hybrid approach: background check for staleness, regenerate opportunistically
+Layer multiple container detection strategies with decreasing specificity: (1) framework-specific detection from package.json scripts and dependencies — Next.js → "Next.js App" container, Express → "API Server" container; (2) directory-structure inference using common patterns (`src/api`, `src/client`, `src/server`, `apps/*` for monorepos); (3) entry point filename patterns as a fallback; (4) AI enrichment as the final layer to describe containers the heuristics missed. Treat an empty container list as an error condition, not a valid result — if no containers are detected, emit a warning and delegate fully to AI enrichment.
 
 **Warning signs:**
-- User reports "diagram doesn't match code"
-- Invalidation logs missing expected triggers
-- Diagrams never regenerate after initial generation
-- File timestamp checks but content hasn't actually changed
-- No way for user to force refresh
+- `detectContainers()` returns an empty array for any project type other than Electron
+- Container diagram shows the `System_Boundary` wrapper but no `Container()` elements inside
+- The `entryPoints` array in `AnalysisResult` is empty for non-Electron codebases
+- Container-level generation succeeds (no thrown error) but produces a diagram with only "User" and the system box
 
 **Phase to address:**
-Phase 2 (Real-Time Change Detection) — invalidation must be comprehensive and testable
+Phase 1 (Static Analysis Depth) — expand detection logic as part of improving static analysis quality.
 
 ---
 
-### Pitfall 5: Change Bubble-Up Logic That Loses Context
+### Pitfall 5: PlantUML JVM Cold Start on Every Cached Diagram Render
 
 **What goes wrong:**
-Code-level changes mark Container and Context levels as "changed," but navigating up the hierarchy loses information about WHAT changed. Users see "3 changes" indicator but can't identify which components are affected. Clicking a changed element doesn't show relevant diff.
+Every time a cached diagram is displayed — even one retrieved from SQLite in milliseconds — the `PlantUMLRenderer.tsx` calls `window.reef.plantuml.generateSVG()` via IPC, spawning a new Java process via `node-plantuml`. The JVM startup cost alone is 2-5 seconds. This makes cached diagram rendering feel as slow as fresh generation, defeating the purpose of persistent storage. The 5+ second rendering time reported in the milestone is primarily JVM cold start, not diagram complexity.
 
 **Why it happens:**
-Developers implement simple boolean "hasChanges" flag that bubbles up, losing granularity. The hierarchy stores aggregated state ("something changed below") but not which specific children changed. Navigation connects diagram elements to diff viewer by filename, but element IDs don't map back to source files.
+The renderer treats all PlantUML content identically — it always sends content to the local Java generator and waits for SVG output. There is no path that checks "is this cached SVG already available?" before initiating generation. The `C4AnalyzerService` stores both PlantUML source and (implicitly) the generated SVG is expected to come from rendering. The diagram storage schema stores `diagram_content` as the PlantUML source, not the rendered SVG — so every render must re-invoke Java.
 
 **How to avoid:**
-- Store hierarchical change metadata, not just boolean:
-  ```typescript
-  {
-    level: 'Container',
-    elementId: 'web-app',
-    hasChanges: true,
-    changedChildren: ['AuthService', 'UserService'],
-    changedFiles: ['src/auth/login.ts', 'src/user/profile.ts']
-  }
-  ```
-- When bubbling up, preserve change path: Context → Container(web-app) → Component(AuthService) → Code(login.ts)
-- SVG element click extracts element ID, looks up in change metadata, navigates to first changed file
-- Visual indicators show change count AND allow drilling down to specific changes
-- Navigation stack includes file context: "Container.web-app.AuthService → login.ts:15"
+Store rendered SVG directly in the diagram storage alongside PlantUML source. Add a `rendered_svg` column to `diagram_storage`. When a diagram is retrieved from storage, check if `rendered_svg` is populated — if yes, inject directly into the DOM without invoking Java. If no `rendered_svg`, render via Java and store the result. Add a Nailgun-style persistent JVM approach as a performance option: the `node-plantuml` library supports Nailgun which eliminates cold start for subsequent renders. Cache the rendered SVG as the primary artifact; PlantUML source is preserved only for regeneration.
 
 **Warning signs:**
-- Change indicators are all-or-nothing (no granularity)
-- Users click changed element, see unrelated file in diff viewer
-- No way to see which specific components changed
-- Change metadata doesn't survive navigation
-- Bubbled indicators don't link back to source
+- `diagram_storage` schema has no `rendered_svg` column
+- Every diagram display triggers a Java process spawn visible in activity monitor
+- Cached diagrams take the same time to display as freshly generated ones
+- "Generating diagram..." loading state appears even when diagram is retrieved from storage
 
 **Phase to address:**
-Phase 3 (Change Visualization & Bubble-Up) — design data structure before implementing UI
+Phase 4 (Rendering Performance) — implement SVG caching layer that bypasses Java for already-rendered content.
 
 ---
 
-### Pitfall 6: Auto-Generate Without Cost Awareness Creates Angry Users
+### Pitfall 6: Component Detection Grouped by Directory Name, Not Logical Architecture
 
 **What goes wrong:**
-User adds 10 repositories, app immediately starts generating diagrams for all, burning through $5-10 of API credits without warning. User sees unexpected charges, feels deceived, leaves negative review. EU regulators fine app for dark pattern (taking costly action without explicit consent).
+`detectComponents()` in `c4PlantUMLGenerator.ts` groups classes by the directory segment immediately after the container path. For `src/main/services/`, this produces a component named "Services" containing all service classes. For `src/renderer/components/`, it produces "Components." These are structural categories, not architectural components. A C4 Component diagram should show logical groupings like "Repository Management," "GitHub Integration," "Diagram Generation" — not "services" and "components." The resulting diagrams are technically valid C4 syntax but convey no more information than reading a directory listing.
 
 **Why it happens:**
-Developers optimize for "magical" UX: auto-generate makes feature feel seamless. They forget API calls have real costs that user pays (indirectly via subscription or directly via API key). 2026 EU regulations crack down on actions taken without informed consent, especially those with financial impact.
+Directory-based grouping is the simplest implementation that produces non-empty diagrams. It requires no AI understanding and no domain knowledge. The failure mode is subtle: the diagram is not empty (so no error fires) and the Component names are plausible-sounding, but the architectural meaning is missing. This pitfall is identified in C4 model research as "superficial abstractions" — groupings that "don't convey meaningful information about the architecture."
 
 **How to avoid:**
-- On repository add, show cost estimation modal:
-  ```
-  Generate C4 diagrams for [repo name]?
-
-  Estimated cost: $0.20-0.50 (based on codebase size)
-  Time: 2-5 minutes
-
-  [Generate Now] [Skip] [Settings]
-  ```
-- Remember user preference: "Always auto-generate" checkbox (but still show progress/cost)
-- Start with Context level only (cheapest), offer to generate deeper levels
-- Show running cost total in progress UI
-- Settings panel: auto-generate threshold (repos > 10k LOC require confirmation)
-- Cache prompt for user education: "Regeneration will use cached analysis (90% savings)"
+AI enrichment is the correct tool for logical component identification. Static analysis provides the raw materials (class names, file paths, import relationships) and AI identifies which classes belong together as logical components and what those components are responsible for. The Component prompt should explicitly ask the AI to identify 5-10 named architectural components within a container, describe each, and group classes accordingly. Avoid relying solely on directory structure — the code may not be organized logically.
 
 **Warning signs:**
-- No cost estimation before expensive operations
-- Users surprised by API charges
-- No way to cancel in-progress generation
-- Bulk operations don't show total cost
-- Settings don't include cost controls
+- Component names match directory names exactly ("Services", "Components", "Stores", "Utils")
+- All classes in a directory appear in the same component regardless of their actual architectural role
+- Component diagram looks like a directory tree rather than an architecture diagram
+- Descriptions are auto-generated strings like "3 services handling service logic"
 
 **Phase to address:**
-Phase 4 (Auto-Generate on Repo Add) — implement consent flow before auto-generate logic
+Phase 2 (AI Enrichment Pipeline) — AI must drive component identification, not directory traversal.
 
 ---
 
-### Pitfall 7: SVG Click Detection That Breaks with PlantUML Updates
+### Pitfall 7: PlantUML SVG Click Transparency Bug Blocks Navigation
 
 **What goes wrong:**
-PlantUML updates change SVG structure, breaking element ID extraction. Users click diagram elements, nothing happens. Navigation worked in development but fails in production with different PlantUML version. Accessibility broken because screen readers can't identify clickable elements.
+PlantUML v1.2025.0 introduced a breaking change where invisible `path` elements overlay clickable diagram elements. The `fill` attribute was changed from `"none"` to `"transparent"`, causing mouse events to be absorbed by the overlay rather than propagating to the underlying element. This means users clicking on Container or Component elements in the SVG receive no `handleElementClick` callback — drill-down navigation silently fails. The bug was resolved in v1.2025.2 (March 5, 2025) but affects any environment running an older local PlantUML JAR.
 
 **Why it happens:**
-Code assumes specific SVG structure based on current PlantUML version. DOM traversal uses brittle selectors like `.parentElement.parentElement.id`. PlantUML doesn't guarantee stable SVG structure across versions. Element IDs sometimes have prefixes (`elem_`, `entity_`) that change.
+The `node-plantuml` package bundles or invokes a specific PlantUML JAR version. If the bundled JAR version is v1.2025.0 or v1.2025.1, the transparent overlay bug is present. Electron apps that bundle Java dependencies may not receive automatic updates, meaning users on older builds are silently affected. The bug is silent — no error is thrown, clicks simply have no effect.
 
 **How to avoid:**
-- Don't assume SVG structure: traverse upward until ID found, don't hardcode depth
-- Implement ID extraction strategy with fallbacks:
-  1. Try current element ID
-  2. Traverse parents up to 5 levels looking for ID
-  3. Check data attributes (data-element-id)
-  4. Fall back to text content matching
-- Add version detection: store PlantUML version with diagram, warn if mismatch
-- Test with multiple PlantUML versions (current, current-1, current+1)
-- Add ARIA labels to SVG for accessibility: screen readers need element identification
-- Log failed click detection for debugging: "Click at (x,y) found no element ID"
+Apply a post-render SVG patch that sets `fill="none"` on all `path` elements that have `fill="transparent"` immediately after the SVG is injected into the DOM. This mirrors the JavaScript workaround identified in the PlantUML issue tracker. Alternatively, version-check the JAR on startup and warn if it predates v1.2025.2. Add a diagnostic test: after rendering a known diagram, verify that a test click on a known element ID triggers the callback.
 
 **Warning signs:**
-- Click detection code has hardcoded parent/child traversal
-- No error handling when ID not found
-- Tests only run against single PlantUML version
-- SVG structure changes break navigation
-- No accessibility testing
+- Clicks on diagram elements produce no console output (no `handleElementClick` invoked)
+- The `elem_` IDs are present in the SVG DOM but click events do not reach them
+- The issue appears on some user machines but not others (different JAR versions)
+- Hovering over elements shows cursor change but clicking produces nothing
 
 **Phase to address:**
-Phase 5 (Contextual Navigation) — build robust click detection from start
+Phase 3 (Drill-Down Navigation Fix) — apply SVG patch as part of fixing element click detection.
 
 ---
 
-### Pitfall 8: Diff Viewer Navigation Without File Context
+### Pitfall 8: AI Prompt Produces Narrative Text Instead of Diagram Data
 
 **What goes wrong:**
-User clicks changed Code-level element, diff viewer opens but shows wrong file or entire file (no line number). User has to manually search for the change. Multi-file components show random file instead of the changed one. Navigation loses value because it's not contextual.
+The current `enrichArchitecture()` prompts ask the AI for "concise architectural insights" — prose descriptions of what was observed. The generator receives this narrative but has no parser for it, so the insights are discarded (the `_enrichedData` parameter). If the pipeline is fixed to use AI output, the new risk is that prompts which ask for narrative will produce flowing text like "The application follows an Electron architecture with a main process handling system calls..." rather than structured data the generator can consume. AI-generated prose requires complex natural language parsing that is fragile and expensive to maintain.
 
 **Why it happens:**
-Diagram elements don't store file/line mapping. Change detection knows files changed but not which elements map to which files. Code-level diagrams aggregate multiple files into one element (e.g., "UserService" spans 3 files). Click handler defaults to first file alphabetically instead of the changed one.
+Architecture analysis prompts are typically designed for human readers. The C4 prompts in `aiEnricherService.ts` follow this pattern — they describe focus areas in natural language and expect "concise architectural insights" in return. This is appropriate when a human reads the output, but inappropriate when a generator needs to extract specific elements (container names, technologies, descriptions) from the response.
 
 **How to avoid:**
-- Store element-to-file mapping in diagram metadata:
-  ```typescript
-  {
-    elementId: 'UserService',
-    files: [
-      { path: 'src/user/service.ts', lines: [1, 150] },
-      { path: 'src/user/repository.ts', lines: [1, 80] }
-    ],
-    primaryFile: 'src/user/service.ts'
-  }
-  ```
-- Change detection enriches metadata with changed regions:
-  ```typescript
-  {
-    file: 'src/user/service.ts',
-    changedLines: [[45, 52], [78, 80]]
-  }
-  ```
-- Navigation logic: element click → find changed file → scroll to first changed line
-- If multiple files changed: show file picker or open all in tabs
-- For unchanged elements: navigate to primary file (no line number)
+Use Anthropic's structured output feature (`tool_use`) to enforce response schema. Define a tool with input schema that matches the diagram generator's required data format. For Container level: `{ containers: Array<{ id: string, name: string, tech: string, description: string, type: "container" | "database" }>, relationships: Array<{ from: string, to: string, label: string }> }`. The AI fills in this schema rather than writing prose, guaranteeing parseable output. Prose descriptions become values within the schema rather than the schema itself.
 
 **Warning signs:**
-- Navigation always opens top of file
-- No line number in diff viewer URL
-- Multi-file elements show wrong file
-- Change detection separate from element mapping
-- No way to navigate to specific change region
+- AI prompt asks for "insights" or "analysis" rather than a list of specific elements
+- Generator receives string output from AI but does not attempt to parse it
+- AI response includes complete sentences describing architecture rather than element lists
+- Same AI call produces different structure on different runs (no schema enforcement)
 
 **Phase to address:**
-Phase 5 (Contextual Navigation) — design metadata structure with file mapping
+Phase 2 (AI Enrichment Pipeline) — redesign prompts alongside the generator interface.
+
+---
+
+### Pitfall 9: Sanitized IDs Are Not Stable Across Regenerations
+
+**What goes wrong:**
+The `sanitizeId()` function in `c4PlantUMLGenerator.ts` converts names to valid PlantUML identifiers by replacing non-alphanumeric characters with underscores. If a project is renamed, a container description changes, or a technology label is updated between regenerations, the sanitized IDs change. This breaks the change tracking system — `diagram_change_tracking` stores `elementId` values from previous diagrams that may no longer match the new SVG's element IDs. Amber highlighting no longer appears on the correct elements, and the "navigate to diff" click handler receives an ID that maps to no changed file.
+
+**Why it happens:**
+The ID generation strategy is purely cosmetic — it produces IDs that look readable in PlantUML source but provides no stability guarantee. There is no registry of canonical IDs that persists across generations. Each generation independently computes IDs from whatever element names the AI or static analysis produces, which can vary.
+
+**How to avoid:**
+Separate display names from stable IDs. Assign stable IDs based on structural position (e.g., `container_0`, `container_1`, or a hash of the canonical path like `src/main`) rather than display name. Store the mapping `{ stableId → displayName }` in the stored diagram metadata. Change tracking, click detection, and highlighting use the stable ID; display names can change freely. Alternatively, use canonical paths as IDs directly — `src_main` for the Main Process container — which are stable as long as the codebase structure is stable.
+
+**Warning signs:**
+- `elementId` values in `diagram_change_tracking` do not match any element in the current diagram SVG
+- Amber highlighting fails to appear after diagram regeneration even when the same files changed
+- Renaming a class or updating a description causes the Component diagram to lose all drill-down history
+- No persistent mapping between human-readable container names and their diagram IDs
+
+**Phase to address:**
+Phase 3 (Drill-Down Navigation Fix) — establish stable ID scheme before implementing change tracking integration.
+
+---
+
+### Pitfall 10: Static Analysis Skips Non-TypeScript Projects Silently
+
+**What goes wrong:**
+`staticAnalyzerService.ts` initializes `ts-morph` with `tsConfigFilePath: join(repoPath, 'tsconfig.json')`. When analyzing a JavaScript, Python, Go, or mixed-language repository without a `tsconfig.json`, the constructor throws an error. The `analyzeProject()` method catches this and returns an `AnalysisResult` with zero classes, zero interfaces, zero imports, and an `error` field. Upstream code (`c4AnalyzerService.ts`) checks for `staticData.error` and returns early with `"Static analysis failed."` The user sees a diagram generation error for any non-TypeScript repo.
+
+**Why it happens:**
+The analyzer was built for the Reef codebase itself (a TypeScript project) and the tsconfig requirement was never made optional. The fallback code (addSourceFilesAtPaths) after tsconfig failure only fires if `tsConfigFilePath` option is not set — but it is always set to `repoPath + '/tsconfig.json'`. The error is caught but the empty result propagates as a fatal failure.
+
+**How to avoid:**
+Make tsconfig discovery optional: if `tsconfig.json` does not exist at the repo root, scan common locations (`tsconfig.base.json`, `packages/*/tsconfig.json` for monorepos). If no tsconfig is found, initialize ts-morph without one and use `addSourceFilesAtPaths` with `**/*.{ts,tsx,js,jsx}` patterns. For non-TypeScript repos (Python, Go, Ruby), use a separate lightweight analysis path that reads `package.json`, scans directory structure, and infers containers from language-specific conventions — then delegates entirely to AI enrichment with the directory listing as context.
+
+**Warning signs:**
+- Analyzing any repo other than the Reef codebase fails immediately
+- `staticData.error` is set to "Analysis failed: Cannot find tsconfig.json"
+- `filesAnalyzed: 0` in analysis metadata even for repos with many TypeScript files
+- JavaScript repos (no tsconfig) produce diagram generation errors rather than simplified diagrams
+
+**Phase to address:**
+Phase 1 (Static Analysis Depth) — generalize analysis to handle diverse project types.
 
 ---
 
@@ -275,79 +236,62 @@ Shortcuts that seem reasonable but create long-term problems.
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Store only diagram SVG, not metadata | Simple schema, less storage | No element mapping, can't implement navigation | Never — metadata is required for phase 3-5 features |
-| Global "regenerate all" instead of granular invalidation | Easy to implement | Wastes API credits, slow UX | MVP only — must refactor by phase 2 |
-| In-memory change tracking (not persisted) | No database complexity | Lost on app restart, can't show historical changes | Only if "changes since last open" is acceptable |
-| Single database connection shared across processes | Seems simpler than IPC | Race conditions, locks, corruption risk | Never — Electron requires main-process DB access |
-| Hardcode debounce delay (e.g., 500ms) | Works for developer's machine | Too fast for network drives, too slow for local SSD | Only if user can configure in settings |
-| Skip cost estimation UI for "just one repo" | Faster onboarding flow | User surprise at first bill, trust broken | Never — cost awareness is regulatory requirement in 2026 |
+| Store PlantUML source, not rendered SVG | Simpler storage schema, smaller payload | 5+ second JVM cold start on every diagram display including cached | Never for cached diagrams — renders must be stored |
+| Discard AI enrichment output (current `_enrichedData`) | Generator works without parsing complexity | AI cost incurred but no quality improvement; diagrams are static-analysis-only | Never — defeats the purpose of hybrid generation |
+| Hard-code container names in `getContainerPath()` pathMap | Works for Electron apps exactly like Reef | Any other project type produces empty Component diagrams | Never beyond the Reef codebase itself |
+| Use directory name as component name | Non-empty Component diagrams with no code | Diagrams show structural categories, not architectural components — useless for understanding | MVP demo only, not production |
+| Free-text AI prompt for diagram content | Flexible, readable prompts | Cannot parse output reliably; must use structured output for diagram generation | Never when output feeds a code generator |
+| forgetDescendants() at top of each extraction loop | Reduces memory pressure | Invalidates nodes needed by subsequent extraction passes; causes incomplete analysis | After all extraction from a file is complete, not before |
+
+---
 
 ## Integration Gotchas
 
-Common mistakes when connecting to external services.
+Common mistakes when connecting to the generation pipeline.
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| Chokidar file watching | Watch entire repo including `node_modules`, `.git` | Use ignore patterns: `ignored: /(^|[\/\\])\.|node_modules/` — reduces events by 95% |
-| Better-SQLite3 in Electron | Opening database in renderer process | Only open in main process, use IPC for all operations — prevents locks |
-| PlantUML server | Assuming diagram generation is instant | Add timeout (30s), retry logic, and progress indicators — large diagrams can take 10s+ |
-| Anthropic API prompt caching | Not using `cache_control` ephemeral | Add cache control to system prompt and analysis context — 90% cost reduction |
-| Git change detection | Using `fs.stat()` modification time only | Hash file content: catches renames, reverts, and git operations |
-| SVG rendering in Electron | Loading multi-MB SVG synchronously | Stream or chunk large SVGs, show loading state — prevents UI freeze |
+| ts-morph `forgetDescendants` | Called before all file extractions complete | Call after all extractions for a file: extract classes + interfaces + imports + exports, then call `forgetDescendants()` |
+| Anthropic tool_use structured output | Sending same prompts as text requests | Define explicit JSON schema in the `tools` array; LLM fills the schema rather than writing prose |
+| PlantUML `node-plantuml` | Spawning new Java process for every render | Store rendered SVG in `diagram_storage`; only invoke Java when rendering new or regenerated diagrams |
+| PlantUML v1.2025.0 click detection | No version checking or SVG patching | After SVG injection, reset `fill="none"` on all `transparent` path overlays |
+| elementId from SVG click to generator | Passing sanitized PlantUML ID directly | Maintain `{ sanitizedId → canonicalPath }` registry per diagram; use canonical path as generator input |
+| C4 Container detection | Relying on entry point filenames alone | Layer: framework detection from package.json → directory conventions → entry points → AI enrichment |
+| ts-morph tsconfig requirement | Hard-coding `tsConfigFilePath` always | Check file existence first; fall back to no-tsconfig initialization with glob patterns |
+
+---
 
 ## Performance Traps
 
-Patterns that work at small scale but fail as usage grows.
+Patterns that work in development but produce unacceptable latency.
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Regenerate all 4 C4 levels on any file change | High API costs, slow feedback | Only regenerate affected level: Code change → Code level only, then bubble up | >5 repos with active development |
-| Store entire SVG in memory for change detection | High memory usage, GC pauses | Store only metadata hash, load SVG on demand | >20 diagrams cached |
-| Single-threaded regeneration queue | One repo blocks all others | Parallel workers (max 3) with priority queue | >10 repos active |
-| File watcher on large monorepo without filtering | 1000s of events per second, CPU spike | Filter by file extension (.ts, .tsx, .js), skip test files | Repos >50k files |
-| Linear search through all cached diagrams | Slow lookups as cache grows | Index by repo path + level, use SQLite queries | >100 diagrams |
-| Synchronous diagram generation in main process | UI freeze during generation | Move generation to background worker, IPC for results | Any repo >1k LOC |
+| JVM spawn per diagram render | 5+ second display time for any diagram including cached | Store rendered SVG; only invoke Java on first render | Every single diagram display |
+| Re-analyzing project on every generation call | Full ts-morph analysis (1-3 seconds) runs even for cached diagrams | Cache analysis result tied to git HEAD; skip re-analysis when HEAD unchanged | Every cached diagram retrieval |
+| Sending full analysis JSON to AI without token limits | Token count exceeds model limits; API error or truncation | Enforce token budget: prioritize imports, classes relevant to requested level; use context window calculator |  Repos >200 files analyzed at Code level |
+| Re-rendering SVG for every React re-render | Unnecessary Java invocations on prop changes | Memoize SVG content; only re-render when `content` prop actually changes (hash comparison) | Any component with state changes above DiagramPanel |
+| PlantUML include resolution on every render | `!include <C4/C4_Container>` fetched from PlantUML stdlib over network | Confirm that bundled PlantUML JAR includes C4 stdlib; test in offline mode | Network-restricted environments |
+| SQLite `synchronous = FULL` for diagram writes | 10-100x slower writes than `synchronous = NORMAL` | Use `synchronous = NORMAL` with WAL mode; FULL is only needed for crash-critical data | Write-heavy generation phases |
 
-## Security Mistakes
-
-Domain-specific security issues beyond general web security.
-
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| Storing API keys in SQLite without encryption | Keys readable in database file | Use Electron's safeStorage API for credentials, store only encrypted tokens |
-| Allowing renderer to execute arbitrary SQL | SQL injection, data corruption | Main process validates and parameterizes all queries, renderer sends only data |
-| Reading entire codebase into memory for analysis | OOM crash, denial of service | Stream files, use token limits, exclude large files (>1MB) |
-| Exposing file paths in SVG metadata | Information disclosure in exports | Use relative paths, strip sensitive directories in exported diagrams |
-| No rate limiting on regeneration requests | User can trigger $100s of API charges | Throttle: max 5 regenerations per repo per hour, require confirmation for bulk |
-| Trusting PlantUML server output without validation | XSS if malicious SVG injected | Sanitize SVG: strip `<script>`, validate structure before rendering |
-
-## UX Pitfalls
-
-Common user experience mistakes in this domain.
-
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| Silent background regeneration | User doesn't know diagram is updating, clicks stale diagram | Show discrete progress indicator, disable interaction during regeneration |
-| "3 files changed" without showing which files | User has to guess what changed | Expandable change list: click indicator to see file list |
-| No loading state for auto-generate on repo add | User waits 2-3 min with no feedback, thinks app crashed | Progress modal with phases: "Analyzing structure... (1/4)" |
-| Change indicators disappear after navigation | User can't return to see what changed | Persist change state until explicit "mark as reviewed" |
-| Opening diff viewer loses diagram context | User has to navigate back, re-find position | Split view or modal: keep diagram visible while showing diff |
-| No indication which diagram levels exist | User clicks Component, nothing happens (not generated) | Breadcrumb shows available levels, disable unavailable |
+---
 
 ## "Looks Done But Isn't" Checklist
 
-Things that appear complete but are missing critical pieces.
+Things that appear complete but are missing critical pieces specific to v1.2 goals.
 
-- [ ] **Persistent storage:** Schema created — verify migration from TTL cache tested with real data
-- [ ] **File watching:** Chokidar integrated — verify debouncing works, test with rapid saves
-- [ ] **Change detection:** Files compared — verify git operations (branch switch, merge) trigger correctly
-- [ ] **Change visualization:** Indicators show on diagrams — verify indicators bubble up all 4 levels correctly
-- [ ] **Contextual navigation:** Clicks navigate to code — verify line numbers match, multi-file elements handled
-- [ ] **Auto-generate:** Runs on repo add — verify cost estimation shown, user can cancel
-- [ ] **Database writes:** IPC to main process — verify no locks, concurrent writes queued
-- [ ] **Cache invalidation:** Staleness detected — verify all invalidation triggers tested (rename, git ops, manual)
-- [ ] **SVG click detection:** Element IDs extracted — verify works with different PlantUML versions
-- [ ] **Error recovery:** Regeneration failure — verify diagram doesn't disappear, user notified, retry offered
+- [ ] **AI enrichment:** Call succeeds, response logged — verify `_enrichedData` is actually parsed and consumed by the generator (not silently discarded)
+- [ ] **Container diagram:** Generates without error — verify it shows real containers, not just the system boundary with no interior elements
+- [ ] **Component drill-down:** Component generation is invoked — verify the `elementId` passed matches what `getContainerPath()` can resolve (not a sanitized vs human-readable mismatch)
+- [ ] **Cached diagram display:** Storage hit logged — verify SVG appears in under 1 second (not re-invoked through Java)
+- [ ] **Click detection:** `handleElementClick` callback is registered — verify a click on a diagram element produces console output (not silently absorbed by transparent overlay)
+- [ ] **Static analysis:** `filesAnalyzed > 0` in metadata — verify for a sample non-Reef repo; analysis must not fail on missing tsconfig
+- [ ] **Component diagram content:** Component boundary is rendered — verify it contains Component() elements with meaningful names, not an empty boundary
+- [ ] **ID stability:** Regenerating a diagram — verify that elementId values from change tracking still match the new diagram's SVG element IDs
+- [ ] **AI structured output:** Tool-use response is received — verify the schema-bound fields are populated, not wrapped in prose text
+- [ ] **forgetDescendants order:** Static analysis runs — verify class, interface, AND import counts are all non-zero (if only some are populated, the call order is wrong)
+
+---
 
 ## Recovery Strategies
 
@@ -355,14 +299,16 @@ When pitfalls occur despite prevention, how to recover.
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Migration corrupts database | MEDIUM | 1. Export all SVGs to temp dir, 2. Delete database, 3. Recreate schema, 4. Re-import metadata from git history |
-| Race condition generates duplicate diagrams | LOW | 1. Add unique constraint (repo + level), 2. On conflict, keep newest, 3. Cleanup script removes duplicates |
-| Cache invalidation never fires | LOW | 1. Add manual "force regenerate" button, 2. Show diagram age, 3. Background task checks staleness daily |
-| Database locked deadlock | LOW | 1. Restart app (releases locks), 2. Enable WAL mode, 3. Audit code for direct renderer access |
-| Auto-generate burns API credits | MEDIUM | 1. Add cost cap setting, 2. Refund user, 3. Implement consent flow |
-| SVG click detection breaks | LOW | 1. Add fallback: show element list modal, 2. User selects manually, 3. Update to compatible PlantUML |
-| Change bubble-up loses context | MEDIUM | 1. Migrate metadata schema, 2. Add file mapping, 3. Force regenerate all diagrams |
-| Diff navigation wrong file | LOW | 1. Add file picker UI, 2. Let user select correct file, 3. Store selection for future |
+| forgetDescendants breaks analysis | LOW | Move call to after all extractions in each source file loop; re-run analysis; verify all counts non-zero |
+| AI enrichment discarded | MEDIUM | Add structured output schema; update generator to merge AI output with static data; regenerate all stored diagrams to get quality benefit |
+| elementId mismatch breaks drill-down | MEDIUM | Build ID registry at generation time; store with diagram; update click handler to look up canonical path from registry |
+| Empty Container diagram | LOW | Add fallback container detection from package.json scripts; log what heuristics found; delegate to AI if empty |
+| 5+ second cached rendering | MEDIUM | Add `rendered_svg` column to storage; backfill by rendering existing stored diagrams; update retrieval path to check for rendered SVG first |
+| PlantUML click transparency bug | LOW | Add SVG post-processing step that patches `fill="transparent"` → `fill="none"` on path elements; apply after every SVG injection |
+| Component names are directory names | MEDIUM | Update AI prompt to list 5-10 named logical components; remove directory-based `detectComponents()` as primary strategy; use as fallback only |
+| Non-TS repo fails static analysis | LOW | Add tsconfig existence check; fall back to no-tsconfig ts-morph init; for non-TS repos, use directory listing as AI context |
+
+---
 
 ## Pitfall-to-Phase Mapping
 
@@ -370,68 +316,51 @@ How roadmap phases should address these pitfalls.
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| Migration without backward compatibility | Phase 1 | Test upgrade from v1.0 cache to v1.1 persistent storage — no data loss |
-| Race conditions in file watcher | Phase 2 | Save file 10 times rapidly — only 1 regeneration triggers |
-| Database lock deadlocks | Phase 1 | Add 5 repos, regenerate all simultaneously — no locks or errors |
-| Cache invalidation never fires | Phase 2 | Switch git branch — diagram regenerates within 2s |
-| Change bubble-up loses context | Phase 3 | Change Code-level file — Context level shows correct granular changes |
-| Auto-generate without cost awareness | Phase 4 | Add repo — cost modal shown, user can decline |
-| SVG click detection breaks | Phase 5 | Test with PlantUML v1.2025.x and v1.2026.x — clicks work |
-| Diff navigation without file context | Phase 5 | Click changed element — diff viewer opens to correct line |
+| forgetDescendants destroys analysis mid-loop | Phase 1: Static Analysis Depth | Check that class count, interface count, AND import count are all non-zero for a multi-file TypeScript repo |
+| Container detection fails on non-standard structure | Phase 1: Static Analysis Depth | Analyze a Next.js or Express repo — Container diagram must show framework-relevant containers |
+| Static analysis skips non-TypeScript repos | Phase 1: Static Analysis Depth | Analyze a JavaScript-only repo without tsconfig — must produce partial results, not error |
+| AI enrichment output discarded | Phase 2: AI Enrichment Pipeline | Log what `enrichedData` contains; confirm generator uses it to populate container/component lists |
+| Component detection grouped by directory | Phase 2: AI Enrichment Pipeline | Component diagram must show named logical groupings, not directory names |
+| AI prompt produces narrative instead of data | Phase 2: AI Enrichment Pipeline | AI response must be parseable JSON matching the defined schema |
+| elementId mismatch between Container and Component | Phase 3: Drill-Down Navigation Fix | Clicking a Container element must produce a non-empty Component diagram |
+| Sanitized IDs not stable across regenerations | Phase 3: Drill-Down Navigation Fix | Regenerate a diagram twice — amber highlights must appear on the same elements |
+| PlantUML SVG click transparency bug | Phase 3: Drill-Down Navigation Fix | Click every element in a freshly rendered SVG — all must fire `handleElementClick` |
+| JVM cold start on every cached render | Phase 4: Rendering Performance | Display a stored diagram — must appear in under 1 second without JVM spawn |
+| Re-analysis on every generation call | Phase 4: Rendering Performance | Switch between C4 levels on a cached repo — no analysis latency, only storage retrieval |
+
+---
 
 ## Sources
 
-Migration and SQLite:
-- [SQLite Versioning and Migration Strategies](https://www.sqliteforum.com/p/sqlite-versioning-and-migration-strategies)
-- [Managing Database Versions and Migrations in SQLite](https://www.sqliteforum.com/p/managing-database-versions-and-migrations)
-- [Simple declarative schema migration for SQLite](https://david.rothlis.net/declarative-schema-migration-for-sqlite/)
-- [Electron Database - RxDB](https://rxdb.info/electron-database.html)
+C4 Model Quality and Mistakes:
+- [Misuses and Mistakes of the C4 Model](https://www.workingsoftware.dev/misuses-and-mistakes-of-the-c4-model/)
+- [C4 Model Official Diagrams Reference](https://c4model.com/diagrams)
+- [Container Diagram | C4 Model](https://c4model.com/diagrams/container)
 
-File Watching Performance:
-- [Performance on Windows is unacceptable for large folders - chokidar Issue #228](https://github.com/paulmillr/chokidar/issues/228)
-- [chokidar is very slow when monitoring large network drives - Issue #970](https://github.com/paulmillr/chokidar/issues/970)
-- [File watcher resulting in high CPU use - VS Code Issue #3998](https://github.com/microsoft/vscode/issues/3998)
+AI-Generated C4 Diagrams:
+- [Creating Architecture Diagrams with C4 and AI - blog.heuel.org](https://blog.heuel.org/2025/01/creating-architecture-diagrams-with-c4-and-ai/)
+- [Collaborative LLM Agents for C4 Software Architecture Design Automation - arxiv.org](https://arxiv.org/pdf/2510.22787)
 
-Cache Invalidation:
-- [Catching a caching bug at Readyset - Antithesis Blog 2026](https://antithesis.com/blog/2026/readyset/)
-- [Cache invalidation really is one of the hardest problems](https://surfingcomplexity.blog/2022/11/25/cache-invalidation-really-is-one-of-the-hardest-things-in-computer-science/)
-- [How to Build Cache Invalidation Strategies](https://oneuptime.com/blog/post/2026-01-30-cache-invalidation-strategies/view)
+PlantUML SVG Click Detection:
+- [PlantUML v1.2025.0 SVG click transparency bug - GitHub Issue #2071](https://github.com/plantuml/plantuml/issues/2071)
+- [Links for diagram drill-down - PlantUML Q&A](https://forum.plantuml.net/7914/links-for-diagram-drill-down)
+- [SVG elements with IDs - PlantUML Q&A](https://forum.plantuml.net/10400/svg-elements-with-ids)
 
-Electron Database Concurrency:
-- [Electron Database - Storage adapters for SQLite](https://rxdb.info/electron-database.html)
-- [Local Data storage for Electron](https://dev.to/ctxhou/local-data-storage-for-electron-2h4p)
-
-Race Conditions:
-- [File watcher race condition - Deno Issue #13035](https://github.com/denoland/deno/issues/13035)
-- [Race Conditions and Secure File Operations - Apple Developer](https://developer.apple.com/library/archive/documentation/Security/Conceptual/SecureCodingGuide/Articles/RaceConditions.html)
-
-Hierarchical State Management:
-- [Frontend Components: A Guide to Scalable React UIs 2026](https://createbytes.com/insights/frontend-components-react-scalable-ui)
-- [Beyond MVVM: Hierarchical State Management with Molecule and Compose](https://medium.com/@cgaisl/beyond-mvvm-hierarchical-state-management-with-molecule-and-compose-660648eeb88e)
-
-Cost Awareness and Consent:
-- [Designing For Agentic AI: Practical UX Patterns - Smashing Magazine 2026](https://www.smashingmagazine.com/2026/02/designing-agentic-ai-practical-ux-patterns/)
-- [Dark Pattern Avoidance 2026 Checklist](https://secureprivacy.ai/blog/dark-pattern-avoidance-2026-checklist)
-- [Privacy and AI Governance in 2026: Why Consent Isn't Enough](https://blog.mynymbox.io/privacy-and-ai-governance-in-2026-why-consent-wont-save-you-from-surveillance/)
-
-Debounce/Throttle Best Practices:
-- [Debouncing and Throttling Explained Through Examples - CSS-Tricks](https://css-tricks.com/debouncing-throttling-explained-examples/)
-- [Debounce vs Throttle: Definitive Visual Guide](https://kettanaito.com/blog/debounce-vs-throttle)
-- [Understanding the Differences Between Rate Limiting, Debouncing, and Throttling](https://www.inngest.com/blog/rate-limit-debouncing-throttling-explained)
-
-Data Visualization Trends:
-- [Data Visualization Trends In 2026 - Luzmo](https://www.luzmo.com/blog/data-visualization-trends)
-- [200 years of data visualization: Where 2026 trends are taking us - Forsta](https://www.forsta.com/blog/200-years-data-visualization-2026/)
-
-SVG Navigation:
-- [SVG Accessibility/Navigation - W3C Wiki](https://www.w3.org/wiki/SVG_Accessibility/Navigation)
-- [Linking — SVG 2 - W3C](https://www.w3.org/TR/SVG/linking.html)
-- [Accessible SVGs - The A11Y Collective](https://www.a11y-collective.com/blog/svg-accessibility/)
-
-PlantUML:
-- [PlantUML FAQ](https://plantuml.com/faq)
+PlantUML Performance:
+- [Nailgun: Insanely Fast Java - martiansoftware.com](https://www.martiansoftware.com/nailgun/)
+- [Performance issue with JRE21 - PlantUML Issue #1819](https://github.com/plantuml/plantuml/issues/1819)
 - [Performance issue - PlantUML Q&A](https://forum.plantuml.net/5882/performance-issue)
+- [node-plantuml - npm](https://www.npmjs.com/package/node-plantuml)
+
+ts-morph Static Analysis:
+- [ts-morph Performance Documentation](https://ts-morph.com/manipulation/performance)
+- [ts-morph - GitHub Repository](https://github.com/dsherret/ts-morph)
+- [forgetDescendants side effects - ts-morph Issue #738](https://github.com/dsherret/ts-morph/issues/738)
+
+Electron IPC Performance:
+- [Inter-Process Communication | Electron Documentation](https://www.electronjs.org/docs/latest/tutorial/ipc)
+- [The Horror of Blocking Electron's Main Process - Medium](https://medium.com/actualbudget/the-horror-of-blocking-electrons-main-process-351bf11a763c)
 
 ---
-*Pitfalls research for: C4 diagram persistence, real-time change detection, and contextual navigation*
-*Researched: 2026-02-24*
+*Pitfalls research for: C4 diagram quality improvement and rendering performance (v1.2)*
+*Researched: 2026-03-02*
