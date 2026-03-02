@@ -9,15 +9,26 @@
  *
  * Follows official C4-PlantUML syntax from:
  * https://github.com/plantuml-stdlib/C4-PlantUML
+ *
+ * AI enrichment data is consumed when available; static analysis heuristics
+ * serve as fallback when enrichedData is null or contains empty arrays.
  */
 
 import type { AnalysisResult } from './types/analysisTypes';
+import type {
+  EnrichedContextLevel,
+  EnrichedContainerLevel,
+  EnrichedComponentLevel,
+  EnrichedArchitecture,
+} from './types/enrichmentTypes';
 
 export class C4PlantUMLGenerator {
   /**
-   * Generates C4 Context diagram showing system in its environment
+   * Generates C4 Context diagram showing system in its environment.
+   * Uses AI-provided actors and external systems when available;
+   * falls back to static analysis heuristics when enrichedData is null/empty.
    */
-  generateContextDiagram(_enrichedData: string, staticData: AnalysisResult): string {
+  generateContextDiagram(enrichedData: EnrichedContextLevel | null, staticData: AnalysisResult): string {
     const lines: string[] = [];
 
     // Extract project info
@@ -33,16 +44,32 @@ export class C4PlantUMLGenerator {
     lines.push(`title System Context Diagram for ${projectName}`);
     lines.push('');
 
-    // Add primary actor
-    lines.push('Person(user, "User", "Uses the system")');
+    // Determine actors: use AI-provided or static fallback
+    const actors =
+      enrichedData?.actors && enrichedData.actors.length > 0
+        ? enrichedData.actors
+        : [{ name: 'User', description: 'Uses the system' }];
+
+    for (const actor of actors) {
+      const id = this.sanitizeId(actor.name);
+      lines.push(`Person(${id}, "${actor.name}", "${this.escapeQuotes(actor.description)}")`);
+    }
     lines.push('');
 
     // Add target system
     lines.push(`System(${systemId}, "${projectName}", "Software system")`);
     lines.push('');
 
-    // Parse enriched data and static data to identify external systems
-    const externalSystems = this.detectExternalSystems(staticData);
+    // Determine external systems: use AI-provided or static fallback
+    const externalSystems =
+      enrichedData?.externalSystems && enrichedData.externalSystems.length > 0
+        ? enrichedData.externalSystems.map(s => ({
+            name: s.name,
+            description: s.description,
+            relationship: s.relationship,
+            tech: s.technology,
+          }))
+        : this.detectExternalSystems(staticData);
 
     // Add external systems
     for (const system of externalSystems) {
@@ -55,12 +82,26 @@ export class C4PlantUMLGenerator {
       lines.push('');
     }
 
-    // Add relationships
-    lines.push(`Rel(user, ${systemId}, "Uses")`);
+    // Add relationships: use AI-provided or static fallback
+    if (enrichedData?.relationships && enrichedData.relationships.length > 0) {
+      for (const rel of enrichedData.relationships) {
+        const fromId = this.sanitizeId(rel.from);
+        const toId = this.sanitizeId(rel.to);
+        if (rel.technology) {
+          lines.push(`Rel(${fromId}, ${toId}, "${rel.label}", "${rel.technology}")`);
+        } else {
+          lines.push(`Rel(${fromId}, ${toId}, "${rel.label}")`);
+        }
+      }
+    } else {
+      // Static fallback relationships
+      const primaryActorId = this.sanitizeId(actors[0].name);
+      lines.push(`Rel(${primaryActorId}, ${systemId}, "Uses")`);
 
-    for (const system of externalSystems) {
-      const id = this.sanitizeId(system.name);
-      lines.push(`Rel(${systemId}, ${id}, "${system.relationship}", "${system.tech || 'API'}")`);
+      for (const system of externalSystems) {
+        const id = this.sanitizeId(system.name);
+        lines.push(`Rel(${systemId}, ${id}, "${system.relationship}", "${system.tech || 'API'}")`);
+      }
     }
 
     lines.push('');
@@ -71,9 +112,11 @@ export class C4PlantUMLGenerator {
   }
 
   /**
-   * Generates C4 Container diagram showing deployable units
+   * Generates C4 Container diagram showing deployable units.
+   * Uses AI-provided containers, relationships, and external systems when available;
+   * falls back to static analysis heuristics when enrichedData is null or has empty arrays.
    */
-  generateContainerDiagram(_enrichedData: string, staticData: AnalysisResult): string {
+  generateContainerDiagram(enrichedData: EnrichedContainerLevel | null, staticData: AnalysisResult): string {
     const lines: string[] = [];
 
     // Extract project info
@@ -96,8 +139,16 @@ export class C4PlantUMLGenerator {
     // Add system boundary
     lines.push(`System_Boundary(${systemId}, "${projectName}") {`);
 
-    // Detect containers from entry points and tech stack
-    const containers = this.detectContainers(staticData);
+    // Determine containers: use AI-provided or static fallback
+    const useAiContainers = enrichedData?.containers && enrichedData.containers.length > 0;
+    const containers = useAiContainers
+      ? enrichedData!.containers.map(c => ({
+          name: c.name,
+          description: c.description,
+          tech: c.technology,
+          type: (c.type === 'database' || c.type === 'queue' || c.type === 'storage') ? 'database' as const : 'container' as const,
+        }))
+      : this.detectContainers(staticData);
 
     for (const container of containers) {
       const id = this.sanitizeId(container.name);
@@ -114,8 +165,17 @@ export class C4PlantUMLGenerator {
     lines.push('}');
     lines.push('');
 
-    // Add external systems
-    const externalSystems = this.detectExternalSystems(staticData);
+    // Determine external systems: use AI-provided or static fallback
+    const externalSystems =
+      enrichedData?.externalSystems && enrichedData.externalSystems.length > 0
+        ? enrichedData.externalSystems.map(s => ({
+            name: s.name,
+            description: s.description,
+            relationship: s.relationship,
+            tech: s.technology,
+          }))
+        : this.detectExternalSystems(staticData);
+
     for (const system of externalSystems) {
       const id = this.sanitizeId(system.name);
       const description = this.escapeQuotes(system.description);
@@ -126,56 +186,85 @@ export class C4PlantUMLGenerator {
       lines.push('');
     }
 
-    // Add relationships dynamically based on detected containers
-    if (containers.length > 0) {
-      const firstContainer = this.sanitizeId(containers[0].name);
-      lines.push(`Rel(user, ${firstContainer}, "Uses")`);
+    // Add relationships
+    if (enrichedData?.relationships && enrichedData.relationships.length > 0) {
+      // Add user -> first container relationship
+      if (containers.length > 0) {
+        const firstContainer = this.sanitizeId(containers[0].name);
+        lines.push(`Rel(user, ${firstContainer}, "Uses")`);
+      }
 
-      // Add inter-container relationships based on detection
-      const isElectronApp = staticData.technologies.includes('Electron');
-
-      if (isElectronApp && containers.length >= 2) {
-        // For Electron apps, add typical IPC relationships
-        const containerIds = containers.map(c => this.sanitizeId(c.name));
-
-        if (containerIds.some(id => id.includes('main'))) {
-          const mainId = containerIds.find(id => id.includes('main')) || containerIds[0];
-          const rendererId = containerIds.find(id => id.includes('renderer'));
-          const preloadId = containerIds.find(id => id.includes('preload'));
-
-          if (rendererId) {
-            lines.push(`Rel(${mainId}, ${rendererId}, "IPC communication", "Electron IPC")`);
-          }
-          if (preloadId) {
-            lines.push(`Rel(${mainId}, ${preloadId}, "Loads", "Context Bridge")`);
-            if (rendererId) {
-              lines.push(`Rel(${rendererId}, ${preloadId}, "Uses", "IPC Bridge")`);
-            }
-          }
-
-          // Connect to database if present
-          const dbContainer = containers.find(c => c.type === 'database');
-          if (dbContainer) {
-            const dbId = this.sanitizeId(dbContainer.name);
-            lines.push(`Rel(${mainId}, ${dbId}, "Reads/writes")`);
-          }
-        }
-      } else {
-        // For non-Electron apps, add basic container relationships
-        for (let i = 0; i < containers.length - 1; i++) {
-          const fromId = this.sanitizeId(containers[i].name);
-          const toId = this.sanitizeId(containers[i + 1].name);
-          lines.push(`Rel(${fromId}, ${toId}, "Uses")`);
+      // Use AI-provided inter-container relationships
+      for (const rel of enrichedData.relationships) {
+        const fromId = this.sanitizeId(rel.from);
+        const toId = this.sanitizeId(rel.to);
+        if (rel.technology) {
+          lines.push(`Rel(${fromId}, ${toId}, "${rel.label}", "${rel.technology}")`);
+        } else {
+          lines.push(`Rel(${fromId}, ${toId}, "${rel.label}")`);
         }
       }
-    }
 
-    // Add external relationships from first container
-    if (containers.length > 0 && externalSystems.length > 0) {
-      const firstContainerId = this.sanitizeId(containers[0].name);
-      for (const system of externalSystems) {
-        const id = this.sanitizeId(system.name);
-        lines.push(`Rel(${firstContainerId}, ${id}, "${system.relationship}", "${system.tech || 'API'}")`);
+      // Add external system relationships from first container (if no explicit external rels in AI data)
+      if (containers.length > 0 && externalSystems.length > 0) {
+        const firstContainerId = this.sanitizeId(containers[0].name);
+        for (const system of externalSystems) {
+          const id = this.sanitizeId(system.name);
+          lines.push(`Rel(${firstContainerId}, ${id}, "${system.relationship}", "${system.tech || 'API'}")`);
+        }
+      }
+    } else {
+      // Static fallback relationship generation
+      if (containers.length > 0) {
+        const firstContainer = this.sanitizeId(containers[0].name);
+        lines.push(`Rel(user, ${firstContainer}, "Uses")`);
+
+        // Add inter-container relationships based on detection
+        const isElectronApp = staticData.technologies.includes('Electron');
+
+        if (isElectronApp && containers.length >= 2) {
+          // For Electron apps, add typical IPC relationships
+          const containerIds = containers.map(c => this.sanitizeId(c.name));
+
+          if (containerIds.some(id => id.includes('main'))) {
+            const mainId = containerIds.find(id => id.includes('main')) || containerIds[0];
+            const rendererId = containerIds.find(id => id.includes('renderer'));
+            const preloadId = containerIds.find(id => id.includes('preload'));
+
+            if (rendererId) {
+              lines.push(`Rel(${mainId}, ${rendererId}, "IPC communication", "Electron IPC")`);
+            }
+            if (preloadId) {
+              lines.push(`Rel(${mainId}, ${preloadId}, "Loads", "Context Bridge")`);
+              if (rendererId) {
+                lines.push(`Rel(${rendererId}, ${preloadId}, "Uses", "IPC Bridge")`);
+              }
+            }
+
+            // Connect to database if present
+            const dbContainer = containers.find(c => c.type === 'database');
+            if (dbContainer) {
+              const dbId = this.sanitizeId(dbContainer.name);
+              lines.push(`Rel(${mainId}, ${dbId}, "Reads/writes")`);
+            }
+          }
+        } else {
+          // For non-Electron apps, add basic container relationships
+          for (let i = 0; i < containers.length - 1; i++) {
+            const fromId = this.sanitizeId(containers[i].name);
+            const toId = this.sanitizeId(containers[i + 1].name);
+            lines.push(`Rel(${fromId}, ${toId}, "Uses")`);
+          }
+        }
+      }
+
+      // Add external relationships from first container
+      if (containers.length > 0 && externalSystems.length > 0) {
+        const firstContainerId = this.sanitizeId(containers[0].name);
+        for (const system of externalSystems) {
+          const id = this.sanitizeId(system.name);
+          lines.push(`Rel(${firstContainerId}, ${id}, "${system.relationship}", "${system.tech || 'API'}")`);
+        }
       }
     }
 
@@ -187,10 +276,12 @@ export class C4PlantUMLGenerator {
   }
 
   /**
-   * Generates C4 Component diagram for a specific container
+   * Generates C4 Component diagram for a specific container.
+   * Uses AI-provided components and relationships when available;
+   * falls back to static analysis heuristics when enrichedData is null/empty.
    */
   generateComponentDiagram(
-    _enrichedData: string,
+    enrichedData: EnrichedComponentLevel | null,
     staticData: AnalysisResult,
     containerId: string
   ): string {
@@ -211,8 +302,15 @@ export class C4PlantUMLGenerator {
     // Add container boundary
     lines.push(`Container_Boundary(${this.sanitizeId(containerId)}, "${containerId}") {`);
 
-    // Extract components from classes in the container
-    const components = this.detectComponents(staticData, containerPath);
+    // Determine components: use AI-provided or static fallback
+    const useAiComponents = enrichedData?.components && enrichedData.components.length > 0;
+    const components = useAiComponents
+      ? enrichedData!.components.map(c => ({
+          name: c.name,
+          description: c.description,
+          tech: c.technology || 'TypeScript',
+        }))
+      : this.detectComponents(staticData, containerPath);
 
     for (const component of components) {
       const id = this.sanitizeId(component.name);
@@ -224,17 +322,32 @@ export class C4PlantUMLGenerator {
     lines.push('}');
     lines.push('');
 
-    // Add relationships based on dependency graph
-    const relationships = this.extractComponentRelationships(staticData, components);
+    // Determine relationships: use AI-provided or static fallback
+    if (enrichedData?.relationships && enrichedData.relationships.length > 0) {
+      for (const rel of enrichedData.relationships) {
+        const fromId = this.sanitizeId(rel.from);
+        const toId = this.sanitizeId(rel.to);
+        if (rel.technology) {
+          lines.push(`Rel(${fromId}, ${toId}, "${rel.label}", "${rel.technology}")`);
+        } else {
+          lines.push(`Rel(${fromId}, ${toId}, "${rel.label}")`);
+        }
+      }
 
-    for (const rel of relationships) {
-      const fromId = this.sanitizeId(rel.from);
-      const toId = this.sanitizeId(rel.to);
-      lines.push(`Rel(${fromId}, ${toId}, "${rel.label}")`);
-    }
-
-    if (relationships.length > 0) {
       lines.push('');
+    } else {
+      // Static fallback relationships
+      const relationships = this.extractComponentRelationships(staticData, components);
+
+      for (const rel of relationships) {
+        const fromId = this.sanitizeId(rel.from);
+        const toId = this.sanitizeId(rel.to);
+        lines.push(`Rel(${fromId}, ${toId}, "${rel.label}")`);
+      }
+
+      if (relationships.length > 0) {
+        lines.push('');
+      }
     }
 
     lines.push('SHOW_LEGEND()');
@@ -244,13 +357,18 @@ export class C4PlantUMLGenerator {
   }
 
   /**
-   * Generates C4 Code diagram showing class-level details
+   * Generates C4 Code diagram showing class-level details.
+   * Uses static analysis exclusively — enrichedData is accepted for signature
+   * consistency but NOT consumed at code level (UML class diagrams reflect actual code structure).
    */
   generateCodeDiagram(
-    _enrichedData: string,
+    enrichedData: EnrichedArchitecture | null,  // eslint-disable-line @typescript-eslint/no-unused-vars
     staticData: AnalysisResult,
     componentId: string
   ): string {
+    // enrichedData intentionally unused: code level uses static analysis only.
+    void enrichedData;
+
     const lines: string[] = [];
 
     // Add PlantUML header (no C4 include - uses standard class diagram syntax)

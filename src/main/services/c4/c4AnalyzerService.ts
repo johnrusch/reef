@@ -18,6 +18,7 @@ import type { C4Level } from './types/c4Types';
 import type { DiagramResult } from '../../../shared/types/diagram';
 import type { AnalysisResult } from './types/analysisTypes';
 import type { StoredDiagram } from '../../../shared/types/diagramState';
+import type { EnrichedArchitecture } from './types/enrichmentTypes';
 
 export class C4AnalyzerService {
   private staticAnalyzer: StaticAnalyzerService;
@@ -70,15 +71,13 @@ export class C4AnalyzerService {
 
       // Phase 2: AI Enrichment
       console.log(`[C4 Analyzer] Phase 2: AI enrichment`);
-      let enrichedData: string;
+      let enrichedData: EnrichedArchitecture | null = null;
 
       try {
         enrichedData = await this.aiEnricher.enrichArchitecture(staticData, level, elementId);
       } catch (error) {
-        return {
-          success: false,
-          error: `AI enrichment failed: ${error instanceof Error ? error.message : String(error)}`,
-        };
+        console.warn(`[C4 Analyzer] AI enrichment failed, using static analysis only: ${error instanceof Error ? error.message : String(error)}`);
+        // Continue with enrichedData = null — generator will use static fallback
       }
 
       // Phase 3: PlantUML Generation
@@ -142,20 +141,25 @@ export class C4AnalyzerService {
    */
   private generatePlantUML(
     level: C4Level,
-    enrichedData: string,
+    enrichedData: EnrichedArchitecture | null,
     staticData: AnalysisResult,
     elementId?: string
   ): string {
+    // Import level-specific types for proper casting
+    type EnrichedContextLevel = import('./types/enrichmentTypes').EnrichedContextLevel;
+    type EnrichedContainerLevel = import('./types/enrichmentTypes').EnrichedContainerLevel;
+    type EnrichedComponentLevel = import('./types/enrichmentTypes').EnrichedComponentLevel;
+
     switch (level) {
       case 'context':
-        return this.generator.generateContextDiagram(enrichedData, staticData);
+        return this.generator.generateContextDiagram(enrichedData as EnrichedContextLevel | null, staticData);
       case 'container':
-        return this.generator.generateContainerDiagram(enrichedData, staticData);
+        return this.generator.generateContainerDiagram(enrichedData as EnrichedContainerLevel | null, staticData);
       case 'component':
         if (!elementId) {
           throw new Error('Component diagram requires elementId (container name)');
         }
-        return this.generator.generateComponentDiagram(enrichedData, staticData, elementId);
+        return this.generator.generateComponentDiagram(enrichedData as EnrichedComponentLevel | null, staticData, elementId);
       case 'code':
         if (!elementId) {
           throw new Error('Code diagram requires elementId (component name)');
