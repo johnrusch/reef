@@ -274,3 +274,114 @@ describe('StaticAnalyzerService', () => {
     expect(result.metadata.analysisQuality).toBe('full-ast');
   });
 });
+
+describe('Component Grouping (ANLZ-03)', () => {
+  let analyzer: StaticAnalyzerService;
+  const fixtureRepoPath = join(__dirname, '../../fixtures/sample-repo');
+
+  beforeAll(() => {
+    analyzer = new StaticAnalyzerService();
+  });
+
+  it('groups components by directory with semantic labels', async () => {
+    const result = await analyzer.analyzeProject(fixtureRepoPath);
+
+    expect(result.componentGroups).toBeDefined();
+    expect(result.componentGroups!.length).toBeGreaterThan(0);
+
+    // services/ directory should map to "Service Layer"
+    const serviceGroup = result.componentGroups!.find(g => g.rawName === 'services');
+    expect(serviceGroup).toBeDefined();
+    expect(serviceGroup!.label).toBe('Service Layer');
+  });
+
+  it('uses fallback label for unrecognized directories', async () => {
+    const result = await analyzer.analyzeProject(fixtureRepoPath);
+
+    expect(result.componentGroups).toBeDefined();
+
+    // types/ directory maps to "Type Definitions"
+    const typesGroup = result.componentGroups!.find(g => g.rawName === 'types');
+    expect(typesGroup).toBeDefined();
+    expect(typesGroup!.label).toBe('Type Definitions');
+  });
+
+  it('groups root-level files under Entry Points', async () => {
+    const result = await analyzer.analyzeProject(fixtureRepoPath);
+
+    expect(result.componentGroups).toBeDefined();
+
+    // main.ts is at src/main.ts - after skipping 'src' it's root level
+    const rootGroup = result.componentGroups!.find(g => g.rawName === 'root');
+    expect(rootGroup).toBeDefined();
+    expect(rootGroup!.label).toBe('Entry Points');
+  });
+
+  it('includes class and function counts per group', async () => {
+    const result = await analyzer.analyzeProject(fixtureRepoPath);
+
+    expect(result.componentGroups).toBeDefined();
+
+    const serviceGroup = result.componentGroups!.find(g => g.rawName === 'services');
+    expect(serviceGroup).toBeDefined();
+    expect(serviceGroup!.classCount).toBeGreaterThan(0);
+    expect(typeof serviceGroup!.functionCount).toBe('number');
+  });
+});
+
+describe('Non-TypeScript Fallback (ANLZ-04)', () => {
+  let analyzer: StaticAnalyzerService;
+  const jsRepoPath = join(__dirname, '../../fixtures/js-only-repo');
+  const pythonRepoPath = join(__dirname, '../../fixtures/python-repo');
+
+  beforeAll(() => {
+    analyzer = new StaticAnalyzerService();
+  });
+
+  it('analyzes JavaScript-only repos with allowJs', async () => {
+    const result = await analyzer.analyzeProject(jsRepoPath);
+
+    expect(result.error).toBeUndefined();
+    expect(result.metadata.analysisQuality).toBe('js-ast');
+    expect(result.metadata.filesAnalyzed).toBeGreaterThan(0);
+    expect(result.structure.classes.length + result.structure.functions.length).toBeGreaterThan(0);
+  });
+
+  it('extracts classes from JavaScript files', async () => {
+    const result = await analyzer.analyzeProject(jsRepoPath);
+
+    expect(result.error).toBeUndefined();
+    const dataService = result.structure.classes.find(c => c.name === 'DataService');
+    expect(dataService).toBeDefined();
+  });
+
+  it('produces file-structure analysis for Python repos', async () => {
+    const result = await analyzer.analyzeProject(pythonRepoPath);
+
+    expect(result.metadata.analysisQuality).toBe('file-structure');
+    expect(result.componentGroups).toBeDefined();
+    expect(result.componentGroups!.length).toBeGreaterThan(0);
+  });
+
+  it('includes analysisWarning for partial results', async () => {
+    const jsResult = await analyzer.analyzeProject(jsRepoPath);
+    const pythonResult = await analyzer.analyzeProject(pythonRepoPath);
+
+    expect(jsResult.metadata.analysisWarning).toBeDefined();
+    expect(jsResult.metadata.analysisWarning!.length).toBeGreaterThan(0);
+
+    expect(pythonResult.metadata.analysisWarning).toBeDefined();
+    expect(pythonResult.metadata.analysisWarning!.length).toBeGreaterThan(0);
+  });
+
+  it('never crashes on any repo type', async () => {
+    const jsResult = await analyzer.analyzeProject(jsRepoPath);
+    const pythonResult = await analyzer.analyzeProject(pythonRepoPath);
+
+    // Both should return AnalysisResult (not throw)
+    expect(jsResult).toBeDefined();
+    expect(jsResult.metadata).toBeDefined();
+    expect(pythonResult).toBeDefined();
+    expect(pythonResult.metadata).toBeDefined();
+  });
+});
