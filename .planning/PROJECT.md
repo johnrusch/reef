@@ -45,7 +45,18 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 
 ### Active
 
-(No active milestone — use `/gsd:new-milestone` to define v1.2)
+## Current Milestone: v1.2 Diagrams That Deliver
+
+**Goal:** Fix diagram quality across all C4 levels so the drill-down works end-to-end with rich, detailed, useful content — and improve rendering speed if scope allows.
+
+**Target features:**
+- Diagnose and fix why static analysis + AI enrichment produces shallow/empty diagrams
+- Container diagrams show real tech components with relationships
+- Component diagrams show modules/services/controllers within containers
+- Code diagrams show classes/functions/interfaces within components
+- Fix drill-down navigation (elementId passing broken for Component level)
+- End-to-end clickable drill-down: Context → Container → Component → Code
+- (Stretch) Improve diagram rendering speed for cached diagrams (currently 5+ seconds)
 
 ### Out of Scope
 
@@ -127,4 +138,4 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 | Singleton C4StorageService | v1.1: All writes through one instance, consistent IPC broadcasts | ✓ Good |
 
 ---
-*Last updated: 2026-02-28 after v1.1 milestone completion*
+*Last updated: 2026-03-02 after v1.2 milestone start*
