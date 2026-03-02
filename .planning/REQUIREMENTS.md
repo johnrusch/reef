@@ -78,27 +78,27 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ANLZ-01 | — | Pending |
-| ANLZ-02 | — | Pending |
-| ANLZ-03 | — | Pending |
-| ANLZ-04 | — | Pending |
-| ENRCH-01 | — | Pending |
-| ENRCH-02 | — | Pending |
-| ENRCH-03 | — | Pending |
-| ENRCH-04 | — | Pending |
-| NAV-01 | — | Pending |
-| NAV-02 | — | Pending |
-| NAV-03 | — | Pending |
-| NAV-04 | — | Pending |
-| PERF-01 | — | Pending |
-| PERF-02 | — | Pending |
-| PERF-03 | — | Pending |
+| ANLZ-01 | Phase 11 | Pending |
+| ANLZ-02 | Phase 11 | Pending |
+| ANLZ-03 | Phase 11 | Pending |
+| ANLZ-04 | Phase 11 | Pending |
+| ENRCH-01 | Phase 12 | Pending |
+| ENRCH-02 | Phase 12 | Pending |
+| ENRCH-03 | Phase 12 | Pending |
+| ENRCH-04 | Phase 12 | Pending |
+| NAV-01 | Phase 13 | Pending |
+| NAV-02 | Phase 13 | Pending |
+| NAV-03 | Phase 13 | Pending |
+| NAV-04 | Phase 13 | Pending |
+| PERF-01 | Phase 14 | Pending |
+| PERF-02 | Phase 14 | Pending |
+| PERF-03 | Phase 14 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 15 total
-- Mapped to phases: 0
-- Unmapped: 15
+- Mapped to phases: 15
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-02*
-*Last updated: 2026-03-02 after initial definition*
+*Last updated: 2026-03-02 — traceability complete, all 15 requirements mapped*
