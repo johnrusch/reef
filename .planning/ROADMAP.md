@@ -80,9 +80,10 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full details.
   2. Clicking a component element in a Component diagram opens a non-empty Code diagram for that component
   3. Amber change highlighting identifies the same elements before and after a diagram regeneration (stable IDs)
   4. SVG element clicks fire drill-down navigation regardless of which PlantUML JAR version is installed
-**Plans**: 2 plans
-- [ ] 13-01-PLAN.md — ElementIdRegistry with shared sanitizeId, dynamic deriveContainerPath, generator wiring (NAV-01, NAV-02, NAV-03)
-- [ ] 13-02-PLAN.md — SVG click transparency fix, registry wiring into C4AnalyzerService for end-to-end drill-down (NAV-04, NAV-01, NAV-02)
+**Plans**: 3 plans
+- [x] 13-01-PLAN.md — ElementIdRegistry with shared sanitizeId, dynamic deriveContainerPath, generator wiring (NAV-01, NAV-02, NAV-03)
+- [x] 13-02-PLAN.md — SVG click transparency fix, registry wiring into C4AnalyzerService for end-to-end drill-down (NAV-04, NAV-01, NAV-02)
+- [ ] 13-03-PLAN.md — Gap closure: fix elementId passthrough in VisualMapTab.generateDiagram (NAV-01, NAV-02)
 
 ### Phase 14: Rendering Performance
 **Goal**: Cached diagrams display in under 500ms, eliminating the 5-8 second Java re-render on every tab switch
@@ -112,8 +113,8 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full details.
 | 10. State Transition Wiring & Cleanup | v1.1 | 1/1 | Complete | 2026-02-28 |
 | 11. Static Analysis Depth | 2/2 | Complete    | 2026-03-02 | - |
 | 12. AI Enrichment Pipeline | v1.2 | Complete    | 2026-03-02 | 2026-03-02 |
-| 13. Drill-Down Navigation Fix | 2/2 | Complete    | 2026-03-03 | - |
+| 13. Drill-Down Navigation Fix | v1.2 | 2/3 | Gap closure | - |
 | 14. Rendering Performance | v1.2 | 0/TBD | Not started | - |
 
 ---
-*Last updated: 2026-03-03 — Phase 13 planned (2 plans in 2 waves)*
+*Last updated: 2026-03-03 — Phase 13 gap closure plan added (1 plan, fixes UAT elementId passthrough bug)*
