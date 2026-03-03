@@ -116,7 +116,7 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full details.
 | 11. Static Analysis Depth | 2/2 | Complete    | 2026-03-02 | - |
 | 12. AI Enrichment Pipeline | v1.2 | Complete    | 2026-03-02 | 2026-03-02 |
 | 13. Drill-Down Navigation Fix | 3/3 | Complete   | 2026-03-03 | - |
-| 14. Rendering Performance | 2/2 | Complete   | 2026-03-03 | - |
+| 14. Rendering Performance | 2/2 | Complete    | 2026-03-03 | - |
 
 ---
 *Last updated: 2026-03-03 — Phase 14 plans created (2 plans, SVG caching + renderer wiring + Nailgun)*
