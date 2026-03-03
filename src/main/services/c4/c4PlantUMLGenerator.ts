@@ -21,6 +21,7 @@ import type {
   EnrichedComponentLevel,
   EnrichedArchitecture,
 } from './types/enrichmentTypes';
+import { sanitizeId, ElementIdRegistry, deriveContainerPath } from './elementIdRegistry';
 
 export class C4PlantUMLGenerator {
   /**
@@ -33,7 +34,7 @@ export class C4PlantUMLGenerator {
 
     // Extract project info
     const projectName = staticData.metadata.projectName;
-    const systemId = this.sanitizeId(projectName);
+    const systemId = sanitizeId(projectName);
 
     // Add C4-PlantUML include from stdlib (bundled with PlantUML JAR)
     lines.push('@startuml');
@@ -51,7 +52,7 @@ export class C4PlantUMLGenerator {
         : [{ name: 'User', description: 'Uses the system' }];
 
     for (const actor of actors) {
-      const id = this.sanitizeId(actor.name);
+      const id = sanitizeId(actor.name);
       lines.push(`Person(${id}, "${actor.name}", "${this.escapeQuotes(actor.description)}")`);
     }
     lines.push('');
@@ -73,7 +74,7 @@ export class C4PlantUMLGenerator {
 
     // Add external systems
     for (const system of externalSystems) {
-      const id = this.sanitizeId(system.name);
+      const id = sanitizeId(system.name);
       const description = this.escapeQuotes(system.description);
       lines.push(`System_Ext(${id}, "${system.name}", "${description}")`);
     }
@@ -85,8 +86,8 @@ export class C4PlantUMLGenerator {
     // Add relationships: use AI-provided or static fallback
     if (enrichedData?.relationships && enrichedData.relationships.length > 0) {
       for (const rel of enrichedData.relationships) {
-        const fromId = this.sanitizeId(rel.from);
-        const toId = this.sanitizeId(rel.to);
+        const fromId = sanitizeId(rel.from);
+        const toId = sanitizeId(rel.to);
         if (rel.technology) {
           lines.push(`Rel(${fromId}, ${toId}, "${rel.label}", "${rel.technology}")`);
         } else {
@@ -95,11 +96,11 @@ export class C4PlantUMLGenerator {
       }
     } else {
       // Static fallback relationships
-      const primaryActorId = this.sanitizeId(actors[0].name);
+      const primaryActorId = sanitizeId(actors[0].name);
       lines.push(`Rel(${primaryActorId}, ${systemId}, "Uses")`);
 
       for (const system of externalSystems) {
-        const id = this.sanitizeId(system.name);
+        const id = sanitizeId(system.name);
         lines.push(`Rel(${systemId}, ${id}, "${system.relationship}", "${system.tech || 'API'}")`);
       }
     }
@@ -116,12 +117,16 @@ export class C4PlantUMLGenerator {
    * Uses AI-provided containers, relationships, and external systems when available;
    * falls back to static analysis heuristics when enrichedData is null or has empty arrays.
    */
-  generateContainerDiagram(enrichedData: EnrichedContainerLevel | null, staticData: AnalysisResult): string {
+  generateContainerDiagram(
+    enrichedData: EnrichedContainerLevel | null,
+    staticData: AnalysisResult,
+    registry?: ElementIdRegistry
+  ): string {
     const lines: string[] = [];
 
     // Extract project info
     const projectName = staticData.metadata.projectName;
-    const systemId = this.sanitizeId(projectName);
+    const systemId = sanitizeId(projectName);
 
     // Add C4-PlantUML include from stdlib (bundled with PlantUML JAR)
     lines.push('@startuml');
@@ -151,9 +156,14 @@ export class C4PlantUMLGenerator {
       : this.detectContainers(staticData);
 
     for (const container of containers) {
-      const id = this.sanitizeId(container.name);
+      const id = sanitizeId(container.name);
       const description = this.escapeQuotes(container.description);
       const tech = this.escapeQuotes(container.tech);
+
+      if (registry) {
+        const containerPath = deriveContainerPath(container.name, staticData);
+        registry.register(id, container.name, containerPath, 'container');
+      }
 
       if (container.type === 'database') {
         lines.push(`  ContainerDb(${id}, "${container.name}", "${tech}", "${description}")`);
@@ -177,7 +187,7 @@ export class C4PlantUMLGenerator {
         : this.detectExternalSystems(staticData);
 
     for (const system of externalSystems) {
-      const id = this.sanitizeId(system.name);
+      const id = sanitizeId(system.name);
       const description = this.escapeQuotes(system.description);
       lines.push(`System_Ext(${id}, "${system.name}", "${description}")`);
     }
@@ -190,14 +200,14 @@ export class C4PlantUMLGenerator {
     if (enrichedData?.relationships && enrichedData.relationships.length > 0) {
       // Add user -> first container relationship
       if (containers.length > 0) {
-        const firstContainer = this.sanitizeId(containers[0].name);
+        const firstContainer = sanitizeId(containers[0].name);
         lines.push(`Rel(user, ${firstContainer}, "Uses")`);
       }
 
       // Use AI-provided inter-container relationships
       for (const rel of enrichedData.relationships) {
-        const fromId = this.sanitizeId(rel.from);
-        const toId = this.sanitizeId(rel.to);
+        const fromId = sanitizeId(rel.from);
+        const toId = sanitizeId(rel.to);
         if (rel.technology) {
           lines.push(`Rel(${fromId}, ${toId}, "${rel.label}", "${rel.technology}")`);
         } else {
@@ -207,16 +217,16 @@ export class C4PlantUMLGenerator {
 
       // Add external system relationships from first container (if no explicit external rels in AI data)
       if (containers.length > 0 && externalSystems.length > 0) {
-        const firstContainerId = this.sanitizeId(containers[0].name);
+        const firstContainerId = sanitizeId(containers[0].name);
         for (const system of externalSystems) {
-          const id = this.sanitizeId(system.name);
+          const id = sanitizeId(system.name);
           lines.push(`Rel(${firstContainerId}, ${id}, "${system.relationship}", "${system.tech || 'API'}")`);
         }
       }
     } else {
       // Static fallback relationship generation
       if (containers.length > 0) {
-        const firstContainer = this.sanitizeId(containers[0].name);
+        const firstContainer = sanitizeId(containers[0].name);
         lines.push(`Rel(user, ${firstContainer}, "Uses")`);
 
         // Add inter-container relationships based on detection
@@ -224,7 +234,7 @@ export class C4PlantUMLGenerator {
 
         if (isElectronApp && containers.length >= 2) {
           // For Electron apps, add typical IPC relationships
-          const containerIds = containers.map(c => this.sanitizeId(c.name));
+          const containerIds = containers.map(c => sanitizeId(c.name));
 
           if (containerIds.some(id => id.includes('main'))) {
             const mainId = containerIds.find(id => id.includes('main')) || containerIds[0];
@@ -244,15 +254,15 @@ export class C4PlantUMLGenerator {
             // Connect to database if present
             const dbContainer = containers.find(c => c.type === 'database');
             if (dbContainer) {
-              const dbId = this.sanitizeId(dbContainer.name);
+              const dbId = sanitizeId(dbContainer.name);
               lines.push(`Rel(${mainId}, ${dbId}, "Reads/writes")`);
             }
           }
         } else {
           // For non-Electron apps, add basic container relationships
           for (let i = 0; i < containers.length - 1; i++) {
-            const fromId = this.sanitizeId(containers[i].name);
-            const toId = this.sanitizeId(containers[i + 1].name);
+            const fromId = sanitizeId(containers[i].name);
+            const toId = sanitizeId(containers[i + 1].name);
             lines.push(`Rel(${fromId}, ${toId}, "Uses")`);
           }
         }
@@ -260,9 +270,9 @@ export class C4PlantUMLGenerator {
 
       // Add external relationships from first container
       if (containers.length > 0 && externalSystems.length > 0) {
-        const firstContainerId = this.sanitizeId(containers[0].name);
+        const firstContainerId = sanitizeId(containers[0].name);
         for (const system of externalSystems) {
-          const id = this.sanitizeId(system.name);
+          const id = sanitizeId(system.name);
           lines.push(`Rel(${firstContainerId}, ${id}, "${system.relationship}", "${system.tech || 'API'}")`);
         }
       }
@@ -283,7 +293,8 @@ export class C4PlantUMLGenerator {
   generateComponentDiagram(
     enrichedData: EnrichedComponentLevel | null,
     staticData: AnalysisResult,
-    containerId: string
+    containerId: string,
+    containerPath?: string
   ): string {
     const lines: string[] = [];
 
@@ -296,11 +307,11 @@ export class C4PlantUMLGenerator {
     lines.push(`title Component Diagram for ${containerId}`);
     lines.push('');
 
-    // Determine container path filter
-    const containerPath = this.getContainerPath(containerId);
+    // Determine container path filter: use provided path or derive dynamically
+    const resolvedPath = containerPath ?? deriveContainerPath(containerId, staticData);
 
     // Add container boundary
-    lines.push(`Container_Boundary(${this.sanitizeId(containerId)}, "${containerId}") {`);
+    lines.push(`Container_Boundary(${sanitizeId(containerId)}, "${containerId}") {`);
 
     // Determine components: use AI-provided or static fallback
     const useAiComponents = enrichedData?.components && enrichedData.components.length > 0;
@@ -310,13 +321,18 @@ export class C4PlantUMLGenerator {
           description: c.description,
           tech: c.technology || 'TypeScript',
         }))
-      : this.detectComponents(staticData, containerPath);
+      : this.detectComponents(staticData, resolvedPath);
 
-    for (const component of components) {
-      const id = this.sanitizeId(component.name);
-      const description = this.escapeQuotes(component.description);
-      const tech = this.escapeQuotes(component.tech);
-      lines.push(`  Component(${id}, "${component.name}", "${tech}", "${description}")`);
+    if (components.length === 0) {
+      // Placeholder so users get visual feedback instead of an empty boundary box
+      lines.push(`  Component(no_content, "No components found", "TypeScript", "Check container ID mapping")`);
+    } else {
+      for (const component of components) {
+        const id = sanitizeId(component.name);
+        const description = this.escapeQuotes(component.description);
+        const tech = this.escapeQuotes(component.tech);
+        lines.push(`  Component(${id}, "${component.name}", "${tech}", "${description}")`);
+      }
     }
 
     lines.push('}');
@@ -325,8 +341,8 @@ export class C4PlantUMLGenerator {
     // Determine relationships: use AI-provided or static fallback
     if (enrichedData?.relationships && enrichedData.relationships.length > 0) {
       for (const rel of enrichedData.relationships) {
-        const fromId = this.sanitizeId(rel.from);
-        const toId = this.sanitizeId(rel.to);
+        const fromId = sanitizeId(rel.from);
+        const toId = sanitizeId(rel.to);
         if (rel.technology) {
           lines.push(`Rel(${fromId}, ${toId}, "${rel.label}", "${rel.technology}")`);
         } else {
@@ -340,8 +356,8 @@ export class C4PlantUMLGenerator {
       const relationships = this.extractComponentRelationships(staticData, components);
 
       for (const rel of relationships) {
-        const fromId = this.sanitizeId(rel.from);
-        const toId = this.sanitizeId(rel.to);
+        const fromId = sanitizeId(rel.from);
+        const toId = sanitizeId(rel.to);
         lines.push(`Rel(${fromId}, ${toId}, "${rel.label}")`);
       }
 
@@ -554,19 +570,6 @@ export class C4PlantUMLGenerator {
   }
 
   /**
-   * Gets container path pattern for filtering
-   */
-  private getContainerPath(containerId: string): string {
-    const pathMap: Record<string, string> = {
-      'Main Process': 'src/main',
-      'Renderer Process': 'src/renderer',
-      'Preload Script': 'preload',
-    };
-
-    return pathMap[containerId] || containerId.toLowerCase();
-  }
-
-  /**
    * Detects components within a container.
    * Prefers pre-computed componentGroups from StaticAnalyzerService (ANLZ-03),
    * falls back to legacy class-directory-grouping for backward compatibility.
@@ -732,15 +735,6 @@ export class C4PlantUMLGenerator {
   }
 
   /**
-   * Sanitizes name to valid PlantUML identifier
-   */
-  private sanitizeId(name: string): string {
-    return name
-      .replace(/[^a-zA-Z0-9_]/g, '_')
-      .replace(/^[0-9]/, '_$&'); // IDs can't start with number
-  }
-
-  /**
    * Escapes quotes in text for PlantUML
    */
   private escapeQuotes(text: string): string {
@@ -751,6 +745,6 @@ export class C4PlantUMLGenerator {
    * Generates hierarchical element ID
    */
   generateElementId(level: string, name: string): string {
-    return `${level}_${this.sanitizeId(name)}`;
+    return `${level}_${sanitizeId(name)}`;
   }
 }

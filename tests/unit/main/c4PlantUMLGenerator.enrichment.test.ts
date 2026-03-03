@@ -17,6 +17,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { C4PlantUMLGenerator } from '../../../src/main/services/c4/c4PlantUMLGenerator';
+import { ElementIdRegistry } from '../../../src/main/services/c4/elementIdRegistry';
 import type { AnalysisResult } from '../../../src/main/services/c4/types/analysisTypes';
 import type {
   EnrichedContextLevel,
@@ -191,5 +192,30 @@ describe('C4PlantUMLGenerator - AI enrichment data consumption (12-02)', () => {
     const diagram = generator.generateContainerDiagram(aiContainerData, staticData);
 
     expect(diagram).toContain('System_Ext(GitHub,');
+  });
+
+  it('Test 13-01-A: generateContainerDiagram populates registry with container entries', () => {
+    const registry = new ElementIdRegistry();
+    generator.generateContainerDiagram(aiContainerData, staticData, registry);
+
+    // "Electron Main Process" sanitizes to "Electron_Main_Process"
+    const path = registry.getContainerPath('Electron_Main_Process');
+    expect(path).not.toBeNull();
+    expect(typeof path).toBe('string');
+  });
+
+  it('Test 13-01-B: generateComponentDiagram with explicit containerPath uses it instead of derivation', () => {
+    const diagram = generator.generateComponentDiagram(null, staticData, 'Main Process', 'src/main');
+
+    // Should generate a valid PlantUML diagram (at minimum @startuml/@enduml)
+    expect(diagram).toContain('@startuml');
+    expect(diagram).toContain('@enduml');
+    expect(diagram).toContain('Container_Boundary(');
+  });
+
+  it('Test 13-01-C: generateComponentDiagram with no matching components shows placeholder', () => {
+    const diagram = generator.generateComponentDiagram(null, staticData, 'My Container', 'nonexistent/path');
+
+    expect(diagram).toContain('No components found');
   });
 });

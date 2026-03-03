@@ -17,18 +17,14 @@ import { BrowserWindow } from 'electron';
 import type { C4Level } from './c4/types/c4Types';
 import type { C4StorageService } from './c4/c4StorageService';
 import type { AffectedElement } from '../../shared/types/changeTracking';
+import { sanitizeId } from './c4/elementIdRegistry';
+
+// Re-export sanitizeId so existing importers of sanitizeId from this module continue to work
+export { sanitizeId } from './c4/elementIdRegistry';
 
 interface ChangeAccumulator {
   files: Set<string>;
   timer: ReturnType<typeof setTimeout> | null;
-}
-
-/**
- * Sanitizes a name into a valid PlantUML identifier.
- * Replicates C4PlantUMLGenerator.sanitizeId() exactly for mapping accuracy.
- */
-export function sanitizeId(name: string): string {
-  return name.replace(/[^a-zA-Z0-9_]/g, '_').replace(/^[0-9]/, '_$&');
 }
 
 export class ChangeTrackingService {
