@@ -236,6 +236,7 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
     detailLevel?: DetailLevel;
     focusArea?: FocusArea;
     model?: ModelType;
+    elementId?: string;
   }) => {
     if (!repository) {
       setError('No repository selected');
@@ -252,6 +253,14 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
       model: options?.model || modelType,
     };
 
+    // Prefer elementId from options (drill-down click) over local state
+    const finalElementId = options?.elementId ?? elementId;
+
+    // Sync local state so persisted diagram loading and state tracking use the correct value
+    if (options?.elementId && options.elementId !== elementId) {
+      setElementId(options.elementId);
+    }
+
     // Get current level for state tracking
     const level = finalOptions.type.replace('c4-', '');
 
@@ -261,7 +270,7 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
         repository.path,
         level,
         'generating',
-        elementId
+        finalElementId
       );
     } catch (e) {
       console.error('Failed to update state to generating:', e);
@@ -285,7 +294,7 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
           type: finalOptions.type,
           detailLevel: apiDetailLevel as 'overview' | 'detailed',
           focusArea: apiFocusArea as 'api' | 'database' | 'business-logic' | undefined,
-          elementId: elementId,
+          elementId: finalElementId,
         });
       } else {
         // Traditional UML diagrams use pre-extracted context
@@ -343,7 +352,7 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
             repository.path,
             level,
             'fresh',
-            elementId
+            finalElementId
           );
         } catch (e) {
           console.error('Failed to update state to fresh:', e);
@@ -361,7 +370,7 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
           repository.path,
           finalOptions.type.replace('c4-', ''),
           'error',
-          elementId,
+          finalElementId,
           'Could not generate diagram. Please try again.'
         );
       } catch (e) {
