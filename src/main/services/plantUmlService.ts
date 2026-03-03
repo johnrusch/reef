@@ -4,6 +4,51 @@ import { ipcMain } from 'electron';
 // @ts-ignore - node-plantuml doesn't have types
 import plantuml from 'node-plantuml';
 
+/**
+ * In-process LRU cache for rendered SVG strings (PERF-02).
+ * Uses Map insertion-order to track LRU — oldest entry is at the front.
+ */
+export class SvgLruCache {
+  private readonly cache = new Map<string, string>();
+  private readonly maxEntries: number;
+
+  constructor(maxEntries = 15) {
+    this.maxEntries = maxEntries;
+  }
+
+  get(key: string): string | undefined {
+    if (!this.cache.has(key)) return undefined;
+    const value = this.cache.get(key)!;
+    // Promote to MRU by re-inserting at end
+    this.cache.delete(key);
+    this.cache.set(key, value);
+    return value;
+  }
+
+  set(key: string, value: string): void {
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    } else if (this.cache.size >= this.maxEntries) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey !== undefined) this.cache.delete(firstKey);
+    }
+    this.cache.set(key, value);
+  }
+
+  invalidate(keyPrefix: string): void {
+    for (const key of [...this.cache.keys()]) {
+      if (key.startsWith(keyPrefix)) this.cache.delete(key);
+    }
+  }
+
+  get size(): number {
+    return this.cache.size;
+  }
+}
+
+/** Module-level LRU cache instance (max 15 entries) */
+export const svgLruCache = new SvgLruCache(15);
+
 class PlantUMLService {
   constructor() {
     this.registerHandlers();

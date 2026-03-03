@@ -160,6 +160,17 @@ export class C4StorageService {
     if (currentVersion < 2) {
       db.pragma('user_version = 2');
     }
+
+    // Migration to version 3: add svg_content column for PERF-01 SVG caching
+    const currentVersionAfter2 = db.pragma('user_version', { simple: true }) as number;
+    if (currentVersionAfter2 < 3) {
+      // Check if svg_content column exists (guards against partial migration)
+      const cols = db.prepare('PRAGMA table_info(diagram_storage)').all() as Array<{ name: string }>;
+      if (!cols.some(c => c.name === 'svg_content')) {
+        db.exec('ALTER TABLE diagram_storage ADD COLUMN svg_content TEXT');
+      }
+      db.pragma('user_version = 3');
+    }
   }
 
   /**
@@ -254,6 +265,39 @@ export class C4StorageService {
     `);
 
     stmt.run(state, errorMessage || null, normalizedPath, level, elementId, elementId);
+  }
+
+  /**
+   * Get rendered SVG for a diagram (PERF-01)
+   * Returns null if no SVG has been stored for this diagram
+   */
+  getSvg(repoPath: string, level: C4Level, elementId?: string): string | null {
+    const normalizedPath = this.normalizePath(repoPath);
+    const stmt = this.db.prepare(`
+      SELECT svg_content FROM diagram_storage
+      WHERE repo_path = ? AND level = ?
+        AND (element_id = ? OR (element_id IS NULL AND ? IS NULL))
+        AND svg_content IS NOT NULL
+    `);
+    const result = stmt.get(normalizedPath, level, elementId ?? null, elementId ?? null) as
+      | { svg_content: string }
+      | undefined;
+    return result?.svg_content ?? null;
+  }
+
+  /**
+   * Store rendered SVG for a diagram (PERF-01)
+   * Only updates existing rows (diagram must already exist via storeDiagram)
+   */
+  storeSvg(repoPath: string, level: C4Level, svg: string, elementId?: string): void {
+    const normalizedPath = this.normalizePath(repoPath);
+    const stmt = this.db.prepare(`
+      UPDATE diagram_storage
+      SET svg_content = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE repo_path = ? AND level = ?
+        AND (element_id = ? OR (element_id IS NULL AND ? IS NULL))
+    `);
+    stmt.run(svg, normalizedPath, level, elementId ?? null, elementId ?? null);
   }
 
   /**
