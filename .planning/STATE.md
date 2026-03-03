@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Diagrams That Deliver
 status: executing
-stopped_at: Completed 13-03-PLAN.md — elementId passthrough bug fixed, drill-down pipeline complete
-last_updated: "2026-03-03T20:54:07.729Z"
+stopped_at: Completed 14-01-PLAN.md — SVG caching infrastructure (storage layer + LRU + IPC bridge) complete
+last_updated: "2026-03-03T22:03:47.365Z"
 last_activity: 2026-03-03 — Plan 13-03 complete (elementId passthrough bug fixed, drill-down pipeline end-to-end complete)
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 9
+  completed_plans: 8
   percent: 100
 ---
 
@@ -68,6 +68,9 @@ v1.2 key decisions:
 - [Phase 13-drill-down-navigation-fix]: extractElementIdFromClick extracted as exported function (not inline in handleSvgClick) for direct unit testability without component mounting
 - [Phase 13-drill-down-navigation-fix]: Registry populated on cache-hit by re-running static analysis so cold-start drill-down resolves paths without regenerating container diagram
 - [Phase 13-drill-down-navigation-fix]: finalElementId computed from options?.elementId ?? elementId so caller-provided drill-down value wins over local React state
+- [Phase 14-rendering-performance]: Plan 14-01: storeSvg is UPDATE-only — diagram row must exist via storeDiagram before SVG can be stored
+- [Phase 14-rendering-performance]: Plan 14-01: svgLruCache is module-level singleton so all IPC handlers share one cache instance
+- [Phase 14-rendering-performance]: Plan 14-01: LRU cache uses Map insertion order (delete+re-insert for MRU promotion); empty-prefix invalidate('') clears all entries
 
 ### Pending Todos
 
@@ -79,8 +82,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-03T20:54:07.727Z
-Stopped at: Completed 13-03-PLAN.md — elementId passthrough bug fixed, drill-down pipeline complete
+Last session: 2026-03-03T22:03:47.363Z
+Stopped at: Completed 14-01-PLAN.md — SVG caching infrastructure (storage layer + LRU + IPC bridge) complete
 Resume file: None
 
 ---

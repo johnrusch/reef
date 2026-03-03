@@ -30,8 +30,8 @@ Requirements for "Diagrams That Deliver" milestone. Each maps to roadmap phases.
 
 ### Rendering Performance
 
-- [ ] **PERF-01**: User sees cached diagrams in under 500ms (store rendered SVG in SQLite, skip Java re-render)
-- [ ] **PERF-02**: Frequently viewed diagrams load from in-process LRU cache for instant display
+- [x] **PERF-01**: User sees cached diagrams in under 500ms (store rendered SVG in SQLite, skip Java re-render)
+- [x] **PERF-02**: Frequently viewed diagrams load from in-process LRU cache for instant display
 - [ ] **PERF-03**: PlantUML JVM stays warm between renders when available (Nailgun mode, feature-flagged)
 
 ## Future Requirements
@@ -90,8 +90,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NAV-02 | Phase 13 | Complete |
 | NAV-03 | Phase 13 | Complete |
 | NAV-04 | Phase 13 | Complete |
-| PERF-01 | Phase 14 | Pending |
-| PERF-02 | Phase 14 | Pending |
+| PERF-01 | Phase 14 | Complete |
+| PERF-02 | Phase 14 | Complete |
 | PERF-03 | Phase 14 | Pending |
 
 **Coverage:**
