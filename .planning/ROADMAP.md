@@ -113,7 +113,7 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full details.
 | 10. State Transition Wiring & Cleanup | v1.1 | 1/1 | Complete | 2026-02-28 |
 | 11. Static Analysis Depth | 2/2 | Complete    | 2026-03-02 | - |
 | 12. AI Enrichment Pipeline | v1.2 | Complete    | 2026-03-02 | 2026-03-02 |
-| 13. Drill-Down Navigation Fix | v1.2 | 2/3 | Gap closure | - |
+| 13. Drill-Down Navigation Fix | 3/3 | Complete   | 2026-03-03 | - |
 | 14. Rendering Performance | v1.2 | 0/TBD | Not started | - |
 
 ---
