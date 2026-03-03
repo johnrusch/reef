@@ -1,8 +1,12 @@
 import { ipcMain } from 'electron';
+import Store from 'electron-store';
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - node-plantuml doesn't have types
 import plantuml from 'node-plantuml';
+
+/** Nailgun server handle — set when Nailgun warm-JVM mode is active (PERF-03) */
+let nailgunServer: any = null;
 
 /**
  * In-process LRU cache for rendered SVG strings (PERF-02).
@@ -49,9 +53,48 @@ export class SvgLruCache {
 /** Module-level LRU cache instance (max 15 entries) */
 export const svgLruCache = new SvgLruCache(15);
 
+/**
+ * Shuts down the Nailgun JVM server if one is running.
+ * Called on app before-quit to prevent port leaks (PERF-03).
+ */
+export function shutdownNailgun(): void {
+  if (nailgunServer) {
+    try {
+      if (typeof nailgunServer.close === 'function') {
+        nailgunServer.close();
+      }
+      nailgunServer = null;
+      console.log('[PlantUML] Nailgun server shut down');
+    } catch (error) {
+      console.error('[PlantUML] Error shutting down Nailgun:', error);
+    }
+  }
+}
+
 class PlantUMLService {
   constructor() {
     this.registerHandlers();
+    this.initializeNailgun();
+  }
+
+  /**
+   * Initializes the Nailgun warm-JVM if nailgunEnabled=true in electron-store.
+   * After calling plantuml.useNailgun(), all subsequent plantuml.generate() calls
+   * transparently use the Nailgun socket instead of spawning a new JVM process.
+   */
+  private initializeNailgun(): void {
+    try {
+      const store = new Store();
+      const enabled = store.get('nailgunEnabled', false);
+      if (enabled) {
+        nailgunServer = plantuml.useNailgun(() => {
+          console.log('[PlantUML] Nailgun JVM warm and ready');
+        });
+      }
+    } catch (error) {
+      console.error('[PlantUML] Failed to initialize Nailgun:', error);
+      // Continue without Nailgun -- falls back to spawn per render
+    }
   }
 
   private registerHandlers() {

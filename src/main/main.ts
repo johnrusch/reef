@@ -11,8 +11,8 @@ import './services/tokenCounterService';
 import './services/rateLimiterService';
 import './services/contextExtractorServiceV2';
 import './services/diagramGeneratorServiceV2';
-// Import for side effects - registers IPC handlers
-import './services/plantUmlService';
+// Import for side effects - registers IPC handlers; also export shutdownNailgun for cleanup
+import { shutdownNailgun } from './services/plantUmlService';
 import './services/diagramSettingsService';
 import { initializeFileWatcherService, getFileWatcherService } from './services/fileWatcherService';
 import { ChangeTrackingService } from './services/changeTrackingService';
@@ -259,6 +259,9 @@ app.whenReady().then(async () => {
 });
 
 app.on('before-quit', () => {
+  // Shutdown Nailgun JVM if running (PERF-03)
+  shutdownNailgun();
+
   const fileWatcherService = getFileWatcherService();
   if (fileWatcherService) {
     fileWatcherService.stopAllWatchers();
