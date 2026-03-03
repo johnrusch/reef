@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 13-drill-down-navigation-fix
 source: 13-01-SUMMARY.md, 13-02-SUMMARY.md
 started: 2026-03-03T20:00:00Z
-updated: 2026-03-03T20:10:00Z
+updated: 2026-03-03T20:15:00Z
 ---
 
 ## Current Test
@@ -47,13 +47,29 @@ skipped: 0
   reason: "User reported: Drilling down to component level throws 'PlantUML generation failed: Component diagram requires elementId (container name)' error. Reproduced on both sample-app and little-bit repos. Container-level drill-down works, but component-level fails."
   severity: blocker
   test: 1
-  artifacts: []
-  missing: []
+  root_cause: "VisualMapTab.generateDiagram (line 234-239) options type omits elementId. DiagramViewer correctly passes elementId in options, but generateDiagram ignores it and uses local React state variable elementId (line 288) which is undefined — reset by useEffect on lines 42-46 when diagramType is c4-context or c4-container. The undefined value reaches the guard in c4AnalyzerService.ts:180 which throws."
+  artifacts:
+    - path: "src/renderer/components/tabs/VisualMapTab.tsx"
+      issue: "generateDiagram options type missing elementId; uses stale local state instead of passed value (lines 234-239, 288)"
+    - path: "src/renderer/components/tabs/VisualMapTab.tsx"
+      issue: "useEffect resets local elementId to undefined for container/context levels (lines 42-46)"
+  missing:
+    - "Add elementId to generateDiagram options type"
+    - "Use options?.elementId ?? elementId on line 288 to prefer passed value over local state"
+    - "Call setElementId(options.elementId) to sync local state for subsequent operations"
+  debug_session: ".planning/debug/component-drilldown-elementid.md"
 
 - truth: "Empty container shows 'No components found' placeholder instead of blank diagram"
   status: failed
   reason: "User reported: fail"
   severity: major
   test: 4
-  artifacts: []
-  missing: []
+  root_cause: "Not a standalone issue — direct consequence of the elementId blocker. The placeholder code exists and is correct in c4PlantUMLGenerator.ts:326-328, but is never reached because elementId is undefined, causing the guard at c4AnalyzerService.ts:181 to throw before generateComponentDiagram is ever called."
+  artifacts:
+    - path: "src/main/services/c4/c4PlantUMLGenerator.ts"
+      issue: "Placeholder code at line 326 is correct but unreachable due to upstream elementId guard"
+    - path: "src/renderer/components/tabs/VisualMapTab.tsx"
+      issue: "Same root cause as Test 1 — elementId dropped in generateDiagram"
+  missing:
+    - "Fix elementId passthrough (same fix as Test 1) — placeholder will then be naturally reachable"
+  debug_session: ".planning/debug/empty-component-placeholder.md"
