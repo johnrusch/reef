@@ -99,6 +99,8 @@ export interface ReefAPI {
       elementCounts: Record<string, number>;
     } | null>;
     clearChangeTracking: (repoPath: string, level: string) => Promise<{ success: boolean }>;
+    getSvg: (repoPath: string, level: string, elementId?: string) => Promise<string | null>;
+    storeSvg: (repoPath: string, level: string, svg: string, elementId?: string) => Promise<{ success: boolean }>;
   };
   c4Generation: {
     enqueue: (repoPath: string, repoName: string) => Promise<{ queued: boolean }>;
@@ -223,6 +225,10 @@ const reefAPI: ReefAPI = {
       ipcRenderer.invoke('c4-storage:get-change-tracking', repoPath, level),
     clearChangeTracking: (repoPath: string, level: string) =>
       ipcRenderer.invoke('c4-storage:clear-change-tracking', repoPath, level),
+    getSvg: (repoPath: string, level: string, elementId?: string) =>
+      ipcRenderer.invoke('c4-storage:get-svg', repoPath, level, elementId),
+    storeSvg: (repoPath: string, level: string, svg: string, elementId?: string) =>
+      ipcRenderer.invoke('c4-storage:store-svg', repoPath, level, svg, elementId),
   },
   c4Generation: {
     enqueue: (repoPath: string, repoName: string) => ipcRenderer.invoke('c4-generation:enqueue', repoPath, repoName),

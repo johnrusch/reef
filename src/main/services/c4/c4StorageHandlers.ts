@@ -1,6 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { C4StorageService } from './c4StorageService';
 import { MigrationService } from './migrationService';
+import { svgLruCache } from '../plantUmlService';
 import type { DiagramState, StoredDiagram } from '../../../shared/types/diagramState';
 import type { C4Level } from './types/c4Types';
 
@@ -96,6 +97,7 @@ export function registerC4StorageHandlers(): void {
   // Clear all diagrams (for Settings "Clear All" button)
   ipcMain.handle('c4-storage:clear-all', async () => {
     getStorageService().clearAllDiagrams();
+    svgLruCache.invalidate(''); // Clear entire LRU (empty prefix matches all)
     return { success: true };
   });
 
@@ -107,6 +109,32 @@ export function registerC4StorageHandlers(): void {
   // Clear change tracking data (called when regenerating)
   ipcMain.handle('c4-storage:clear-change-tracking', async (_, repoPath: string, level: string) => {
     getStorageService().clearChangeTracking(repoPath, level as C4Level);
+    return { success: true };
+  });
+
+  // Get cached SVG (LRU first, then SQLite) — PERF-01 + PERF-02
+  ipcMain.handle('c4-storage:get-svg', async (_, repoPath: string, level: string, elementId?: string) => {
+    const cacheKey = [repoPath, level, elementId ?? ''].join(':');
+
+    // Check LRU hot cache first (PERF-02)
+    const lruHit = svgLruCache.get(cacheKey);
+    if (lruHit) return lruHit;
+
+    // Fall back to SQLite (PERF-01)
+    const svg = getStorageService().getSvg(repoPath, level as C4Level, elementId);
+    if (svg) {
+      // Promote to LRU for next access
+      svgLruCache.set(cacheKey, svg);
+    }
+    return svg;
+  });
+
+  // Store rendered SVG (both SQLite and LRU) — PERF-01 + PERF-02
+  ipcMain.handle('c4-storage:store-svg', async (_, repoPath: string, level: string, svg: string, elementId?: string) => {
+    const cacheKey = [repoPath, level, elementId ?? ''].join(':');
+
+    getStorageService().storeSvg(repoPath, level as C4Level, svg, elementId);
+    svgLruCache.set(cacheKey, svg);
     return { success: true };
   });
 }
