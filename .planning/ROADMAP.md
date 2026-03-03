@@ -41,7 +41,7 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full details.
 - [x] **Phase 11: Static Analysis Depth** - Fix multi-pass extraction and enrich with functions, decorators, JSDoc, directory structure, and non-TypeScript fallback (completed 2026-03-02)
 - [x] **Phase 12: AI Enrichment Pipeline** - Wire AI output into PlantUML generation with structured JSON schemas and framework-aware prompts (completed 2026-03-02)
 - [x] **Phase 13: Drill-Down Navigation Fix** - Establish a canonical element ID registry and fix SVG click detection end-to-end (completed 2026-03-03)
-- [ ] **Phase 14: Rendering Performance** - Store pre-rendered SVG in SQLite and add in-process LRU cache for sub-500ms cached diagram display
+- [x] **Phase 14: Rendering Performance** - Store pre-rendered SVG in SQLite and add in-process LRU cache for sub-500ms cached diagram display (completed 2026-03-03)
 
 ## Phase Details
 
@@ -116,7 +116,7 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full details.
 | 11. Static Analysis Depth | 2/2 | Complete    | 2026-03-02 | - |
 | 12. AI Enrichment Pipeline | v1.2 | Complete    | 2026-03-02 | 2026-03-02 |
 | 13. Drill-Down Navigation Fix | 3/3 | Complete   | 2026-03-03 | - |
-| 14. Rendering Performance | 1/2 | In Progress|  | - |
+| 14. Rendering Performance | 2/2 | Complete   | 2026-03-03 | - |
 
 ---
 *Last updated: 2026-03-03 — Phase 14 plans created (2 plans, SVG caching + renderer wiring + Nailgun)*

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Diagrams That Deliver
 status: executing
-stopped_at: Completed 14-01-PLAN.md — SVG caching infrastructure (storage layer + LRU + IPC bridge) complete
-last_updated: "2026-03-03T22:03:47.365Z"
+stopped_at: Completed 14-02-PLAN.md — SVG cache renderer integration + Nailgun feature flag complete; awaiting Task 3 human verification
+last_updated: "2026-03-03T22:10:05.967Z"
 last_activity: 2026-03-03 — Plan 13-03 complete (elementId passthrough bug fixed, drill-down pipeline end-to-end complete)
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
   percent: 100
 ---
 
@@ -71,6 +71,8 @@ v1.2 key decisions:
 - [Phase 14-rendering-performance]: Plan 14-01: storeSvg is UPDATE-only — diagram row must exist via storeDiagram before SVG can be stored
 - [Phase 14-rendering-performance]: Plan 14-01: svgLruCache is module-level singleton so all IPC handlers share one cache instance
 - [Phase 14-rendering-performance]: Plan 14-01: LRU cache uses Map insertion order (delete+re-insert for MRU promotion); empty-prefix invalidate('') clears all entries
+- [Phase 14-rendering-performance]: Plan 14-02: preRenderedSvg=undefined (not empty string) passed to DiagramViewer when no cached SVG — avoids triggering fast path incorrectly
+- [Phase 14-rendering-performance]: Plan 14-02: svgContent cleared on new generation so PlantUMLRenderer renders from source and fires onSvgGenerated to refresh the cache
 
 ### Pending Todos
 
@@ -82,8 +84,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-03T22:03:47.363Z
-Stopped at: Completed 14-01-PLAN.md — SVG caching infrastructure (storage layer + LRU + IPC bridge) complete
+Last session: 2026-03-03T22:10:05.965Z
+Stopped at: Completed 14-02-PLAN.md — SVG cache renderer integration + Nailgun feature flag complete; awaiting Task 3 human verification
 Resume file: None
 
 ---
