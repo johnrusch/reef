@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: Diagrams That Deliver
-status: complete
-stopped_at: Milestone v1.2 archived and tagged
-last_updated: "2026-03-03T23:59:00.000Z"
-last_activity: 2026-03-03 — v1.2 milestone completed and archived
+milestone: v1.3
+milestone_name: Diagram Explorer
+status: defining_requirements
+stopped_at: null
+last_updated: "2026-03-03T00:00:00.000Z"
+last_activity: 2026-03-03 — Milestone v1.3 started
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 9
-  completed_plans: 9
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,15 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Users can quickly grasp unfamiliar codebase architecture through AI-generated C4 diagrams that update as code changes
-**Current focus:** Planning next milestone
+**Current focus:** v1.3 Diagram Explorer — defining requirements
 
 ## Current Position
 
-Milestone: v1.2 Diagrams That Deliver — COMPLETE
-Status: Archived
-Last activity: 2026-03-03 — Milestone archived to .planning/milestones/
-
-Progress: [██████████] 100% (v1.2 shipped)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-03 — Milestone v1.3 started
 
 ## Performance Metrics
 
@@ -59,8 +58,8 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Milestone v1.2 archived and tagged
+Stopped at: Defining v1.3 requirements
 Resume file: None
 
 ---
-*v1.2 Diagrams That Deliver — SHIPPED 2026-03-03*
+*v1.3 Diagram Explorer — DEFINING REQUIREMENTS*

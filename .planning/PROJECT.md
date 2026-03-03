@@ -56,7 +56,17 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 
 ### Active
 
-(None — next milestone not yet defined)
+#### Current Milestone: v1.3 Diagram Explorer
+
+**Goal:** Overhaul the diagram UI from a configure-and-generate interface to a clean browse-and-navigate experience with sidebar tree hierarchy navigation.
+
+**Target features:**
+- Sidebar tree navigation for full C4 hierarchy (Context → Container → Component → Code)
+- Single-button generation flow (no configuration needed)
+- Remove legacy UI controls (detail level, focus area, non-C4 diagram types, DiagramInfo sidebar)
+- Breadcrumb navigation showing current position in hierarchy
+- Minimal toolbar (regenerate + show changes only)
+- Remove Beta badge from Visual Map tab
 
 ### Out of Scope
 
@@ -149,4 +159,4 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 | AI failure logs warning, continues with static fallback | v1.2: Diagrams always produced even when AI unavailable | ✓ Good |
 
 ---
-*Last updated: 2026-03-03 after v1.2 milestone*
+*Last updated: 2026-03-03 after v1.3 milestone started*
