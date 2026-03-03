@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Diagrams That Deliver
 status: executing
-stopped_at: Completed 13-01-PLAN.md — Phase 13 Plan 01 complete, ready for 13-02 (IPC drill-down handler)
-last_updated: "2026-03-03T19:47:18.907Z"
+stopped_at: Completed 13-02-PLAN.md — Phase 13 Plan 02 complete, drill-down navigation fix complete
+last_updated: "2026-03-03T19:53:04.918Z"
 last_activity: 2026-03-02 — Plan 12-02 complete (AI enrichment data wired into PlantUML generator)
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
   percent: 50
 ---
 
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 ## Current Position
 
-Phase: 12 of 14 (AI Enrichment Pipeline) — COMPLETE
-Plan: 2 of 2 complete — Phase 12 done, ready for Phase 13
+Phase: 13 of 14 (Drill-Down Navigation Fix) — COMPLETE
+Plan: 2 of 2 complete — Phase 13 done, ready for Phase 14
 Status: In Progress
-Last activity: 2026-03-02 — Plan 12-02 complete (AI enrichment data wired into PlantUML generator)
+Last activity: 2026-03-03 — Plan 13-02 complete (SVG click handler fixed, ElementIdRegistry wired into C4AnalyzerService)
 
-Progress: [████░░░░░░] 50% (v1.2: 2/4 phases, phase 12 done)
+Progress: [██████████] 100% (v1.2: 3/4 phases, phase 13 done)
 
 ## Performance Metrics
 
@@ -65,6 +65,8 @@ v1.2 key decisions:
 - [Phase 13-drill-down-navigation-fix]: sanitizeId defined once in elementIdRegistry.ts; changeTrackingService re-exports to preserve public API
 - [Phase 13-drill-down-navigation-fix]: ElementIdRegistry is a plain class (not singleton) — callers control lifecycle, pass registry to generators
 - [Phase 13-drill-down-navigation-fix]: deriveContainerPath uses entryPoints->classes->groups->lowercase fallback, works for any repo structure
+- [Phase 13-drill-down-navigation-fix]: extractElementIdFromClick extracted as exported function (not inline in handleSvgClick) for direct unit testability without component mounting
+- [Phase 13-drill-down-navigation-fix]: Registry populated on cache-hit by re-running static analysis so cold-start drill-down resolves paths without regenerating container diagram
 
 ### Pending Todos
 
@@ -72,13 +74,12 @@ None.
 
 ### Blockers/Concerns
 
-- Phase 13 (navigation): ElementIdRegistry persistence strategy (metadata column vs. rebuild on start) is undecided — choice affects cold-start performance
 - better-sqlite3 native module version mismatch (NODE_MODULE_VERSION 139 vs 127): blocks C4AnalyzerService integration tests and C4CacheService tests — pre-existing environment issue, needs `npm rebuild` with matching Node.js version
 
 ## Session Continuity
 
-Last session: 2026-03-03T19:47:18.905Z
-Stopped at: Completed 13-01-PLAN.md — Phase 13 Plan 01 complete, ready for 13-02 (IPC drill-down handler)
+Last session: 2026-03-03T19:53:04.915Z
+Stopped at: Completed 13-02-PLAN.md — Phase 13 Plan 02 complete, drill-down navigation fix complete
 Resume file: None
 
 ---
