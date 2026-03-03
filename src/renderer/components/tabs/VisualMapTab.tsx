@@ -277,6 +277,7 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
     focusArea?: FocusArea;
     model?: ModelType;
     elementId?: string;
+    skipCache?: boolean;
   }) => {
     if (!repository) {
       setError('No repository selected');
@@ -301,8 +302,46 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
       setElementId(options.elementId);
     }
 
+    // Sync diagramType state for subsequent effect dependencies
+    if (finalOptions.type !== diagramType) {
+      setDiagramType(finalOptions.type as DiagramType);
+    }
+
     // Get current level for state tracking
     const level = finalOptions.type.replace('c4-', '');
+
+    // Check SVG cache for instant display (navigation/drill-down fast path)
+    if (!options?.skipCache) {
+      try {
+        const cachedSvg = await window.reef.c4Storage.getSvg(
+          repository.path,
+          level,
+          finalElementId
+        );
+        if (cachedSvg) {
+          setSvgContent(cachedSvg);
+          setDiagram('');
+          setMetadata({
+            tokensUsed: undefined,
+            generatedAt: new Date().toISOString(),
+            diagramType: finalOptions.type,
+            detailLevel: finalOptions.detailLevel,
+            focusArea: finalOptions.focusArea,
+            repository: repository.name,
+            model: finalOptions.model,
+            generationTime: 0,
+            estimatedCost: 0,
+            cached: true,
+            lastUpdated: new Date().toISOString(),
+          });
+          setViewMode('diagram');
+          setIsGenerating(false);
+          return;
+        }
+      } catch (err) {
+        console.error('SVG cache lookup failed, proceeding with generation:', err);
+      }
+    }
 
     // Update state to 'generating'
     try {

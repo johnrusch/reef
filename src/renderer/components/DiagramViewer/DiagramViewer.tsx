@@ -49,6 +49,7 @@ interface DiagramViewerProps {
     focusArea?: FocusArea;
     model?: ModelType;
     elementId?: string;
+    skipCache?: boolean;
   }) => Promise<void>;
   onExport: (format: 'svg' | 'png') => void;
   onShowChanges?: (enabled: boolean) => void;
@@ -135,7 +136,7 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
     }
 
     try {
-      await onRegenerateDiagram(currentOptions);
+      await onRegenerateDiagram({ ...currentOptions, skipCache: true });
 
       // Transition to 'fresh' after successful regeneration
       if (repoPath) {
@@ -161,7 +162,7 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
     setIsStale(false); // Optimistic UI update
 
     try {
-      await onRegenerateDiagram({ ...currentOptions });
+      await onRegenerateDiagram({ ...currentOptions, skipCache: true });
     } catch (error) {
       // Restore stale state on error
       setIsStale(true);
@@ -172,7 +173,7 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
   }, [currentOptions, onRegenerateDiagram]);
 
   const handleForceRegenerate = useCallback(async () => {
-    await onRegenerateDiagram({ ...currentOptions });
+    await onRegenerateDiagram({ ...currentOptions, skipCache: true });
   }, [currentOptions, onRegenerateDiagram]);
 
   const handleNavigateToDiff = useCallback((filePath: string) => {
@@ -577,7 +578,7 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
         <DiagramInfo
           metadata={metadata}
           changedFilesCount={changedFiles.length}
-          onRefreshFromCache={() => onRegenerateDiagram({ ...currentOptions })}
+          onRefreshFromCache={() => onRegenerateDiagram({ ...currentOptions, skipCache: true })}
         />
       </div>
       
