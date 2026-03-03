@@ -53,6 +53,8 @@ interface DiagramViewerProps {
   onExport: (format: 'svg' | 'png') => void;
   onShowChanges?: (enabled: boolean) => void;
   showChanges?: boolean;
+  preRenderedSvg?: string;
+  onSvgGenerated?: (svg: string) => void;
 }
 
 export const DiagramViewer: React.FC<DiagramViewerProps> = ({
@@ -66,6 +68,8 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
   onExport,
   onShowChanges,
   showChanges = false,
+  preRenderedSvg,
+  onSvgGenerated,
 }) => {
   const [currentOptions, setCurrentOptions] = useState({
     type: metadata.diagramType,
@@ -507,6 +511,8 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
           directCount={directCount}
           inheritedCount={inheritedCount}
           changedFilePaths={changedFilePaths}
+          preRenderedSvg={preRenderedSvg}
+          onSvgGenerated={onSvgGenerated}
         />
         <StalenessBadge
           isStale={isStale}

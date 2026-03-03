@@ -23,6 +23,8 @@ interface DiagramPanelProps {
   directCount?: number;
   inheritedCount?: number;
   changedFilePaths?: string[];
+  preRenderedSvg?: string;
+  onSvgGenerated?: (svg: string) => void;
 }
 
 import { DiagramStateBadge } from './DiagramStateBadge';
@@ -46,6 +48,8 @@ export const DiagramPanel: React.FC<DiagramPanelProps> = ({
   directCount = 0,
   inheritedCount = 0,
   changedFilePaths = [],
+  preRenderedSvg,
+  onSvgGenerated,
 }) => {
   const [showLegend, setShowLegend] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -136,6 +140,8 @@ export const DiagramPanel: React.FC<DiagramPanelProps> = ({
         isClickable={isClickable}
         directChangedIds={directChangedIds}
         inheritedChangedIds={inheritedChangedIds}
+        preRenderedSvg={preRenderedSvg}
+        onSvgGenerated={onSvgGenerated}
       />
 
       {isFullscreen && (

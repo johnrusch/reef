@@ -31,6 +31,7 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
   const [availableContainers, setAvailableContainers] = useState<string[]>([]);
   const [availableComponents, setAvailableComponents] = useState<string[]>([]);
   const [loadingElements, setLoadingElements] = useState<boolean>(false);
+  const [svgContent, setSvgContent] = useState<string>('');
 
   const { getState, setState, loadStatesFromBackend } = useDiagramStateStore();
 
@@ -68,7 +69,36 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
         // Get current level from diagramType
         const level = diagramType.replace('c4-', '');
 
-        // Check storage for existing diagram
+        // NEW: Check for pre-rendered SVG first (PERF-01 fast path)
+        const storedSvg = await window.reef.c4Storage.getSvg(
+          repository.path,
+          level,
+          elementId
+        );
+        if (storedSvg) {
+          setSvgContent(storedSvg);
+          setDiagram(''); // Clear PlantUML text -- not needed when SVG is cached
+          setMetadata({
+            tokensUsed: undefined,
+            generatedAt: new Date().toISOString(),
+            diagramType: diagramType,
+            detailLevel: detailLevel,
+            focusArea: focusArea,
+            repository: repository.name,
+            model: modelType,
+            generationTime: 0,
+            estimatedCost: 0,
+            cached: true,
+            lastUpdated: new Date().toISOString(),
+          });
+          setViewMode('diagram');
+          // Still load states
+          const states = await window.reef.c4Storage.getRepoStates(repository.path);
+          loadStatesFromBackend(states);
+          return;
+        }
+
+        // Existing: fall back to PlantUML source
         const storedDiagram = await window.reef.c4Storage.getDiagram(
           repository.path,
           level,
@@ -231,6 +261,16 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
     }
   }, [repository, viewMode, detectChangedFiles]);
 
+  const handleSvgGenerated = useCallback(async (svg: string) => {
+    if (!repository) return;
+    const level = diagramType.replace('c4-', '');
+    try {
+      await window.reef.c4Storage.storeSvg(repository.path, level, svg, elementId);
+    } catch (err) {
+      console.error('Failed to store SVG:', err);
+    }
+  }, [repository, diagramType, elementId]);
+
   const generateDiagram = async (options?: {
     type?: DiagramType;
     detailLevel?: DetailLevel;
@@ -321,8 +361,9 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
       const generationTime = Date.now() - startTime;
 
       if (result.success && result.diagram) {
+        setSvgContent(''); // Clear cached SVG; PlantUMLRenderer will render from source
         setDiagram(result.diagram);
-        
+
         const estimatedCost = calculateEstimatedCost(
           result.tokensUsed,
           finalOptions.model
@@ -474,11 +515,11 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
   const currentLevel = diagramType.replace('c4-', '') as any;
   const currentState = getState(repository?.path || '', currentLevel, elementId);
 
-  if (viewMode === 'diagram' && diagram && metadata) {
+  if (viewMode === 'diagram' && (diagram || svgContent) && metadata) {
     return (
       <DiagramViewer
         repository={repository}
-        diagram={diagram}
+        diagram={diagram || ''}
         metadata={metadata}
         isGenerating={isGenerating}
         error={error}
@@ -487,6 +528,8 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
         onExport={handleExport}
         onShowChanges={setShowChanges}
         showChanges={showChanges}
+        preRenderedSvg={svgContent || undefined}
+        onSvgGenerated={handleSvgGenerated}
       />
     );
   }

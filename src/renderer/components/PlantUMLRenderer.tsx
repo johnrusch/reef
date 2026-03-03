@@ -17,6 +17,8 @@ interface PlantUMLRendererProps {
   isClickable?: boolean;  // Add this - controls whether click detection is active
   directChangedIds?: string[];
   inheritedChangedIds?: string[];
+  preRenderedSvg?: string;
+  onSvgGenerated?: (svg: string) => void;
 }
 
 /**
@@ -82,6 +84,8 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
   isClickable = false,
   directChangedIds = [],
   inheritedChangedIds = [],
+  preRenderedSvg,
+  onSvgGenerated,
 }) => {
   const [svgContent, setSvgContent] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
@@ -121,6 +125,7 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
           if (hasJava) {
             const svg = await window.reef.plantuml.generateSVG(content);
             setSvgContent(svg);
+            onSvgGenerated?.(svg);  // NEW: notify parent of rendered SVG
             setLoading(false);
             return;
           } else {
@@ -176,8 +181,9 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
       
       const svg = await response.text();
       setSvgContent(svg);
+      onSvgGenerated?.(svg);  // NEW: notify parent of rendered SVG
       setLoading(false);
-      
+
       // Clear fallback notification on successful server rendering
       if (fallbackNotification) {
         setTimeout(() => setFallbackNotification(null), 5000);
@@ -188,11 +194,16 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
       setError(err instanceof Error ? err.message : 'Failed to generate diagram');
       setLoading(false);
     }
-  }, [content, useLocalGeneration, fallbackNotification]);
+  }, [content, useLocalGeneration, fallbackNotification, onSvgGenerated]);
 
   useEffect(() => {
+    if (preRenderedSvg) {
+      setSvgContent(preRenderedSvg);
+      setLoading(false);
+      return;
+    }
     generateDiagram();
-  }, [generateDiagram]);
+  }, [generateDiagram, preRenderedSvg]);
 
   // Apply SVG DOM change highlighting and click interception patches after SVG content is rendered
   useEffect(() => {
