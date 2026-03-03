@@ -14,6 +14,7 @@ import { StaticAnalyzerService } from './staticAnalyzerService';
 import { AIEnricherService } from './aiEnricherService';
 import { C4PlantUMLGenerator } from './c4PlantUMLGenerator';
 import { getStorageService } from './c4StorageHandlers';
+import { ElementIdRegistry, sanitizeId, deriveContainerPath } from './elementIdRegistry';
 import type { C4Level } from './types/c4Types';
 import type { DiagramResult } from '../../../shared/types/diagram';
 import type { AnalysisResult } from './types/analysisTypes';
@@ -24,11 +25,13 @@ export class C4AnalyzerService {
   private staticAnalyzer: StaticAnalyzerService;
   private aiEnricher: AIEnricherService;
   private generator: C4PlantUMLGenerator;
+  private registry: ElementIdRegistry;
 
   constructor(apiKey: string) {
     this.staticAnalyzer = new StaticAnalyzerService();
     this.aiEnricher = new AIEnricherService(apiKey);
     this.generator = new C4PlantUMLGenerator();
+    this.registry = new ElementIdRegistry();
   }
 
   /**
@@ -46,6 +49,20 @@ export class C4AnalyzerService {
 
       if (cached && cached.diagramContent) {
         console.log(`[C4 Analyzer] Storage hit for ${level} diagram`);
+
+        // Populate registry on cache hit so drill-down clicks resolve paths.
+        // Only needed for container level (produces IDs used in component drill-down).
+        if (level === 'container') {
+          try {
+            const staticData = await this.staticAnalyzer.analyzeProject(repoPath);
+            if (!staticData.error) {
+              this.populateRegistryFromStatic(staticData);
+            }
+          } catch (err) {
+            console.warn('[C4 Analyzer] Registry population on cache hit failed:', err);
+          }
+        }
+
         return {
           success: true,
           diagram: cached.diagramContent,
@@ -154,12 +171,26 @@ export class C4AnalyzerService {
       case 'context':
         return this.generator.generateContextDiagram(enrichedData as EnrichedContextLevel | null, staticData);
       case 'container':
-        return this.generator.generateContainerDiagram(enrichedData as EnrichedContainerLevel | null, staticData);
-      case 'component':
+        return this.generator.generateContainerDiagram(
+          enrichedData as EnrichedContainerLevel | null,
+          staticData,
+          this.registry  // Pass registry for population during generation
+        );
+      case 'component': {
         if (!elementId) {
           throw new Error('Component diagram requires elementId (container name)');
         }
-        return this.generator.generateComponentDiagram(enrichedData as EnrichedComponentLevel | null, staticData, elementId);
+        // Resolve containerPath from registry (populated during container generation).
+        // Falls back to dynamic derivation for cold-start or unknown IDs.
+        const containerPath = this.registry.getContainerPath(elementId)
+          ?? deriveContainerPath(elementId, staticData);
+        return this.generator.generateComponentDiagram(
+          enrichedData as EnrichedComponentLevel | null,
+          staticData,
+          elementId,
+          containerPath
+        );
+      }
       case 'code':
         if (!elementId) {
           throw new Error('Code diagram requires elementId (component name)');
@@ -171,11 +202,36 @@ export class C4AnalyzerService {
   }
 
   /**
-   * Clears stored diagrams for a repository
+   * Populates the registry from static analysis data.
+   * Used on cache-hit paths so drill-down clicks can resolve container paths
+   * without re-running full container diagram generation.
+   */
+  private populateRegistryFromStatic(staticData: AnalysisResult): void {
+    const containers = new Set<string>();
+    for (const ep of staticData.entryPoints) {
+      const parts = ep.split('/');
+      const srcIdx = parts.indexOf('src');
+      if (srcIdx >= 0 && srcIdx + 1 < parts.length) {
+        const dirName = parts[srcIdx + 1];
+        // Construct human-readable name (capitalize first letter)
+        const humanName = dirName.charAt(0).toUpperCase() + dirName.slice(1);
+        const containerPath = parts.slice(0, srcIdx + 2).join('/');
+        const sanitized = sanitizeId(humanName);
+        if (!containers.has(sanitized)) {
+          containers.add(sanitized);
+          this.registry.register(sanitized, humanName, containerPath, 'container');
+        }
+      }
+    }
+  }
+
+  /**
+   * Clears stored diagrams and registry for a repository
    */
   clearRepositoryCache(repoPath: string): void {
     getStorageService().deleteDiagramsForRepo(repoPath);
-    console.log(`[C4 Analyzer] Cleared diagrams for ${repoPath}`);
+    this.registry.clear();
+    console.log(`[C4 Analyzer] Cleared diagrams and registry for ${repoPath}`);
   }
 
   /**
