@@ -420,6 +420,69 @@ describe('C4StorageService', () => {
     });
   });
 
+  describe('SVG storage (PERF-01)', () => {
+    it('getSvg returns null when no SVG is stored', () => {
+      const result = service.getSvg('/test/repo', 'context');
+      expect(result).toBeNull();
+    });
+
+    it('storeSvg persists SVG, getSvg retrieves it', () => {
+      // Must have a diagram row first (storeSvg is an UPDATE)
+      service.storeDiagram({
+        repoPath: '/test/repo',
+        level: 'context' as const,
+        diagramContent: 'plantuml source',
+        state: 'fresh' as const,
+        modelUsed: 'claude-3',
+        promptVersion: '1.0',
+      });
+
+      service.storeSvg('/test/repo', 'context', '<svg>cached</svg>');
+      const svg = service.getSvg('/test/repo', 'context');
+      expect(svg).toBe('<svg>cached</svg>');
+    });
+
+    it('storeSvg with elementId=undefined stores and retrieves correctly', () => {
+      service.storeDiagram({
+        repoPath: '/test/repo',
+        level: 'component' as const,
+        diagramContent: 'source',
+        state: 'fresh' as const,
+        modelUsed: 'claude-3',
+        promptVersion: '1.0',
+      });
+
+      service.storeSvg('/test/repo', 'component', '<svg>component</svg>', undefined);
+      const svg = service.getSvg('/test/repo', 'component', undefined);
+      expect(svg).toBe('<svg>component</svg>');
+    });
+
+    it('schema migration adds svg_content column (user_version bumped to 3)', () => {
+      const db = (service as any).db;
+      const version = db.pragma('user_version', { simple: true }) as number;
+      expect(version).toBe(3);
+
+      const cols = db.prepare('PRAGMA table_info(diagram_storage)').all() as Array<{ name: string }>;
+      const hasColumn = cols.some((c) => c.name === 'svg_content');
+      expect(hasColumn).toBe(true);
+    });
+
+    it('storeDiagram (INSERT OR REPLACE) preserves svg_content=NULL for new rows', () => {
+      service.storeDiagram({
+        repoPath: '/test/repo',
+        level: 'context' as const,
+        diagramContent: 'source',
+        state: 'fresh' as const,
+        modelUsed: 'claude-3',
+        promptVersion: '1.0',
+      });
+
+      // svg_content should be NULL (not set by storeDiagram)
+      const svg = service.getSvg('/test/repo', 'context');
+      expect(svg).toBeNull();
+    });
+  });
+
   describe('diagram change tracking (CHNG-05)', () => {
     const sampleChangedFiles = ['/repo/src/main/services/gitService.ts'];
     const sampleAffectedElements = [

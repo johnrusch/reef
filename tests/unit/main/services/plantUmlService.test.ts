@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ipcMain } from 'electron';
 import { EventEmitter } from 'events';
+import { SvgLruCache } from '../../../../src/main/services/plantUmlService';
 
 // Mock electron
 vi.mock('electron', () => ({
@@ -23,6 +24,62 @@ vi.mock('node-plantuml', () => ({
     }),
   },
 }));
+
+describe('SvgLruCache (PERF-02)', () => {
+  it('get returns undefined on miss', () => {
+    const cache = new SvgLruCache(3);
+    expect(cache.get('missing-key')).toBeUndefined();
+  });
+
+  it('set + get returns stored value', () => {
+    const cache = new SvgLruCache(3);
+    cache.set('key1', '<svg>one</svg>');
+    expect(cache.get('key1')).toBe('<svg>one</svg>');
+  });
+
+  it('get promotes entry to MRU (accessing oldest does not evict it)', () => {
+    const cache = new SvgLruCache(3);
+    cache.set('a', 'A');
+    cache.set('b', 'B');
+    cache.set('c', 'C');
+
+    // Access 'a' to promote it to MRU
+    cache.get('a');
+
+    // Add 'd' — should evict 'b' (now LRU), not 'a'
+    cache.set('d', 'D');
+
+    expect(cache.get('b')).toBeUndefined();
+    expect(cache.get('a')).toBe('A');
+    expect(cache.get('c')).toBe('C');
+    expect(cache.get('d')).toBe('D');
+  });
+
+  it('evicts LRU entry when maxEntries exceeded', () => {
+    const cache = new SvgLruCache(2);
+    cache.set('x', 'X');
+    cache.set('y', 'Y');
+    cache.set('z', 'Z'); // should evict 'x'
+
+    expect(cache.get('x')).toBeUndefined();
+    expect(cache.get('y')).toBe('Y');
+    expect(cache.get('z')).toBe('Z');
+    expect(cache.size).toBe(2);
+  });
+
+  it('invalidate removes entries matching prefix', () => {
+    const cache = new SvgLruCache(10);
+    cache.set('/repo/a:context:', 'svg-a');
+    cache.set('/repo/a:container:', 'svg-b');
+    cache.set('/repo/b:context:', 'svg-c');
+
+    cache.invalidate('/repo/a');
+
+    expect(cache.get('/repo/a:context:')).toBeUndefined();
+    expect(cache.get('/repo/a:container:')).toBeUndefined();
+    expect(cache.get('/repo/b:context:')).toBe('svg-c');
+  });
+});
 
 describe('PlantUMLService - C4 Include Whitelist', () => {
   let generateHandler: (event: unknown, plantUmlText: string) => Promise<string>;
