@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A desktop Git client that helps developers visually understand codebases through persistent, interactive C4 architecture diagrams. When users add repositories, the app prompts for diagram generation, analyzes code using hybrid static+AI analysis, and generates hierarchical diagrams that persist across sessions. File changes are tracked and visualized in real-time with amber highlighting that propagates through C4 levels, and users can navigate from changed diagram elements directly to code diffs.
+A desktop Git client that helps developers visually understand codebases through persistent, interactive C4 architecture diagrams. When users add repositories, the app analyzes code using hybrid static+AI analysis with structured Zod schemas and framework-aware prompts, generates rich hierarchical diagrams that persist across sessions with sub-500ms cached rendering. File changes are tracked and visualized with amber highlighting that propagates through C4 levels, and users can drill down from Context to Code level with reliable click navigation through a canonical ElementIdRegistry.
 
 ## Core Value
 
@@ -42,21 +42,21 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 - ✓ Change count badges with file-list tooltips — v1.1
 - ✓ Diagram-to-diff navigation with context banner — v1.1
 - ✓ Back-to-diagram flow with position restoration — v1.1
+- ✓ Multi-pass static analysis with functions, decorators, JSDoc extraction — v1.2
+- ✓ Directory-based component grouping with architectural role labels — v1.2
+- ✓ Non-TypeScript repo fallback (JavaScript, file-structure heuristics) — v1.2
+- ✓ Structured AI enrichment with Zod schemas and framework-aware prompts — v1.2
+- ✓ AI-provided component/container names consumed by PlantUML generator — v1.2
+- ✓ ElementIdRegistry for consistent IDs across generation, storage, navigation — v1.2
+- ✓ Dynamic container-to-path resolution for any repo structure — v1.2
+- ✓ SVG click transparency fix for all PlantUML JAR versions — v1.2
+- ✓ Sub-500ms cached diagram display via SQLite SVG storage — v1.2
+- ✓ In-process LRU cache for instant diagram level switching — v1.2
+- ✓ Nailgun warm JVM mode (feature-flagged) — v1.2
 
 ### Active
 
-## Current Milestone: v1.2 Diagrams That Deliver
-
-**Goal:** Fix diagram quality across all C4 levels so the drill-down works end-to-end with rich, detailed, useful content — and improve rendering speed if scope allows.
-
-**Target features:**
-- Diagnose and fix why static analysis + AI enrichment produces shallow/empty diagrams
-- Container diagrams show real tech components with relationships
-- Component diagrams show modules/services/controllers within containers
-- Code diagrams show classes/functions/interfaces within components
-- Fix drill-down navigation (elementId passing broken for Component level)
-- End-to-end clickable drill-down: Context → Container → Component → Code
-- (Stretch) Improve diagram rendering speed for cached diagrams (currently 5+ seconds)
+(None — next milestone not yet defined)
 
 ### Out of Scope
 
@@ -69,22 +69,28 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 - Progressive SVG loading for >2MB diagrams — descoped from v1.0
 - Automatic background regeneration — silent API costs, no user control over spending
 - Inline diff overlay on diagram — mixes architecture/code concerns, becomes unreadable
-- Commit-linked diagram snapshots — high complexity, defer to v1.2+
+- Commit-linked diagram snapshots — high complexity, defer to future
+- Multi-language AST parsing (Python, Go, Java) — each needs separate parser, AI-only mode sufficient for now
+- Show all classes as components — 50+ nodes unreadable; C4 Component level is for logical groupings
+- Full class diagrams with all methods — Code level shows public API only (max 8-10 methods)
 
 ## Context
 
-**Current State (v1.1 shipped):**
-- 29,938 lines of TypeScript
+**Current State (v1.2 shipped):**
+- 35,637 lines of TypeScript
 - Tech stack: Electron, React, Vite, Tailwind, Zustand, simple-git, Octokit
-- C4 stack: ts-morph, @anthropic-ai/sdk v0.78.0, better-sqlite3, chokidar
+- C4 stack: ts-morph, @anthropic-ai/sdk v0.78.0, better-sqlite3, chokidar, zod
 - UI stack: react-hotkeys-hook, cmdk, fuse.js, Radix UI
-- Storage: SQLite with WAL mode, diagram_storage + diagram_change_tracking tables
+- Storage: SQLite with WAL mode, diagram_storage (with svg_content column) + diagram_change_tracking tables
 - Generation: Background queue with IPC progress events, toast notifications
+- Caching: Two-tier cache (15-entry LRU in-process + SQLite SVG storage)
 
 **C4 Generation Pipeline:**
 - Three-phase architecture: Static Analysis → AI Enrichment → PlantUML Generation
+- Static analysis: multi-pass extraction with functions, decorators, JSDoc, directory-based component grouping
+- AI enrichment: structured Zod schemas per level, framework-aware prompts (React, Express, Electron, etc.)
 - Prompt caching with cache_control for 90% cost reduction
-- Persistent storage (no TTL expiration), user-controlled regeneration
+- Persistent storage with pre-rendered SVG for sub-500ms cached display
 - Background generation queue with per-level progress tracking
 
 **Change Detection & Visualization:**
@@ -94,18 +100,18 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 - ChangeBadge with file-list tooltip in portal for overflow escape
 
 **Navigation System:**
+- ElementIdRegistry: canonical element IDs shared across generation, storage, and click detection
+- Dynamic container-to-path resolution (entryPoints → classes → groups → lowercase fallback)
+- extractElementIdFromClick: exported helper with transparent overlay skip for all PlantUML versions
 - Zustand store tracks navigation stack with push/pop/navigateTo
 - Diagram-to-diff: diagramNavigationStore intent → CommitWorkflowTab consumption
 - Context banner in DiffViewer with back-to-diagram button
 - Breadcrumb trail with WAI-ARIA accessibility
 - Command palette for fuzzy search across diagram levels
 
-**Known Tech Debt (from v1.1 audit):**
-- 20 human verification tests pending
-- handleRegenerateFromBadge missing IPC state transitions (medium UX gap)
-- Static cost estimate (getCostEstimate IPC exists but not called)
-- Debug console.log in PlantUMLRenderer.tsx and CommitWorkflowTab.tsx
-- Deferred: CHNG-01 (file watching stale indicator), CHNG-04 (debounce aggregation)
+**Known Tech Debt (accumulated):**
+- v1.1: 20 human verification tests pending, handleRegenerateFromBadge missing IPC state transitions, static cost estimate not wired, debug console.log statements, CHNG-01/CHNG-04 deferred
+- v1.2: modelUsed hardcoded as 'haiku', Anthropic SDK type cast workaround, better-sqlite3 native module mismatch, SUMMARY frontmatter bookkeeping gaps
 
 ## Constraints
 
@@ -136,6 +142,11 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 | SVG style injection for change highlighting | v1.1: !important overrides inline PlantUML attributes | ✓ Good |
 | Intent-based cross-tab navigation | v1.1: Zustand intent store consumed once, prevents stale navigation | ✓ Good |
 | Singleton C4StorageService | v1.1: All writes through one instance, consistent IPC broadcasts | ✓ Good |
+| Zod structured output for AI enrichment | v1.2: messages.parse + zodOutputFormat ensures typed JSON, no free-text | ✓ Good |
+| ElementIdRegistry as plain class (not singleton) | v1.2: Callers control lifecycle, pass registry to generators | ✓ Good |
+| Two-tier SVG caching (LRU + SQLite) | v1.2: In-process for instant, SQLite for persistence across restarts | ✓ Good |
+| Nailgun warm JVM behind feature flag | v1.2: Opt-in for power users, safe default off | ✓ Good |
+| AI failure logs warning, continues with static fallback | v1.2: Diagrams always produced even when AI unavailable | ✓ Good |
 
 ---
-*Last updated: 2026-03-02 after v1.2 milestone start*
+*Last updated: 2026-03-03 after v1.2 milestone*

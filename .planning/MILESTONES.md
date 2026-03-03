@@ -1,5 +1,32 @@
 # Milestones
 
+## v1.2 Diagrams That Deliver (Shipped: 2026-03-03)
+
+**Delivered:** Fixed diagram quality across all C4 levels with rich static analysis, AI enrichment pipeline, end-to-end drill-down navigation, and sub-500ms cached rendering.
+
+**Phases completed:** 4 phases (11-14), 9 plans
+**Timeline:** 2 days (2026-03-02 → 2026-03-03)
+**Commits:** 50
+**Lines of code:** 35,637 TypeScript (+2,665 insertions, -254 deletions)
+**Requirements:** 15/15 satisfied (all verified in VERIFICATION.md)
+**Git range:** feat(11-01) → docs(v1.2)
+
+**Key accomplishments:**
+1. Fixed static analysis depth — forgetDescendants bug fixed, enriched extraction with functions, decorators, JSDoc, directory-based component grouping, and non-TypeScript repo fallback
+2. Built AI enrichment pipeline — structured JSON output with Zod schemas, framework-aware prompts, and AI-provided component names consumed by PlantUML generator
+3. Fixed drill-down navigation end-to-end — ElementIdRegistry with shared sanitizeId, dynamic container-to-path resolution, SVG click transparency fix, and elementId passthrough closure
+4. Implemented rendering performance — SVG storage in SQLite, in-process LRU cache for sub-500ms cached diagram display, and Nailgun warm JVM feature flag
+5. All 15 requirements satisfied across 4 phases with full cross-phase integration wiring
+
+**Tech Debt (from audit):**
+- `modelUsed: 'haiku'` hardcoded in c4AnalyzerService.ts (records wrong model in metadata)
+- Type cast workaround for Anthropic SDK TS limitations in aiEnricherService.ts
+- Pre-existing better-sqlite3 native module mismatch blocks integration tests
+- SUMMARY frontmatter bookkeeping gaps (12-01, 13-02 missing requirements_completed)
+- Cosmetic: placeholder API key text visible in VisualMapTab.tsx
+
+---
+
 ## v1.1 Persistent Diagrams with Change Visualization (Shipped: 2026-02-28)
 
 **Delivered:** Persistent C4 diagrams with real-time change visualization and contextual navigation from architecture diagrams to code diffs.
