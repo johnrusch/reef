@@ -93,7 +93,9 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full details.
   1. Opening a previously generated diagram displays the SVG in under 500ms (no visible loading delay)
   2. Switching between diagram levels within the same session is instant (no Java subprocess invoked)
   3. First-time generation still works correctly — pre-rendered SVG is stored after the Java render completes and served on all subsequent loads
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 14-01-PLAN.md — SVG storage layer: SQLite svg_content column, getSvg/storeSvg methods, SvgLruCache, IPC handlers, preload bridge (PERF-01, PERF-02)
+- [ ] 14-02-PLAN.md — Renderer pipeline wiring: VisualMapTab fast path, onSvgGenerated callback chain, Nailgun feature flag (PERF-01, PERF-02, PERF-03)
 
 ## Progress
 
@@ -114,7 +116,7 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full details.
 | 11. Static Analysis Depth | 2/2 | Complete    | 2026-03-02 | - |
 | 12. AI Enrichment Pipeline | v1.2 | Complete    | 2026-03-02 | 2026-03-02 |
 | 13. Drill-Down Navigation Fix | 3/3 | Complete   | 2026-03-03 | - |
-| 14. Rendering Performance | v1.2 | 0/TBD | Not started | - |
+| 14. Rendering Performance | v1.2 | 0/2 | Not started | - |
 
 ---
-*Last updated: 2026-03-03 — Phase 13 gap closure plan added (1 plan, fixes UAT elementId passthrough bug)*
+*Last updated: 2026-03-03 — Phase 14 plans created (2 plans, SVG caching + renderer wiring + Nailgun)*
