@@ -2,13 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Diagrams That Deliver
-status: unknown
-last_updated: "2026-03-02T22:34:16.731Z"
+status: executing
+stopped_at: Completed 13-01-PLAN.md — Phase 13 Plan 01 complete, ready for 13-02 (IPC drill-down handler)
+last_updated: "2026-03-03T19:47:18.907Z"
+last_activity: 2026-03-02 — Plan 12-02 complete (AI enrichment data wired into PlantUML generator)
 progress:
-  total_phases: 2
+  total_phases: 4
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
+  percent: 50
 ---
 
 # Project State
@@ -59,6 +62,9 @@ v1.2 key decisions:
 - Plan 12-02: AI failure in c4AnalyzerService now logs warning and continues with static fallback instead of returning error — diagrams always produced
 - Plan 12-02: generateCodeDiagram accepts EnrichedArchitecture | null but intentionally ignores it (void cast) — code level uses static analysis only
 - Plan 12-02: EnrichedArchitecture union type cast per level in generatePlantUML() switch statement — correct since enrichArchitecture() validates schema per level
+- [Phase 13-drill-down-navigation-fix]: sanitizeId defined once in elementIdRegistry.ts; changeTrackingService re-exports to preserve public API
+- [Phase 13-drill-down-navigation-fix]: ElementIdRegistry is a plain class (not singleton) — callers control lifecycle, pass registry to generators
+- [Phase 13-drill-down-navigation-fix]: deriveContainerPath uses entryPoints->classes->groups->lowercase fallback, works for any repo structure
 
 ### Pending Todos
 
@@ -71,8 +77,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-02 — Plan 12-02 executed (AI enrichment data wired into PlantUML generator, 18 tests pass)
-Stopped at: Completed 12-02-PLAN.md — Phase 12 complete, ready for Phase 13 (Navigation)
+Last session: 2026-03-03T19:47:18.905Z
+Stopped at: Completed 13-01-PLAN.md — Phase 13 Plan 01 complete, ready for 13-02 (IPC drill-down handler)
 Resume file: None
 
 ---

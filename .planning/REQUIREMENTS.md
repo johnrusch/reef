@@ -23,9 +23,9 @@ Requirements for "Diagrams That Deliver" milestone. Each maps to roadmap phases.
 
 ### Drill-Down Navigation
 
-- [ ] **NAV-01**: User can drill from Container diagram into Component diagram without errors (fix elementId sanitization mismatch)
-- [ ] **NAV-02**: Container-to-path resolution works for any repo structure (replace hardcoded Main Process/Renderer Process map)
-- [ ] **NAV-03**: Element IDs are consistent across generation, storage, click detection, and navigation (ElementId registry)
+- [x] **NAV-01**: User can drill from Container diagram into Component diagram without errors (fix elementId sanitization mismatch)
+- [x] **NAV-02**: Container-to-path resolution works for any repo structure (replace hardcoded Main Process/Renderer Process map)
+- [x] **NAV-03**: Element IDs are consistent across generation, storage, click detection, and navigation (ElementId registry)
 - [ ] **NAV-04**: SVG click detection works correctly on all PlantUML versions (patch transparency bug)
 
 ### Rendering Performance
@@ -86,9 +86,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ENRCH-02 | Phase 12 | Complete |
 | ENRCH-03 | Phase 12 | Complete |
 | ENRCH-04 | Phase 12 | Complete |
-| NAV-01 | Phase 13 | Pending |
-| NAV-02 | Phase 13 | Pending |
-| NAV-03 | Phase 13 | Pending |
+| NAV-01 | Phase 13 | Complete |
+| NAV-02 | Phase 13 | Complete |
+| NAV-03 | Phase 13 | Complete |
 | NAV-04 | Phase 13 | Pending |
 | PERF-01 | Phase 14 | Pending |
 | PERF-02 | Phase 14 | Pending |
