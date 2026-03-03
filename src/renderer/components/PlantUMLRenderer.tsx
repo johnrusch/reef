@@ -96,37 +96,7 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
     if (!onElementClick || !isClickable) return;
 
     const target = event.target as SVGElement;
-
-    // Traverse up DOM tree to find element with ID
-    // PlantUML generates elements like <g id="elem_reef_main">
-    // Or directly on shapes like <rect id="reef_main">
-    let element: Element | null = target;
-    let elementId: string | null = null;
-
-    while (element && element !== event.currentTarget) {
-      // Check for ID attribute
-      const id = element.getAttribute('id');
-
-      if (id) {
-        // Skip SVG root and internal PlantUML IDs
-        if (id === 'svg_root' || id.startsWith('_')) {
-          element = element.parentElement;
-          continue;
-        }
-
-        // PlantUML wraps elements in groups with "elem_" prefix
-        if (id.startsWith('elem_')) {
-          elementId = id.replace('elem_', '');
-          break;
-        }
-
-        // Direct element ID (for some diagram types)
-        elementId = id;
-        break;
-      }
-
-      element = element.parentElement;
-    }
+    const elementId = extractElementIdFromClick(target, event.currentTarget);
 
     if (elementId) {
       console.log('Clicked element:', elementId);
@@ -224,7 +194,7 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
     generateDiagram();
   }, [generateDiagram]);
 
-  // Apply SVG DOM change highlighting after SVG content is rendered
+  // Apply SVG DOM change highlighting and click interception patches after SVG content is rendered
   useEffect(() => {
     if (!svgContent || !containerRef.current) return;
 
@@ -232,6 +202,12 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
     if (!wrapper) return;
 
     applyChangeHighlighting(wrapper, directChangedIds, inheritedChangedIds);
+
+    // Patch overlay elements so click events reach the underlying elem_ groups
+    const svgEl = containerRef.current.querySelector('svg');
+    if (svgEl) {
+      patchSvgClickInterception(svgEl);
+    }
   }, [svgContent, directChangedIds, inheritedChangedIds]);
 
   const handleZoomIn = () => {
@@ -284,6 +260,9 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
   const installJava = () => {
     window.open('https://www.java.com/download/', '_blank');
   };
+
+  // patchSvgClickInterception is called after SVG is mounted (see useEffect above)
+  // extractElementIdFromClick is called inside handleSvgClick
 
   return (
     <div className={`plantuml-renderer flex flex-col h-full ${className}`}>
@@ -427,3 +406,85 @@ export const PlantUMLRenderer: React.FC<PlantUMLRendererProps> = ({
     </div>
   );
 };
+
+/**
+ * Extracts a sanitized element ID from an SVG click event by traversing up the DOM.
+ *
+ * Handles transparent overlay elements emitted by newer PlantUML JAR versions
+ * and <a> link wrappers added for hyperlink support.
+ *
+ * Exported for unit testing.
+ *
+ * @param target   - The element that received the click (event.target)
+ * @param boundary - The element to stop traversal at (event.currentTarget)
+ * @returns The sanitized ID (elem_ prefix stripped), or null if no elem_ found
+ */
+export function extractElementIdFromClick(target: Element, boundary: Element): string | null {
+  let element: Element | null = target;
+
+  while (element && element !== boundary) {
+    const id = element.getAttribute('id');
+
+    if (id) {
+      // Skip SVG root and internal PlantUML IDs
+      if (id === 'svg_root' || id.startsWith('_')) {
+        element = element.parentElement;
+        continue;
+      }
+
+      // Skip <a> elements that are PlantUML link wrappers without elem_ prefix
+      // Newer PlantUML JARs wrap element groups in <a> for hyperlink support
+      if (element.tagName.toLowerCase() === 'a' && !id.startsWith('elem_')) {
+        element = element.parentElement;
+        continue;
+      }
+
+      // PlantUML wraps elements in groups with "elem_" prefix
+      if (id.startsWith('elem_')) {
+        return id.replace('elem_', '');
+      }
+
+      // Direct element ID (for some diagram types)
+      return id;
+    }
+
+    // Skip transparent overlay rects emitted by newer PlantUML versions
+    const tagName = element.tagName.toLowerCase();
+    if (tagName === 'rect' || tagName === 'a') {
+      const fill = element.getAttribute('fill');
+      const pe = element.getAttribute('pointer-events');
+      if (fill === 'none' || pe === 'all' || pe === 'painted') {
+        element = element.parentElement;
+        continue;
+      }
+    }
+
+    element = element.parentElement;
+  }
+
+  return null;
+}
+
+/**
+ * Patches an SVG element to neutralize pointer-events on overlay elements
+ * that interfere with click detection in newer PlantUML JAR versions.
+ *
+ * Applied once after the SVG is rendered into the DOM.
+ * Exported for unit testing.
+ *
+ * @param svgElement - The root <svg> element to patch
+ */
+export function patchSvgClickInterception(svgElement: SVGSVGElement | Element): void {
+  // Patch 1: <a> elements with empty href (PlantUML link wrappers)
+  svgElement.querySelectorAll('a[href=""]').forEach(a => {
+    (a as HTMLElement).style.pointerEvents = 'none';
+  });
+
+  // Patch 2: <rect fill="none"> with pointer-events="all" or "painted"
+  svgElement.querySelectorAll('rect[fill="none"]').forEach(rect => {
+    const pe = rect.getAttribute('pointer-events');
+    if (pe === 'all' || pe === 'painted') {
+      (rect as HTMLElement).style.pointerEvents = 'none';
+    }
+  });
+}
