@@ -47,13 +47,13 @@ See: `.planning/milestones/v1.2-ROADMAP.md` for full details.
 
 </details>
 
-### 🚧 v1.3 Diagram Explorer (In Progress)
+### v1.3 Diagram Explorer (In Progress)
 
 **Milestone Goal:** Overhaul the diagram UI from a configure-and-generate interface to a clean browse-and-navigate experience with sidebar tree hierarchy navigation.
 
 - [x] **Phase 15: UI Cleanup** — Remove the configuration landing page, legacy toolbar controls, DiagramInfo sidebar, and Beta badge to create a clean canvas for the new explorer UI
-- [x] **Phase 16: Explorer UI** — Build the sidebar tree navigation, breadcrumb bar, single-button generation prompt, and minimal toolbar that replace everything removed in Phase 15
- (completed 2026-03-04)
+- [ ] **Phase 16: Explorer UI** — Build the sidebar tree navigation, breadcrumb bar, single-button generation prompt, and minimal toolbar that replace everything removed in Phase 15
+
 ## Phase Details
 
 ### Phase 15: UI Cleanup
@@ -80,7 +80,10 @@ Plans:
   3. When user drills down by clicking a diagram element, the sidebar tree automatically expands and highlights the newly active node without any manual interaction
   4. User arriving at VisualMapTab before any diagrams exist sees a single "Generate Diagrams" button that triggers generation of all 4 C4 levels with one click
   5. User sees a minimal toolbar with exactly two controls: regenerate and toggle change visibility
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 16-01-PLAN.md — Build sidebar tree, toolbar, and all-levels generation
+- [ ] 16-02-PLAN.md — Visual verification checkpoint
 
 ## Progress
 
@@ -100,8 +103,8 @@ Plans:
 | 12. AI Enrichment Pipeline | v1.2 | 2/2 | Complete | 2026-03-02 |
 | 13. Drill-Down Navigation Fix | v1.2 | 3/3 | Complete | 2026-03-03 |
 | 14. Rendering Performance | v1.2 | 2/2 | Complete | 2026-03-03 |
-| 15. UI Cleanup | v1.3 | Complete    | 2026-03-04 | 2026-03-04 |
-| 16. Explorer UI | v1.3 | 0/TBD | Not started | - |
+| 15. UI Cleanup | v1.3 | 2/2 | Complete | 2026-03-04 |
+| 16. Explorer UI | v1.3 | 0/2 | Not started | - |
 
 ---
-*Last updated: 2026-03-04 — Phase 15 complete, visual verification approved*
+*Last updated: 2026-03-04 — Phase 16 planned (2 plans in 2 waves)*
