@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { DiagramPanel } from './DiagramPanel';
 import { DiagramControls } from './DiagramControls';
-import { DiagramInfo } from './DiagramInfo';
 import { StalenessBadge } from './StalenessBadge';
 import { DiagramBreadcrumbs } from './DiagramBreadcrumbs';
 import { KeyboardShortcutsHelp } from './KeyboardShortcutsHelp';
@@ -52,7 +51,6 @@ interface DiagramViewerProps {
     skipCache?: boolean;
   }) => Promise<void>;
   onExport: (format: 'svg' | 'png') => void;
-  onShowChanges?: (enabled: boolean) => void;
   showChanges?: boolean;
   preRenderedSvg?: string;
   onSvgGenerated?: (svg: string) => void;
@@ -67,7 +65,6 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
   changedFiles = [],
   onRegenerateDiagram,
   onExport,
-  onShowChanges,
   showChanges = false,
   preRenderedSvg,
   onSvgGenerated,
@@ -548,16 +545,7 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
   return (
     <div className="flex flex-col h-full bg-gray-900">
       <DiagramControls
-        currentType={currentOptions.type}
-        currentDetailLevel={currentOptions.detailLevel}
-        currentFocusArea={currentOptions.focusArea}
-        showChanges={showChanges}
         isGenerating={isGenerating}
-        hasChangedFiles={changedFiles.length > 0}
-        onTypeChange={(type) => handleControlChange({ type })}
-        onDetailLevelChange={(detailLevel) => handleControlChange({ detailLevel })}
-        onFocusAreaChange={(focusArea) => handleControlChange({ focusArea })}
-        onShowChangesToggle={onShowChanges}
         onRegenerate={handleRegenerate}
         onForceRegenerate={handleForceRegenerate}
       />
@@ -574,12 +562,6 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
         <div className="flex-1 relative">
           {renderDiagramWithOverlay()}
         </div>
-        
-        <DiagramInfo
-          metadata={metadata}
-          changedFilesCount={changedFiles.length}
-          onRefreshFromCache={() => onRegenerateDiagram({ ...currentOptions, skipCache: true })}
-        />
       </div>
       
       {error && diagram && (

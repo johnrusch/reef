@@ -5,7 +5,6 @@ interface Tab {
   id: 'commit' | 'management' | 'visualmap';
   label: string;
   icon: React.ElementType;
-  beta?: boolean;
 }
 
 interface RepositoryTabsProps {
@@ -17,7 +16,7 @@ interface RepositoryTabsProps {
 const tabs: Tab[] = [
   { id: 'commit', label: 'Commit Workflow', icon: GitCommit },
   { id: 'management', label: 'Repository', icon: GitBranch },
-  { id: 'visualmap', label: 'Visual Map', icon: Map, beta: true },
+  { id: 'visualmap', label: 'Visual Map', icon: Map },
 ];
 
 export const RepositoryTabs: React.FC<RepositoryTabsProps> = ({
@@ -45,11 +44,6 @@ export const RepositoryTabs: React.FC<RepositoryTabsProps> = ({
             >
               <Icon className="w-4 h-4" />
               <span className="text-sm font-medium">{tab.label}</span>
-              {tab.beta && (
-                <span className="px-1.5 py-0.5 text-xs bg-blue-600/20 text-blue-400 rounded">
-                  Beta
-                </span>
-              )}
             </button>
           );
         })}

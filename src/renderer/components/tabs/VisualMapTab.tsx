@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Map, FileCode, GitBranch, FolderTree, Settings, Play, AlertCircle, Key, FileText } from 'lucide-react';
+import { AlertCircle, Key } from 'lucide-react';
 import plantumlEncoder from 'plantuml-encoder';
 import { DiagramViewer, DiagramMetadata, DiagramType, DetailLevel, FocusArea, ModelType } from '../DiagramViewer/DiagramViewer';
 import { useDiagramStateStore } from '../../stores/diagramStateStore';
@@ -12,25 +12,21 @@ interface VisualMapTabProps {
 }
 
 export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
-  const [isConfigured, setIsConfigured] = useState<boolean>(false);
   const [apiKey, setApiKey] = useState<string>('');
   const [showApiKeyModal, setShowApiKeyModal] = useState<boolean>(false);
   const [diagram, setDiagram] = useState<string>('');
   const [metadata, setMetadata] = useState<DiagramMetadata | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [showChanges, setShowChanges] = useState<boolean>(false);
+  const [showChanges] = useState<boolean>(false);
   const [changedFiles, setChangedFiles] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<'settings' | 'diagram' | 'tree'>('settings');
-  
+  const [viewMode, setViewMode] = useState<'diagram'>('diagram');
+
   const [diagramType, setDiagramType] = useState<DiagramType>('c4-context');
-  const [detailLevel, setDetailLevel] = useState<DetailLevel>('overview');
-  const [focusArea, setFocusArea] = useState<FocusArea | undefined>(undefined);
-  const [modelType, setModelType] = useState<ModelType>('haiku');
+  const [detailLevel] = useState<DetailLevel>('overview');
+  const [focusArea] = useState<FocusArea | undefined>(undefined);
+  const [modelType] = useState<ModelType>('haiku');
   const [elementId, setElementId] = useState<string | undefined>(undefined);
-  const [availableContainers, setAvailableContainers] = useState<string[]>([]);
-  const [availableComponents, setAvailableComponents] = useState<string[]>([]);
-  const [loadingElements, setLoadingElements] = useState<boolean>(false);
   const [svgContent, setSvgContent] = useState<string>('');
 
   const { getState, setState, loadStatesFromBackend } = useDiagramStateStore();
@@ -45,20 +41,6 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
       setElementId(undefined);
     }
   }, [diagramType]);
-
-  // Fetch available containers when switching to Component level
-  useEffect(() => {
-    if (diagramType === 'c4-component' && repository) {
-      fetchAvailableContainers();
-    }
-  }, [diagramType, repository]);
-
-  // Fetch available components when switching to Code level
-  useEffect(() => {
-    if (diagramType === 'c4-code' && repository) {
-      fetchAvailableComponents();
-    }
-  }, [diagramType, repository]);
 
   // Load persisted diagram from storage on mount or repo/type change
   useEffect(() => {
@@ -149,58 +131,9 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
     return unsubscribe;
   }, [repository, setState]);
 
-  const fetchAvailableContainers = async () => {
-    if (!repository) return;
-
-    setLoadingElements(true);
-    try {
-      const result = await window.reef.diagram.getAvailableContainers(repository.path);
-      if (result.success && result.containers.length > 0) {
-        setAvailableContainers(result.containers);
-        // Auto-select first container if none selected
-        if (!elementId) {
-          setElementId(result.containers[0]);
-        }
-      } else {
-        setAvailableContainers([]);
-        console.warn('No containers found for repository');
-      }
-    } catch (error) {
-      console.error('Failed to fetch available containers:', error);
-      setAvailableContainers([]);
-    } finally {
-      setLoadingElements(false);
-    }
-  };
-
-  const fetchAvailableComponents = async () => {
-    if (!repository) return;
-
-    setLoadingElements(true);
-    try {
-      const result = await window.reef.diagram.getAvailableComponents(repository.path);
-      if (result.success && result.components.length > 0) {
-        setAvailableComponents(result.components);
-        // Auto-select first component if none selected
-        if (!elementId) {
-          setElementId(result.components[0].toLowerCase());
-        }
-      } else {
-        setAvailableComponents([]);
-        console.warn('No components found for repository');
-      }
-    } catch (error) {
-      console.error('Failed to fetch available components:', error);
-      setAvailableComponents([]);
-    } finally {
-      setLoadingElements(false);
-    }
-  };
-
   const checkConfiguration = async () => {
     try {
       const result = await window.reef.diagram.checkConfiguration();
-      setIsConfigured(result.configured);
       if (!result.configured) {
         setShowApiKeyModal(true);
       }
@@ -218,7 +151,6 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
     try {
       const result = await window.reef.diagram.setApiKey(apiKey);
       if (result.success) {
-        setIsConfigured(true);
         setShowApiKeyModal(false);
         setError(null);
       } else {
@@ -233,10 +165,10 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
   const detectChangedFiles = useCallback(async () => {
     try {
       const status = await window.reef.git.getRepositoryStatus(repository.path);
-      
+
       // Handle the status object structure
       const changed = [];
-      
+
       // The status object might have files property or direct arrays
       if (status.files) {
         // If status has a files array
@@ -247,7 +179,7 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
         if (Array.isArray(status.not_added)) changed.push(...status.not_added);
         if (Array.isArray(status.created)) changed.push(...status.created);
       }
-      
+
       setChangedFiles(changed);
     } catch (error) {
       console.error('Failed to get changed files:', error);
@@ -407,7 +339,7 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
           result.tokensUsed,
           finalOptions.model
         );
-        
+
         const newMetadata: DiagramMetadata = {
           tokensUsed: result.tokensUsed,
           generatedAt: new Date().toISOString(),
@@ -421,7 +353,7 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
           cached: false,
           lastUpdated: new Date().toISOString(),
         };
-        
+
         setMetadata(newMetadata);
         setViewMode('diagram');
         await detectChangedFiles();
@@ -466,27 +398,27 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
     model: ModelType
   ): number => {
     if (!tokens) return 0;
-    
+
     const costs = {
       haiku: { input: 0.25, output: 1.25 },
       sonnet: { input: 3, output: 15 },
       opus: { input: 15, output: 75 },
     };
-    
+
     const modelCost = costs[model];
     const inputCost = (tokens.input / 1000000) * modelCost.input;
     const outputCost = (tokens.output / 1000000) * modelCost.output;
-    
+
     return inputCost + outputCost;
   };
 
   const handleExport = (format: 'svg' | 'png') => {
     if (!diagram) return;
-    
+
     const encoded = plantumlEncoder.encode(diagram);
-    const serverUrl = localStorage.getItem('plantUmlServerUrl') || 
+    const serverUrl = localStorage.getItem('plantUmlServerUrl') ||
                      'http://localhost:8080/plantuml';
-    
+
     const url = `${serverUrl}/${format}/${encoded}`;
     const link = document.createElement('a');
     link.href = url;
@@ -502,13 +434,13 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
             <Key className="w-6 h-6 text-blue-400 mr-2" />
             <h3 className="text-lg font-semibold">Configure Anthropic API</h3>
           </div>
-          
+
           <p className="text-sm text-gray-400 mb-4">
             To use AI-powered diagram generation, please provide your Anthropic API key.
             You can get one from{' '}
-            <a 
-              href="https://console.anthropic.com/api" 
-              target="_blank" 
+            <a
+              href="https://console.anthropic.com/api"
+              target="_blank"
               rel="noopener noreferrer"
               className="text-blue-400 hover:text-blue-300"
             >
@@ -565,7 +497,6 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
         changedFiles={changedFiles}
         onRegenerateDiagram={generateDiagram}
         onExport={handleExport}
-        onShowChanges={setShowChanges}
         showChanges={showChanges}
         preRenderedSvg={svgContent || undefined}
         onSvgGenerated={handleSvgGenerated}
@@ -601,387 +532,14 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
     );
   }
 
+  // Fallback: show GeneratePromptCard for any unmatched state
   return (
-    <div className="flex items-center justify-center h-full p-6">
-      <div className="max-w-3xl w-full space-y-6">
-        <div className="text-center space-y-4">
-          <div className="relative inline-block">
-            <Map className="w-20 h-20 text-gray-600" />
-            <div className="absolute -top-1 -right-1 px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
-              AI
-            </div>
-          </div>
-          
-          <h3 className="text-2xl font-semibold text-gray-300">
-            AI-Powered Visual Map
-          </h3>
-          <p className="text-gray-500 max-w-2xl mx-auto">
-            Generate architectural diagrams of your codebase using Claude AI and PlantUML.
-            Visualize your project structure, dependencies, and relationships.
-          </p>
-        </div>
-
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-          <h4 className="text-lg font-medium mb-4">Diagram Settings</h4>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-2">
-                C4 Architecture Level
-              </label>
-              <div className="grid grid-cols-4 gap-2">
-                <button
-                  onClick={() => setDiagramType('c4-context')}
-                  className={`px-3 py-2 rounded text-sm transition-colors ${
-                    diagramType === 'c4-context'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                  }`}
-                >
-                  <div>
-                    <div className="font-medium">Context</div>
-                    <div className="text-xs opacity-75">System boundaries</div>
-                  </div>
-                </button>
-                <button
-                  onClick={() => setDiagramType('c4-container')}
-                  className={`px-3 py-2 rounded text-sm transition-colors ${
-                    diagramType === 'c4-container'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                  }`}
-                >
-                  <div>
-                    <div className="font-medium">Container</div>
-                    <div className="text-xs opacity-75">Deployable units</div>
-                  </div>
-                </button>
-                <button
-                  onClick={() => setDiagramType('c4-component')}
-                  className={`px-3 py-2 rounded text-sm transition-colors ${
-                    diagramType === 'c4-component'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                  }`}
-                >
-                  <div>
-                    <div className="font-medium">Component</div>
-                    <div className="text-xs opacity-75">Code structure</div>
-                  </div>
-                </button>
-                <button
-                  onClick={() => setDiagramType('c4-code')}
-                  className={`px-3 py-2 rounded text-sm transition-colors ${
-                    diagramType === 'c4-code'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                  }`}
-                >
-                  <div>
-                    <div className="font-medium">Code</div>
-                    <div className="text-xs opacity-75">Class details</div>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {diagramType === 'c4-component' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Select Container to Analyze
-                </label>
-                <p className="text-xs text-gray-500 mb-2">
-                  Choose which container (deployable unit) to analyze in detail
-                </p>
-                {loadingElements ? (
-                  <div className="flex items-center justify-center py-4">
-                    <div className="w-4 h-4 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
-                    <span className="ml-2 text-sm text-gray-400">Loading containers...</span>
-                  </div>
-                ) : availableContainers.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-2">
-                    {availableContainers.map((container) => (
-                      <button
-                        key={container}
-                        onClick={() => setElementId(container)}
-                        className={`px-3 py-2 rounded text-sm transition-colors ${
-                          elementId === container
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                        }`}
-                      >
-                        {container}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-sm text-gray-500 py-2">
-                    No containers found in this repository
-                  </div>
-                )}
-              </div>
-            )}
-
-            {diagramType === 'c4-code' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Select Component to Analyze
-                </label>
-                <p className="text-xs text-gray-500 mb-2">
-                  Choose which component to drill down into for class-level details
-                </p>
-                {loadingElements ? (
-                  <div className="flex items-center justify-center py-4">
-                    <div className="w-4 h-4 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
-                    <span className="ml-2 text-sm text-gray-400">Loading components...</span>
-                  </div>
-                ) : availableComponents.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-2">
-                    {availableComponents.map((component) => (
-                      <button
-                        key={component}
-                        onClick={() => setElementId(component.toLowerCase())}
-                        className={`px-3 py-2 rounded text-sm transition-colors ${
-                          elementId === component.toLowerCase()
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                        }`}
-                      >
-                        {component}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-sm text-gray-500 py-2">
-                    No components found in this repository
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-2">
-                Detail Level
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  onClick={() => setDetailLevel('overview')}
-                  className={`px-3 py-2 rounded text-sm transition-colors ${
-                    detailLevel === 'overview'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                  }`}
-                >
-                  Overview
-                </button>
-                <button
-                  onClick={() => setDetailLevel('architectural')}
-                  className={`px-3 py-2 rounded text-sm transition-colors ${
-                    detailLevel === 'architectural'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                  }`}
-                >
-                  Architectural
-                </button>
-                <button
-                  onClick={() => setDetailLevel('detailed')}
-                  className={`px-3 py-2 rounded text-sm transition-colors ${
-                    detailLevel === 'detailed'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                  }`}
-                >
-                  Detailed
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-2">
-                Focus Area (Optional)
-              </label>
-              <div className="grid grid-cols-5 gap-2">
-                <button
-                  onClick={() => setFocusArea(undefined)}
-                  className={`px-3 py-2 rounded text-sm transition-colors ${
-                    focusArea === undefined
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                  }`}
-                >
-                  None
-                </button>
-                <button
-                  onClick={() => setFocusArea('api')}
-                  className={`px-3 py-2 rounded text-sm transition-colors ${
-                    focusArea === 'api'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                  }`}
-                >
-                  API
-                </button>
-                <button
-                  onClick={() => setFocusArea('database')}
-                  className={`px-3 py-2 rounded text-sm transition-colors ${
-                    focusArea === 'database'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                  }`}
-                >
-                  Database
-                </button>
-                <button
-                  onClick={() => setFocusArea('business-logic')}
-                  className={`px-3 py-2 rounded text-sm transition-colors ${
-                    focusArea === 'business-logic'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                  }`}
-                >
-                  Business Logic
-                </button>
-                <button
-                  onClick={() => setFocusArea('auth')}
-                  className={`px-3 py-2 rounded text-sm transition-colors ${
-                    focusArea === 'auth'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                  }`}
-                >
-                  Auth
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-2">
-                AI Model
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  onClick={() => setModelType('haiku')}
-                  className={`px-3 py-2 rounded text-sm transition-colors ${
-                    modelType === 'haiku'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                  }`}
-                >
-                  <div>
-                    <div className="font-medium">Haiku</div>
-                    <div className="text-xs opacity-75">Fast & Cheap</div>
-                  </div>
-                </button>
-                <button
-                  onClick={() => setModelType('sonnet')}
-                  className={`px-3 py-2 rounded text-sm transition-colors ${
-                    modelType === 'sonnet'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                  }`}
-                >
-                  <div>
-                    <div className="font-medium">Sonnet</div>
-                    <div className="text-xs opacity-75">Balanced</div>
-                  </div>
-                </button>
-                <button
-                  onClick={() => setModelType('opus')}
-                  className={`px-3 py-2 rounded text-sm transition-colors ${
-                    modelType === 'opus'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                  }`}
-                >
-                  <div>
-                    <div className="font-medium">Opus</div>
-                    <div className="text-xs opacity-75">Most Capable</div>
-                  </div>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {error && (
-            <div className="mt-4 flex items-center text-red-400 text-sm">
-              <AlertCircle className="w-4 h-4 mr-2" />
-              {error}
-            </div>
-          )}
-
-          <div className="mt-6 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {isConfigured ? (
-                <span className="text-xs text-green-400">✓ API Configured</span>
-              ) : (
-                <button
-                  onClick={() => setShowApiKeyModal(true)}
-                  className="text-xs text-blue-400 hover:text-blue-300"
-                >
-                  <Settings className="w-4 h-4 inline mr-1" />
-                  Configure API
-                </button>
-              )}
-            </div>
-
-            <button
-              onClick={() => generateDiagram()}
-              disabled={!isConfigured || isGenerating || !repository}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 rounded text-sm font-medium transition-colors flex items-center gap-2"
-            >
-              {isGenerating ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4" />
-                  Generate Diagram
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4 mb-6">
-          <button
-            onClick={() => setViewMode('tree')}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-colors"
-          >
-            <FileText className="w-4 h-4" />
-            Traditional File Tree
-          </button>
-          <span className="text-xs text-gray-500">or generate an AI-powered diagram</span>
-        </div>
-
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
-            <FileCode className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-            <h4 className="text-sm font-medium text-gray-300 mb-1">Smart Analysis</h4>
-            <p className="text-xs text-gray-500">
-              AI extracts key components from your code
-            </p>
-          </div>
-          
-          <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
-            <GitBranch className="w-8 h-8 text-green-400 mx-auto mb-2" />
-            <h4 className="text-sm font-medium text-gray-300 mb-1">PlantUML Diagrams</h4>
-            <p className="text-xs text-gray-500">
-              Industry-standard diagram notation
-            </p>
-          </div>
-          
-          <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
-            <FolderTree className="w-8 h-8 text-purple-400 mx-auto mb-2" />
-            <h4 className="text-sm font-medium text-gray-300 mb-1">Cost Efficient</h4>
-            <p className="text-xs text-gray-500">
-              Uses Claude 3 Haiku for low-cost generation
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className="flex items-center justify-center h-full bg-gray-900">
+      <GeneratePromptCard
+        repoName={repository?.name || 'Repository'}
+        onGenerate={() => generateDiagram()}
+        isGenerating={isGenerating}
+      />
     </div>
   );
 };
