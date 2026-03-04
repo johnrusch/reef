@@ -5,6 +5,7 @@
 - ✅ **v1.0 C4 Diagram Feature Release** — Phases 1-4 (shipped 2026-02-24)
 - ✅ **v1.1 Persistent Diagrams with Change Visualization** — Phases 5-10 (shipped 2026-02-28)
 - ✅ **v1.2 Diagrams That Deliver** — Phases 11-14 (shipped 2026-03-03)
+- 🚧 **v1.3 Diagram Explorer** — Phases 15-16 (in progress)
 
 ## Phases
 
@@ -46,6 +47,38 @@ See: `.planning/milestones/v1.2-ROADMAP.md` for full details.
 
 </details>
 
+### 🚧 v1.3 Diagram Explorer (In Progress)
+
+**Milestone Goal:** Overhaul the diagram UI from a configure-and-generate interface to a clean browse-and-navigate experience with sidebar tree hierarchy navigation.
+
+- [ ] **Phase 15: UI Cleanup** — Remove the configuration landing page, legacy toolbar controls, DiagramInfo sidebar, and Beta badge to create a clean canvas for the new explorer UI
+- [ ] **Phase 16: Explorer UI** — Build the sidebar tree navigation, breadcrumb bar, single-button generation prompt, and minimal toolbar that replace everything removed in Phase 15
+
+## Phase Details
+
+### Phase 15: UI Cleanup
+**Goal**: Users see a clean, distraction-free diagram view with all legacy configuration and metadata controls removed
+**Depends on**: Phase 14 (v1.2 complete)
+**Requirements**: UICL-01, UICL-02, UICL-03, UICL-04
+**Success Criteria** (what must be TRUE):
+  1. User opens VisualMapTab and sees no configuration landing page — no C4 level picker, detail level slider, focus area toggles, AI model selector, feature info cards, or file tree button
+  2. User viewing a diagram sees no legacy toolbar buttons — no Component/Class/Sequence type buttons, no detail level slider, no focus area toggles
+  3. User viewing a diagram sees no DiagramInfo sidebar — no generation metadata, cost, token count, or cache controls
+  4. User sees no Beta badge on the Visual Map tab label
+**Plans**: TBD
+
+### Phase 16: Explorer UI
+**Goal**: Users can browse the full C4 hierarchy through a sidebar tree and always know where they are via breadcrumbs, with a clean single-button path to generate and a minimal toolbar for the only two controls they need
+**Depends on**: Phase 15
+**Requirements**: NAV-01, NAV-02, NAV-03, GEN-01, GEN-02
+**Success Criteria** (what must be TRUE):
+  1. User sees a collapsible sidebar tree listing all four C4 levels (Context, Containers, Components, Code) and can click any node to navigate directly to that diagram level
+  2. User sees a breadcrumb bar showing their current position in the hierarchy (e.g., "Context > Containers > UserService") with clickable ancestor nodes that navigate back up
+  3. When user drills down by clicking a diagram element, the sidebar tree automatically expands and highlights the newly active node without any manual interaction
+  4. User arriving at VisualMapTab before any diagrams exist sees a single "Generate Diagrams" button that triggers generation of all 4 C4 levels with one click
+  5. User sees a minimal toolbar with exactly two controls: regenerate and toggle change visibility
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -64,6 +97,8 @@ See: `.planning/milestones/v1.2-ROADMAP.md` for full details.
 | 12. AI Enrichment Pipeline | v1.2 | 2/2 | Complete | 2026-03-02 |
 | 13. Drill-Down Navigation Fix | v1.2 | 3/3 | Complete | 2026-03-03 |
 | 14. Rendering Performance | v1.2 | 2/2 | Complete | 2026-03-03 |
+| 15. UI Cleanup | v1.3 | 0/TBD | Not started | - |
+| 16. Explorer UI | v1.3 | 0/TBD | Not started | - |
 
 ---
-*Last updated: 2026-03-03 — v1.2 milestone shipped*
+*Last updated: 2026-03-03 — v1.3 roadmap created*

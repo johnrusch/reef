@@ -47,21 +47,21 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| UICL-01 | — | Pending |
-| UICL-02 | — | Pending |
-| UICL-03 | — | Pending |
-| UICL-04 | — | Pending |
-| NAV-01 | — | Pending |
-| NAV-02 | — | Pending |
-| NAV-03 | — | Pending |
-| GEN-01 | — | Pending |
-| GEN-02 | — | Pending |
+| UICL-01 | Phase 15 | Pending |
+| UICL-02 | Phase 15 | Pending |
+| UICL-03 | Phase 15 | Pending |
+| UICL-04 | Phase 15 | Pending |
+| NAV-01 | Phase 16 | Pending |
+| NAV-02 | Phase 16 | Pending |
+| NAV-03 | Phase 16 | Pending |
+| GEN-01 | Phase 16 | Pending |
+| GEN-02 | Phase 16 | Pending |
 
 **Coverage:**
 - v1.3 requirements: 9 total
-- Mapped to phases: 0
-- Unmapped: 9 ⚠️
+- Mapped to phases: 9
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-03*
-*Last updated: 2026-03-03 after initial definition*
+*Last updated: 2026-03-03 after roadmap creation — all 9 requirements mapped*
