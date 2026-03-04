@@ -65,7 +65,10 @@ See: `.planning/milestones/v1.2-ROADMAP.md` for full details.
   2. User viewing a diagram sees no legacy toolbar buttons — no Component/Class/Sequence type buttons, no detail level slider, no focus area toggles
   3. User viewing a diagram sees no DiagramInfo sidebar — no generation metadata, cost, token count, or cache controls
   4. User sees no Beta badge on the Visual Map tab label
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 15-01-PLAN.md — Remove all legacy UI controls (tests + implementation)
+- [ ] 15-02-PLAN.md — Visual verification checkpoint
 
 ### Phase 16: Explorer UI
 **Goal**: Users can browse the full C4 hierarchy through a sidebar tree and always know where they are via breadcrumbs, with a clean single-button path to generate and a minimal toolbar for the only two controls they need
@@ -97,8 +100,8 @@ See: `.planning/milestones/v1.2-ROADMAP.md` for full details.
 | 12. AI Enrichment Pipeline | v1.2 | 2/2 | Complete | 2026-03-02 |
 | 13. Drill-Down Navigation Fix | v1.2 | 3/3 | Complete | 2026-03-03 |
 | 14. Rendering Performance | v1.2 | 2/2 | Complete | 2026-03-03 |
-| 15. UI Cleanup | v1.3 | 0/TBD | Not started | - |
+| 15. UI Cleanup | v1.3 | 0/2 | In progress | - |
 | 16. Explorer UI | v1.3 | 0/TBD | Not started | - |
 
 ---
-*Last updated: 2026-03-03 — v1.3 roadmap created*
+*Last updated: 2026-03-04 — Phase 15 plans created*
