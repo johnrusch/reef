@@ -52,8 +52,8 @@ See: `.planning/milestones/v1.2-ROADMAP.md` for full details.
 **Milestone Goal:** Overhaul the diagram UI from a configure-and-generate interface to a clean browse-and-navigate experience with sidebar tree hierarchy navigation.
 
 - [x] **Phase 15: UI Cleanup** — Remove the configuration landing page, legacy toolbar controls, DiagramInfo sidebar, and Beta badge to create a clean canvas for the new explorer UI
-- [ ] **Phase 16: Explorer UI** — Build the sidebar tree navigation, breadcrumb bar, single-button generation prompt, and minimal toolbar that replace everything removed in Phase 15
-
+- [x] **Phase 16: Explorer UI** — Build the sidebar tree navigation, breadcrumb bar, single-button generation prompt, and minimal toolbar that replace everything removed in Phase 15
+ (completed 2026-03-04)
 ## Phase Details
 
 ### Phase 15: UI Cleanup
@@ -100,7 +100,7 @@ Plans:
 | 12. AI Enrichment Pipeline | v1.2 | 2/2 | Complete | 2026-03-02 |
 | 13. Drill-Down Navigation Fix | v1.2 | 3/3 | Complete | 2026-03-03 |
 | 14. Rendering Performance | v1.2 | 2/2 | Complete | 2026-03-03 |
-| 15. UI Cleanup | v1.3 | 2/2 | Complete | 2026-03-04 |
+| 15. UI Cleanup | v1.3 | Complete    | 2026-03-04 | 2026-03-04 |
 | 16. Explorer UI | v1.3 | 0/TBD | Not started | - |
 
 ---
