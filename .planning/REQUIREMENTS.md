@@ -9,10 +9,10 @@ Requirements for the Diagram Explorer milestone. Each maps to roadmap phases.
 
 ### UI Cleanup
 
-- [ ] **UICL-01**: User sees no configuration landing page — the settings view (C4 level picker, detail level, focus area, AI model, feature info cards, file tree button) is removed from VisualMapTab
-- [ ] **UICL-02**: User sees no legacy toolbar controls — non-C4 diagram type buttons (Component/Class/Sequence), detail level slider, and focus area toggles are removed
-- [ ] **UICL-03**: User sees no DiagramInfo sidebar — generation metadata, cost, tokens, and cache controls are removed from the diagram view
-- [ ] **UICL-04**: User sees no Beta badge on the Visual Map tab
+- [x] **UICL-01**: User sees no configuration landing page — the settings view (C4 level picker, detail level, focus area, AI model, feature info cards, file tree button) is removed from VisualMapTab
+- [x] **UICL-02**: User sees no legacy toolbar controls — non-C4 diagram type buttons (Component/Class/Sequence), detail level slider, and focus area toggles are removed
+- [x] **UICL-03**: User sees no DiagramInfo sidebar — generation metadata, cost, tokens, and cache controls are removed from the diagram view
+- [x] **UICL-04**: User sees no Beta badge on the Visual Map tab
 
 ### Navigation
 
@@ -47,10 +47,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| UICL-01 | Phase 15 | Pending |
-| UICL-02 | Phase 15 | Pending |
-| UICL-03 | Phase 15 | Pending |
-| UICL-04 | Phase 15 | Pending |
+| UICL-01 | Phase 15 | Complete |
+| UICL-02 | Phase 15 | Complete |
+| UICL-03 | Phase 15 | Complete |
+| UICL-04 | Phase 15 | Complete |
 | NAV-01 | Phase 16 | Pending |
 | NAV-02 | Phase 16 | Pending |
 | NAV-03 | Phase 16 | Pending |

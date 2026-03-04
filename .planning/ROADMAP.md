@@ -100,7 +100,7 @@ Plans:
 | 12. AI Enrichment Pipeline | v1.2 | 2/2 | Complete | 2026-03-02 |
 | 13. Drill-Down Navigation Fix | v1.2 | 3/3 | Complete | 2026-03-03 |
 | 14. Rendering Performance | v1.2 | 2/2 | Complete | 2026-03-03 |
-| 15. UI Cleanup | v1.3 | 0/2 | In progress | - |
+| 15. UI Cleanup | 1/2 | In Progress|  | - |
 | 16. Explorer UI | v1.3 | 0/TBD | Not started | - |
 
 ---
