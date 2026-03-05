@@ -427,13 +427,80 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
   };
 
   const generateAllDiagrams = async () => {
-    const levels: DiagramType[] = ['c4-context', 'c4-container', 'c4-component', 'c4-code'];
-    for (const level of levels) {
+    if (!repository) {
+      setError('No repository selected');
+      return;
+    }
+
+    setIsGenerating(true);
+    setError(null);
+
+    const levels: Array<{ type: DiagramType; level: string }> = [
+      { type: 'c4-context', level: 'context' },
+      { type: 'c4-container', level: 'container' },
+      { type: 'c4-component', level: 'component' },
+      { type: 'c4-code', level: 'code' },
+    ];
+
+    // Generate all 4 levels via backend API directly (bypasses component
+    // state management to avoid re-render/effect interference between levels).
+    // The backend storeDiagram() persists each level's PlantUML automatically.
+    for (const { type, level } of levels) {
       try {
-        await generateDiagram({ type: level });
+        await window.reef.c4Storage.updateState(repository.path, level, 'generating');
+        await window.reef.diagram.generate(repository.path, {
+          type,
+          detailLevel: 'overview',
+        });
+        await window.reef.c4Storage.updateState(repository.path, level, 'fresh');
       } catch (err) {
-        console.error(`Failed to generate ${level}:`, err);
+        console.error(`Failed to generate ${type}:`, err);
+        try {
+          await window.reef.c4Storage.updateState(
+            repository.path, level, 'error', undefined,
+            'Could not generate diagram. Please try again.'
+          );
+        } catch (_) { /* ignore */ }
       }
+    }
+
+    // Load all states so the sidebar shows correct icons
+    try {
+      const states = await window.reef.c4Storage.getRepoStates(repository.path);
+      loadStatesFromBackend(states);
+    } catch (_) { /* ignore */ }
+
+    // Now load the context level diagram for display
+    setDiagramType('c4-context');
+    setIsGenerating(false);
+
+    // Load the stored context diagram into component state
+    try {
+      const storedDiagram = await window.reef.c4Storage.getDiagram(
+        repository.path, 'context'
+      );
+      if (storedDiagram) {
+        setSvgContent('');
+        setDiagram(storedDiagram.diagramContent);
+        setMetadata({
+          tokensUsed: storedDiagram.tokensUsed
+            ? { input: storedDiagram.tokensUsed, output: 0 }
+            : undefined,
+          generatedAt: storedDiagram.createdAt || new Date().toISOString(),
+          diagramType: 'c4-context',
+          detailLevel: detailLevel,
+          focusArea: focusArea,
+          repository: repository.name,
+          model: (storedDiagram.modelUsed || 'haiku') as ModelType,
+          generationTime: 0,
+          estimatedCost: storedDiagram.generationCost || 0,
+          cached: true,
+          lastUpdated: storedDiagram.updatedAt || new Date().toISOString(),
+        });
+        setViewMode('diagram');
+      }
+    } catch (err) {
+      console.error('Failed to load context diagram after generate-all:', err);
     }
   };
 

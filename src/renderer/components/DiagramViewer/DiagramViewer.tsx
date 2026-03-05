@@ -217,6 +217,7 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
       await onRegenerateDiagram({
         ...currentOptions,
         type: newType,
+        elementId: undefined,
       });
     }
   }, [navigationStore, currentOptions, onRegenerateDiagram, handleBreadcrumbNavigate]);
