@@ -7,6 +7,7 @@ import { DiagramBreadcrumbs } from './DiagramBreadcrumbs';
 import { KeyboardShortcutsHelp } from './KeyboardShortcutsHelp';
 import { CommandPalette } from './CommandPalette';
 import { GeneratePromptCard } from './GeneratePromptCard';
+import { C4HierarchyTree } from './C4HierarchyTree';
 import { useNavigationStore, getNextLevel, type DiagramSearchItem } from '../../stores/navigationStore';
 import { useDiagramStateStore } from '../../stores/diagramStateStore';
 import { useDiagramNavigationStore } from '../../stores/diagramNavigationStore';
@@ -65,10 +66,11 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
   changedFiles = [],
   onRegenerateDiagram,
   onExport,
-  showChanges = false,
+  showChanges: _showChangesProp = false,
   preRenderedSvg,
   onSvgGenerated,
 }) => {
+  const [showChanges, setShowChanges] = useState<boolean>(_showChangesProp);
   const [currentOptions, setCurrentOptions] = useState({
     type: metadata.diagramType,
     detailLevel: metadata.detailLevel,
@@ -169,10 +171,6 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
     }
   }, [currentOptions, onRegenerateDiagram]);
 
-  const handleForceRegenerate = useCallback(async () => {
-    await onRegenerateDiagram({ ...currentOptions, skipCache: true });
-  }, [currentOptions, onRegenerateDiagram]);
-
   const handleNavigateToDiff = useCallback((filePath: string) => {
     const { setIntent } = useDiagramNavigationStore.getState();
     const { setActiveTab } = useRepositoryStore.getState();
@@ -205,6 +203,23 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
       elementId: targetLevel.elementId,
     });
   }, [navigationStore, currentOptions, onRegenerateDiagram]);
+
+  const handleTreeNavigate = useCallback(async (level: 'context' | 'container' | 'component' | 'code') => {
+    const targetIndex = navigationStore.stack.findIndex(l => l.level === level);
+    if (targetIndex >= 0) {
+      // Level exists in stack — navigate breadcrumb-style
+      await handleBreadcrumbNavigate(targetIndex);
+    } else {
+      // Level not in stack — reset navigation and load that level
+      navigationStore.reset();
+      const newType = `c4-${level}` as DiagramType;
+      handleControlChange({ type: newType });
+      await onRegenerateDiagram({
+        ...currentOptions,
+        type: newType,
+      });
+    }
+  }, [navigationStore, currentOptions, onRegenerateDiagram, handleBreadcrumbNavigate]);
 
   const handleElementClick = useCallback(async (elementId: string) => {
     // Don't process clicks during generation or for non-C4 diagrams
@@ -547,7 +562,8 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
       <DiagramControls
         isGenerating={isGenerating}
         onRegenerate={handleRegenerate}
-        onForceRegenerate={handleForceRegenerate}
+        showChanges={showChanges}
+        onToggleChanges={() => setShowChanges(prev => !prev)}
       />
 
       {currentOptions.type.startsWith('c4-') && (
@@ -559,7 +575,13 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
       )}
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex-1 relative">
+        {currentOptions.type.startsWith('c4-') && (
+          <C4HierarchyTree
+            onNavigate={handleTreeNavigate}
+            disabled={isGenerating}
+          />
+        )}
+        <div className="flex-1 min-w-0 relative">
           {renderDiagramWithOverlay()}
         </div>
       </div>
