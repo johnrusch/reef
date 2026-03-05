@@ -34,7 +34,7 @@ export const DiagramPanel: React.FC<DiagramPanelProps> = ({
   content,
   metadata,
   changedFiles: _changedFiles = [],
-  showChanges: _showChanges = false,
+  showChanges = false,
   isFullscreen,
   onToggleFullscreen,
   onExport,
@@ -138,8 +138,8 @@ export const DiagramPanel: React.FC<DiagramPanelProps> = ({
         className="h-full"
         onElementClick={onElementClick}
         isClickable={isClickable}
-        directChangedIds={directChangedIds}
-        inheritedChangedIds={inheritedChangedIds}
+        directChangedIds={showChanges ? directChangedIds : []}
+        inheritedChangedIds={showChanges ? inheritedChangedIds : []}
         preRenderedSvg={preRenderedSvg}
         onSvgGenerated={onSvgGenerated}
       />

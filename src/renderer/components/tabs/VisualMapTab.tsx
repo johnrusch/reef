@@ -393,6 +393,17 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
     }
   };
 
+  const generateAllDiagrams = async () => {
+    const levels: DiagramType[] = ['c4-context', 'c4-container', 'c4-component', 'c4-code'];
+    for (const level of levels) {
+      try {
+        await generateDiagram({ type: level });
+      } catch (err) {
+        console.error(`Failed to generate ${level}:`, err);
+      }
+    }
+  };
+
   const calculateEstimatedCost = (
     tokens: { input: number; output: number } | undefined,
     model: ModelType
@@ -510,7 +521,7 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
       <div className="flex items-center justify-center h-full bg-gray-900">
         <GeneratePromptCard
           repoName={repository?.name || 'Repository'}
-          onGenerate={() => generateDiagram()}
+          onGenerate={generateAllDiagrams}
           isGenerating={isGenerating}
         />
       </div>
@@ -537,7 +548,7 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
     <div className="flex items-center justify-center h-full bg-gray-900">
       <GeneratePromptCard
         repoName={repository?.name || 'Repository'}
-        onGenerate={() => generateDiagram()}
+        onGenerate={generateAllDiagrams}
         isGenerating={isGenerating}
       />
     </div>

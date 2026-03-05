@@ -1,18 +1,17 @@
 /**
  * DiagramControls.test.tsx
  *
- * UICL-02: DiagramControls toolbar must NOT render legacy type buttons,
- * detail-level slider, or focus-area toggles. Only Regenerate +
- * Force Regenerate buttons and their confirm dialog must remain.
+ * NAV-02 / GEN-02: DiagramControls toolbar must have exactly 2 controls:
+ * Regenerate + Show/Hide Changes toggle. No Force Regenerate button.
  */
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { DiagramControls } from '../../../../../src/renderer/components/DiagramViewer/DiagramControls';
 
-describe('DiagramControls (UICL-02)', () => {
+describe('DiagramControls', () => {
   const mockOnRegenerate = vi.fn();
-  const mockOnForceRegenerate = vi.fn();
+  const mockOnToggleChanges = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -23,6 +22,8 @@ describe('DiagramControls (UICL-02)', () => {
       <DiagramControls
         isGenerating={false}
         onRegenerate={mockOnRegenerate}
+        showChanges={false}
+        onToggleChanges={mockOnToggleChanges}
       />
     );
 
@@ -34,6 +35,8 @@ describe('DiagramControls (UICL-02)', () => {
       <DiagramControls
         isGenerating={false}
         onRegenerate={mockOnRegenerate}
+        showChanges={false}
+        onToggleChanges={mockOnToggleChanges}
       />
     );
 
@@ -45,6 +48,8 @@ describe('DiagramControls (UICL-02)', () => {
       <DiagramControls
         isGenerating={false}
         onRegenerate={mockOnRegenerate}
+        showChanges={false}
+        onToggleChanges={mockOnToggleChanges}
       />
     );
 
@@ -56,22 +61,67 @@ describe('DiagramControls (UICL-02)', () => {
       <DiagramControls
         isGenerating={false}
         onRegenerate={mockOnRegenerate}
+        showChanges={false}
+        onToggleChanges={mockOnToggleChanges}
       />
     );
 
     expect(screen.getByText('Regenerate')).toBeInTheDocument();
   });
 
-  test('renders Force Regenerate button when onForceRegenerate provided', () => {
+  test('does NOT render Force Regenerate button', () => {
     render(
       <DiagramControls
         isGenerating={false}
         onRegenerate={mockOnRegenerate}
-        onForceRegenerate={mockOnForceRegenerate}
+        showChanges={false}
+        onToggleChanges={mockOnToggleChanges}
       />
     );
 
-    expect(screen.getByText('Force Regenerate')).toBeInTheDocument();
+    expect(screen.queryByText('Force Regenerate')).not.toBeInTheDocument();
+  });
+
+  test('renders Show Changes toggle when showChanges=false', () => {
+    render(
+      <DiagramControls
+        isGenerating={false}
+        onRegenerate={mockOnRegenerate}
+        showChanges={false}
+        onToggleChanges={mockOnToggleChanges}
+      />
+    );
+
+    expect(screen.getByText('Show Changes')).toBeInTheDocument();
+  });
+
+  test('renders Hide Changes toggle when showChanges=true', () => {
+    render(
+      <DiagramControls
+        isGenerating={false}
+        onRegenerate={mockOnRegenerate}
+        showChanges={true}
+        onToggleChanges={mockOnToggleChanges}
+      />
+    );
+
+    expect(screen.getByText('Hide Changes')).toBeInTheDocument();
+  });
+
+  test('clicking toggle calls onToggleChanges', () => {
+    render(
+      <DiagramControls
+        isGenerating={false}
+        onRegenerate={mockOnRegenerate}
+        showChanges={false}
+        onToggleChanges={mockOnToggleChanges}
+      />
+    );
+
+    const toggleButton = screen.getByText('Show Changes');
+    fireEvent.click(toggleButton);
+
+    expect(mockOnToggleChanges).toHaveBeenCalledTimes(1);
   });
 
   test('shows confirm dialog when Regenerate is clicked', () => {
@@ -79,6 +129,8 @@ describe('DiagramControls (UICL-02)', () => {
       <DiagramControls
         isGenerating={false}
         onRegenerate={mockOnRegenerate}
+        showChanges={false}
+        onToggleChanges={mockOnToggleChanges}
       />
     );
 

@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
-import { RefreshCw, AlertCircle } from 'lucide-react';
+import { RefreshCw, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 interface DiagramControlsProps {
   isGenerating: boolean;
   onRegenerate: () => void;
-  onForceRegenerate?: () => void;
+  showChanges: boolean;
+  onToggleChanges: () => void;
 }
 
 export const DiagramControls: React.FC<DiagramControlsProps> = ({
   isGenerating,
   onRegenerate,
-  onForceRegenerate,
+  showChanges,
+  onToggleChanges,
 }) => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
@@ -35,17 +37,23 @@ export const DiagramControls: React.FC<DiagramControlsProps> = ({
           Regenerate
         </button>
 
-        {onForceRegenerate && (
-          <button
-            onClick={onForceRegenerate}
-            disabled={isGenerating}
-            className="flex items-center gap-2 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 rounded text-sm font-medium transition-colors"
-            title="Force regenerate diagram (ignore cache)"
-          >
-            <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
-            Force Regenerate
-          </button>
-        )}
+        <button
+          onClick={onToggleChanges}
+          disabled={isGenerating}
+          className="flex items-center gap-2 px-4 py-1.5 bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 disabled:text-gray-500 rounded text-sm font-medium transition-colors"
+        >
+          {showChanges ? (
+            <>
+              <EyeOff className="w-4 h-4" />
+              Hide Changes
+            </>
+          ) : (
+            <>
+              <Eye className="w-4 h-4" />
+              Show Changes
+            </>
+          )}
+        </button>
       </div>
 
       {showConfirmDialog && (
