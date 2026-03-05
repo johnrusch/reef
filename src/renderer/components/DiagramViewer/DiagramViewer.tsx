@@ -209,8 +209,12 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
     if (targetIndex >= 0) {
       // Level exists in stack — navigate breadcrumb-style
       await handleBreadcrumbNavigate(targetIndex);
+    } else if (level === 'component' || level === 'code') {
+      // Component/code levels require an elementId from drill-down.
+      // Can't navigate directly without having drilled into a container/component first.
+      return;
     } else {
-      // Level not in stack — reset navigation and load that level
+      // Context/container — reset navigation and load that level
       navigationStore.reset();
       const newType = `c4-${level}` as DiagramType;
       handleControlChange({ type: newType });

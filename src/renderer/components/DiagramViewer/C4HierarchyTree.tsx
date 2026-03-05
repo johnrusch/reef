@@ -31,8 +31,14 @@ export const C4HierarchyTree: React.FC<C4HierarchyTreeProps> = ({
   const stack = useNavigationStore(s => s.stack);
   const activeLevel = stack[stack.length - 1].level;
 
+  // Component/code levels need an elementId — only reachable via drill-down
+  const isLevelReachable = (level: C4Level): boolean => {
+    if (level === 'context' || level === 'container') return true;
+    return stack.some(s => s.level === level);
+  };
+
   const handleLevelClick = (level: C4Level) => {
-    if (disabled) return;
+    if (disabled || !isLevelReachable(level)) return;
     onNavigate(level);
   };
 
@@ -54,17 +60,20 @@ export const C4HierarchyTree: React.FC<C4HierarchyTreeProps> = ({
         </button>
         {C4_LEVELS.map(({ level, label, Icon }) => {
           const isActive = activeLevel === level;
+          const reachable = isLevelReachable(level);
           return (
             <button
               key={level}
               onClick={() => handleLevelClick(level)}
-              disabled={disabled}
+              disabled={disabled || !reachable}
               className={`p-1.5 rounded transition-colors ${
                 isActive
                   ? 'bg-blue-600/20 text-blue-300'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
-              } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-              title={label}
+                  : reachable
+                    ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
+                    : 'text-gray-600 cursor-default'
+              } ${disabled ? 'opacity-50 cursor-not-allowed' : reachable ? 'cursor-pointer' : ''}`}
+              title={reachable ? label : `${label} (drill into a diagram element to reach this level)`}
             >
               <Icon className="w-4 h-4" />
             </button>
@@ -94,19 +103,23 @@ export const C4HierarchyTree: React.FC<C4HierarchyTreeProps> = ({
       <nav className="flex flex-col py-2">
         {C4_LEVELS.map(({ level, label, Icon }, index) => {
           const isActive = activeLevel === level;
+          const reachable = isLevelReachable(level);
           const elementName = getStackElementName(level);
 
           return (
             <button
               key={level}
               onClick={() => handleLevelClick(level)}
-              disabled={disabled}
+              disabled={disabled || !reachable}
               style={{ paddingLeft: `${12 + index * 12}px` }}
               className={`flex items-center gap-2 pr-3 py-2 text-sm text-left w-full transition-colors ${
                 isActive
                   ? 'bg-blue-600/20 text-blue-300 font-medium'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
-              } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  : reachable
+                    ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
+                    : 'text-gray-600 cursor-default'
+              } ${disabled ? 'opacity-50 cursor-not-allowed' : reachable ? 'cursor-pointer' : ''}`}
+              title={!reachable ? 'Drill into a diagram element to reach this level' : undefined}
             >
               <Icon className="w-4 h-4 shrink-0" />
               <span className="truncate">{label}</span>

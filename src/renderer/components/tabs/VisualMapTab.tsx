@@ -435,14 +435,16 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
     setIsGenerating(true);
     setError(null);
 
+    // Only context and container can be generated without an elementId.
+    // Component requires a container elementId, code requires a component
+    // elementId — those are generated on drill-down when the user clicks
+    // a specific element in the diagram.
     const levels: Array<{ type: DiagramType; level: string }> = [
       { type: 'c4-context', level: 'context' },
       { type: 'c4-container', level: 'container' },
-      { type: 'c4-component', level: 'component' },
-      { type: 'c4-code', level: 'code' },
     ];
 
-    // Generate all 4 levels via backend API directly (bypasses component
+    // Generate top-level diagrams via backend API directly (bypasses component
     // state management to avoid re-render/effect interference between levels).
     // The backend storeDiagram() persists each level's PlantUML automatically.
     for (const { type, level } of levels) {
