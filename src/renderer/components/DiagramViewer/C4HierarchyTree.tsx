@@ -28,8 +28,8 @@ export const C4HierarchyTree: React.FC<C4HierarchyTreeProps> = ({
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const { stack, currentLevel } = useNavigationStore();
-  const activeLevel = currentLevel().level;
+  const stack = useNavigationStore(s => s.stack);
+  const activeLevel = stack[stack.length - 1].level;
 
   const handleLevelClick = (level: C4Level) => {
     if (disabled) return;

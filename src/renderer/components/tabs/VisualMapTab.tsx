@@ -273,6 +273,39 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
       } catch (err) {
         console.error('SVG cache lookup failed, proceeding with generation:', err);
       }
+
+      // Check stored PlantUML source (generated but SVG not yet cached)
+      try {
+        const storedDiagram = await window.reef.c4Storage.getDiagram(
+          repository.path,
+          level,
+          finalElementId
+        );
+        if (storedDiagram) {
+          setSvgContent('');
+          setDiagram(storedDiagram.diagramContent);
+          setMetadata({
+            tokensUsed: storedDiagram.tokensUsed
+              ? { input: storedDiagram.tokensUsed, output: 0 }
+              : undefined,
+            generatedAt: storedDiagram.createdAt || new Date().toISOString(),
+            diagramType: finalOptions.type,
+            detailLevel: finalOptions.detailLevel,
+            focusArea: finalOptions.focusArea,
+            repository: repository.name,
+            model: (storedDiagram.modelUsed || 'haiku') as ModelType,
+            generationTime: 0,
+            estimatedCost: storedDiagram.generationCost || 0,
+            cached: true,
+            lastUpdated: storedDiagram.updatedAt || new Date().toISOString(),
+          });
+          setViewMode('diagram');
+          setIsGenerating(false);
+          return;
+        }
+      } catch (err) {
+        console.error('PlantUML storage lookup failed, proceeding with generation:', err);
+      }
     }
 
     // Update state to 'generating'
