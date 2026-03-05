@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Diagram Explorer
 status: verifying
-stopped_at: Completed 15-02-PLAN.md
-last_updated: "2026-03-04T23:21:24.898Z"
+stopped_at: Completed 16-01-PLAN.md
+last_updated: "2026-03-05T00:46:23.981Z"
 last_activity: 2026-03-04 — Plan 15-02 completed, all four UICL removals visually confirmed
 progress:
   total_phases: 2
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 4
+  completed_plans: 3
   percent: 50
 ---
 
@@ -47,6 +47,7 @@ Progress: [█████░░░░░] 50%
 |-------|------|----------|-------|-------|
 | 15-ui-cleanup | 01 | 30min | 2 | 8 |
 | 15-ui-cleanup | 02 | 5min | 1 | 0 |
+| Phase 16-explorer-ui P01 | 11min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,9 @@ v1.3: Remove configuration landing page, legacy toolbar, DiagramInfo sidebar, an
 
 **Phase 15-02 decisions:**
 - Visual verification approved — all four UICL removals confirmed correct in running application with no regressions
+- [Phase 16-explorer-ui]: C4HierarchyTree uses local useState for collapse — minimizes shared state
+- [Phase 16-explorer-ui]: showChanges converted from prop constant to useState in DiagramViewer for toggle control
+- [Phase 16-explorer-ui]: generateAllDiagrams uses per-level try/catch so partial failure does not block remaining levels
 
 ### Pending Todos
 
@@ -75,8 +79,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-04
-Stopped at: Completed 15-02-PLAN.md
+Last session: 2026-03-05T00:46:23.979Z
+Stopped at: Completed 16-01-PLAN.md
 Resume file: None
 
 ---

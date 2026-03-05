@@ -16,14 +16,14 @@ Requirements for the Diagram Explorer milestone. Each maps to roadmap phases.
 
 ### Navigation
 
-- [ ] **NAV-01**: User can browse the full C4 hierarchy via a collapsible sidebar tree (Context → Containers → Components → Code)
-- [ ] **NAV-02**: User can see current position in C4 hierarchy via a breadcrumb bar with clickable ancestors
-- [ ] **NAV-03**: Sidebar tree auto-expands and highlights the active node when user drills down by clicking diagram elements
+- [x] **NAV-01**: User can browse the full C4 hierarchy via a collapsible sidebar tree (Context → Containers → Components → Code)
+- [x] **NAV-02**: User can see current position in C4 hierarchy via a breadcrumb bar with clickable ancestors
+- [x] **NAV-03**: Sidebar tree auto-expands and highlights the active node when user drills down by clicking diagram elements
 
 ### Generation UX
 
-- [ ] **GEN-01**: User sees a clean single-button prompt on first visit that generates all 4 C4 levels with one click
-- [ ] **GEN-02**: User can regenerate diagrams and toggle change visibility via a minimal toolbar replacing the old DiagramControls
+- [x] **GEN-01**: User sees a clean single-button prompt on first visit that generates all 4 C4 levels with one click
+- [x] **GEN-02**: User can regenerate diagrams and toggle change visibility via a minimal toolbar replacing the old DiagramControls
 
 ## Future Requirements
 
@@ -51,11 +51,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UICL-02 | Phase 15 | Complete |
 | UICL-03 | Phase 15 | Complete |
 | UICL-04 | Phase 15 | Complete |
-| NAV-01 | Phase 16 | Pending |
-| NAV-02 | Phase 16 | Pending |
-| NAV-03 | Phase 16 | Pending |
-| GEN-01 | Phase 16 | Pending |
-| GEN-02 | Phase 16 | Pending |
+| NAV-01 | Phase 16 | Complete |
+| NAV-02 | Phase 16 | Complete |
+| NAV-03 | Phase 16 | Complete |
+| GEN-01 | Phase 16 | Complete |
+| GEN-02 | Phase 16 | Complete |
 
 **Coverage:**
 - v1.3 requirements: 9 total

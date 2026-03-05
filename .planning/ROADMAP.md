@@ -104,7 +104,7 @@ Plans:
 | 13. Drill-Down Navigation Fix | v1.2 | 3/3 | Complete | 2026-03-03 |
 | 14. Rendering Performance | v1.2 | 2/2 | Complete | 2026-03-03 |
 | 15. UI Cleanup | v1.3 | 2/2 | Complete | 2026-03-04 |
-| 16. Explorer UI | v1.3 | 0/2 | Not started | - |
+| 16. Explorer UI | 1/2 | In Progress|  | - |
 
 ---
 *Last updated: 2026-03-04 — Phase 16 planned (2 plans in 2 waves)*
