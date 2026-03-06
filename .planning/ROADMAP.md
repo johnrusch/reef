@@ -5,7 +5,7 @@
 - ✅ **v1.0 C4 Diagram Feature Release** — Phases 1-4 (shipped 2026-02-24)
 - ✅ **v1.1 Persistent Diagrams with Change Visualization** — Phases 5-10 (shipped 2026-02-28)
 - ✅ **v1.2 Diagrams That Deliver** — Phases 11-14 (shipped 2026-03-03)
-- 🚧 **v1.3 Diagram Explorer** — Phases 15-16 (in progress)
+- ✅ **v1.3 Diagram Explorer** — Phases 15-16 (shipped 2026-03-06)
 
 ## Phases
 
@@ -47,12 +47,12 @@ See: `.planning/milestones/v1.2-ROADMAP.md` for full details.
 
 </details>
 
-### v1.3 Diagram Explorer (In Progress)
+### v1.3 Diagram Explorer — COMPLETE 2026-03-06
 
 **Milestone Goal:** Overhaul the diagram UI from a configure-and-generate interface to a clean browse-and-navigate experience with sidebar tree hierarchy navigation.
 
 - [x] **Phase 15: UI Cleanup** — Remove the configuration landing page, legacy toolbar controls, DiagramInfo sidebar, and Beta badge to create a clean canvas for the new explorer UI
-- [ ] **Phase 16: Explorer UI** — Build the sidebar tree navigation, breadcrumb bar, single-button generation prompt, and minimal toolbar that replace everything removed in Phase 15
+- [x] **Phase 16: Explorer UI** — Build the sidebar tree navigation, breadcrumb bar, single-button generation prompt, and minimal toolbar that replace everything removed in Phase 15
 
 ## Phase Details
 
@@ -82,8 +82,8 @@ Plans:
   5. User sees a minimal toolbar with exactly two controls: regenerate and toggle change visibility
 **Plans**: 2 plans
 Plans:
-- [ ] 16-01-PLAN.md — Build sidebar tree, toolbar, and all-levels generation
-- [ ] 16-02-PLAN.md — Visual verification checkpoint
+- [x] 16-01-PLAN.md — Build sidebar tree, toolbar, and all-levels generation
+- [x] 16-02-PLAN.md — Visual verification checkpoint
 
 ## Progress
 
@@ -104,7 +104,7 @@ Plans:
 | 13. Drill-Down Navigation Fix | v1.2 | 3/3 | Complete | 2026-03-03 |
 | 14. Rendering Performance | v1.2 | 2/2 | Complete | 2026-03-03 |
 | 15. UI Cleanup | v1.3 | 2/2 | Complete | 2026-03-04 |
-| 16. Explorer UI | 1/2 | In Progress|  | - |
+| 16. Explorer UI | 2/2 | Complete   | 2026-03-06 | 2026-03-06 |
 
 ---
-*Last updated: 2026-03-04 — Phase 16 planned (2 plans in 2 waves)*
+*Last updated: 2026-03-06 — v1.3 Diagram Explorer complete (Phases 15-16 shipped)*
