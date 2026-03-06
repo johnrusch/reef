@@ -104,7 +104,7 @@ Plans:
 | 13. Drill-Down Navigation Fix | v1.2 | 3/3 | Complete | 2026-03-03 |
 | 14. Rendering Performance | v1.2 | 2/2 | Complete | 2026-03-03 |
 | 15. UI Cleanup | v1.3 | 2/2 | Complete | 2026-03-04 |
-| 16. Explorer UI | 2/2 | Complete   | 2026-03-06 | 2026-03-06 |
+| 16. Explorer UI | 2/2 | Complete    | 2026-03-06 | 2026-03-06 |
 
 ---
 *Last updated: 2026-03-06 — v1.3 Diagram Explorer complete (Phases 15-16 shipped)*
