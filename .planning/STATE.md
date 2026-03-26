@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: Diagram Explorer — ARCHIVED 2026-03-26
-status: archived
-stopped_at: Milestone archived
+milestone: v1.4
+milestone_name: Repo-Stored Diagrams
+status: active
+stopped_at: Defining requirements
 last_updated: "2026-03-26"
-last_activity: 2026-03-26 — v1.3 milestone archived
+last_activity: 2026-03-26 — Milestone v1.4 started
 progress:
-  total_phases: 2
-  completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,12 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Users can quickly grasp unfamiliar codebase architecture through AI-generated C4 diagrams that update as code changes
-**Current focus:** Planning next milestone
+**Current focus:** Defining requirements for v1.4
 
 ## Current Position
 
-Milestone v1.3 Diagram Explorer archived. No active milestone.
-Last activity: 2026-03-26 — v1.3 milestone archived
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-26 — Milestone v1.4 started
 
 ## Performance Metrics
 
@@ -52,8 +54,8 @@ See PROJECT.md Key Decisions table for current state.
 ## Session Continuity
 
 Last session: 2026-03-26
-Stopped at: v1.3 milestone archived
+Stopped at: Defining requirements for v1.4
 Resume file: None
 
 ---
-*v1.3 Diagram Explorer — ARCHIVED (2026-03-26)*
+*v1.4 Repo-Stored Diagrams — started 2026-03-26*

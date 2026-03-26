@@ -62,7 +62,12 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 
 ### Active
 
-(No active milestone — planning next milestone)
+- [ ] `.reef/` folder structure storing PlantUML source, AI analysis metadata, and pre-rendered SVGs per repository
+- [ ] On repo import, read existing `.reef/` data instead of regenerating diagrams from scratch
+- [ ] If no `.reef/` exists, generate diagrams and write results to `.reef/`
+- [ ] Manual "regenerate and save" to refresh stored diagrams after code changes
+- [ ] Instant diagram display from stored SVGs (bypass PlantUML rendering)
+- [ ] Consistent diagrams across team members sharing the same repository
 
 ### Out of Scope
 
@@ -79,6 +84,18 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 - Multi-language AST parsing (Python, Go, Java) — each needs separate parser, AI-only mode sufficient for now
 - Show all classes as components — 50+ nodes unreadable; C4 Component level is for logical groupings
 - Full class diagrams with all methods — Code level shows public API only (max 8-10 methods)
+
+## Current Milestone: v1.4 Repo-Stored Diagrams
+
+**Goal:** Store C4 diagram artifacts in a `.reef/` folder within each repository so diagrams are shared, version-controlled, and render instantly.
+
+**Target features:**
+- `.reef/` folder structure with PlantUML source, AI metadata, and rendered SVGs
+- Read existing `.reef/` data on repo import instead of regenerating
+- Generate and write to `.reef/` when no stored diagrams exist
+- Manual regenerate-and-save for refreshing after code changes
+- Instant SVG display from stored files
+- Consistent diagrams across all team members
 
 ## Context
 
@@ -162,4 +179,4 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 | GEN-01 partial (component/code require elementId) | v1.3: Architectural constraint — deferred rather than blocking ship | ⚠️ Revisit |
 
 ---
-*Last updated: 2026-03-26 after v1.3 milestone*
+*Last updated: 2026-03-26 after v1.4 milestone start*
