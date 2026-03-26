@@ -87,6 +87,46 @@
 
 ---
 
+## Milestone: v1.3 — Diagram Explorer
+
+**Shipped:** 2026-03-06 (archived 2026-03-26)
+**Phases:** 2 | **Plans:** 4
+
+### What Was Built
+- Removed all legacy UI controls (settings landing page, DiagramInfo sidebar, non-C4 toolbar, Beta badge) — 610 lines deleted
+- C4HierarchyTree sidebar with collapsible 4-level navigation and auto-highlight on drill-down
+- Breadcrumb navigation showing current C4 hierarchy position with clickable ancestors
+- Single-button "Generate All Diagrams" flow for first-visit experience
+- Minimal 2-button toolbar (Regenerate + Show/Hide Changes) replacing the old configuration-heavy controls
+
+### What Worked
+- Two-phase structure (clear canvas → build new UI) prevented confusion about what to keep vs remove
+- Visual verification checkpoints (15-02, 16-02) caught real bugs: sidebar highlight reactivity, generateAllDiagrams state churn
+- Zustand selector pattern discovery during verification — field-level selectors are more reactive than full store subscription
+- Small milestone scope (2 phases, 4 plans) shipped cleanly in 3 days with clear requirements
+
+### What Was Inefficient
+- GEN-01 partial gap (component/code require elementId) wasn't discovered until visual verification — earlier testing of the generation flow would have surfaced this
+- Test regressions from Phase 16 (DiagramViewer.uicl.test.tsx crash, VisualMapTab.gen01.test.tsx timeout) — mocking Zustand selectors requires different patterns than full store mocks
+- DiagramInfo.tsx dead code file not deleted during cleanup — oversight in Phase 15
+
+### Patterns Established
+- Zustand field-level selectors (`useStore(s => s.field)`) for reactive UI bindings — prevents stale renders
+- generateAllDiagrams bypasses component state to avoid React re-render interference during multi-level async work
+- TDD absence tests (test that removed UI is absent) as verification for cleanup phases
+
+### Key Lessons
+1. Visual verification checkpoints are worth the overhead — they caught 2 bugs that automated tests missed (sidebar reactivity, state churn)
+2. Zustand mocking needs to match consumption pattern — selector-based components need selector-aware mocks
+3. UI overhaul milestones benefit from strict remove-then-build phasing — reduces ambiguity about scope
+4. Architectural constraints (elementId requirement) should be documented in requirements upfront, not discovered during verification
+
+### Cost Observations
+- Model mix: predominantly sonnet for execution, opus for planning/audit/milestone
+- Notable: Smallest milestone yet (2 phases) — focused UI overhaul without generation pipeline changes
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -96,10 +136,12 @@
 | v1.0 | 4 | 11 | 4 days | Initial GSD workflow, TDD scaffolds |
 | v1.1 | 6 | 19 | 4 days | Gap closure phases, audit-driven completion |
 | v1.2 | 4 | 9 | 2 days | Tight scope per phase, dependency-driven ordering |
+| v1.3 | 2 | 4 | 3 days | Remove-then-build phasing, visual verification checkpoints |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. Audit before milestone completion catches integration gaps that individual phase verification misses (v1.1, v1.2)
-2. Small, focused phases (1-3 plans) execute faster and more reliably than large phases (v1.1 Phase 5 vs v1.2 all phases)
+1. Audit before milestone completion catches integration gaps that individual phase verification misses (v1.1, v1.2, v1.3)
+2. Small, focused phases (1-3 plans) execute faster and more reliably than large phases (v1.1 Phase 5 vs v1.2/v1.3 all phases)
 3. Gap closure plans after UAT are predictable and cheap — budget one per milestone (v1.1 Phase 10, v1.2 Plan 13-03)
-4. Human verification tests accumulate without a forcing function — need process change (v1.1: 20 items, v1.2: 7 items)
+4. Human verification tests accumulate without a forcing function — need process change (v1.1: 20 items, v1.2: 7 items, v1.3: test regressions)
+5. Visual verification checkpoints catch bugs that automated tests miss — worth the overhead (v1.3: 2 bugs found)

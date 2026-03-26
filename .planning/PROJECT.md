@@ -53,20 +53,16 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 - ✓ Sub-500ms cached diagram display via SQLite SVG storage — v1.2
 - ✓ In-process LRU cache for instant diagram level switching — v1.2
 - ✓ Nailgun warm JVM mode (feature-flagged) — v1.2
+- ✓ Clean diagram view with all legacy configuration/metadata controls removed — v1.3
+- ✓ C4HierarchyTree sidebar with collapsible 4-level navigation — v1.3
+- ✓ Breadcrumb navigation showing current C4 hierarchy position — v1.3
+- ✓ Sidebar auto-highlight on drill-down navigation — v1.3
+- ✓ Single-button "Generate All Diagrams" flow for first-visit — v1.3
+- ✓ Minimal 2-button toolbar (Regenerate + Show/Hide Changes) — v1.3
 
 ### Active
 
-#### Current Milestone: v1.3 Diagram Explorer
-
-**Goal:** Overhaul the diagram UI from a configure-and-generate interface to a clean browse-and-navigate experience with sidebar tree hierarchy navigation.
-
-**Target features:**
-- Sidebar tree navigation for full C4 hierarchy (Context → Container → Component → Code)
-- Single-button generation flow (no configuration needed)
-- Remove legacy UI controls (detail level, focus area, non-C4 diagram types, DiagramInfo sidebar)
-- Breadcrumb navigation showing current position in hierarchy
-- Minimal toolbar (regenerate + show changes only)
-- Remove Beta badge from Visual Map tab
+(No active milestone — planning next milestone)
 
 ### Out of Scope
 
@@ -86,14 +82,15 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 
 ## Context
 
-**Current State (v1.2 shipped):**
-- 35,637 lines of TypeScript
+**Current State (v1.3 shipped):**
+- ~40,000 lines of TypeScript
 - Tech stack: Electron, React, Vite, Tailwind, Zustand, simple-git, Octokit
 - C4 stack: ts-morph, @anthropic-ai/sdk v0.78.0, better-sqlite3, chokidar, zod
-- UI stack: react-hotkeys-hook, cmdk, fuse.js, Radix UI
+- UI stack: react-hotkeys-hook, cmdk, fuse.js, Radix UI, lucide-react
 - Storage: SQLite with WAL mode, diagram_storage (with svg_content column) + diagram_change_tracking tables
 - Generation: Background queue with IPC progress events, toast notifications
 - Caching: Two-tier cache (15-entry LRU in-process + SQLite SVG storage)
+- Navigation: C4HierarchyTree sidebar + breadcrumbs + Zustand selector pattern
 
 **C4 Generation Pipeline:**
 - Three-phase architecture: Static Analysis → AI Enrichment → PlantUML Generation
@@ -122,6 +119,7 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 **Known Tech Debt (accumulated):**
 - v1.1: 20 human verification tests pending, handleRegenerateFromBadge missing IPC state transitions, static cost estimate not wired, debug console.log statements, CHNG-01/CHNG-04 deferred
 - v1.2: modelUsed hardcoded as 'haiku', Anthropic SDK type cast workaround, better-sqlite3 native module mismatch, SUMMARY frontmatter bookkeeping gaps
+- v1.3: GEN-01 partial (component/code generation needs elementId from drill-down), DiagramViewer.uicl.test.tsx Zustand mock regression, VisualMapTab.gen01.test.tsx timeout, DiagramInfo.tsx dead code not deleted
 
 ## Constraints
 
@@ -157,6 +155,11 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 | Two-tier SVG caching (LRU + SQLite) | v1.2: In-process for instant, SQLite for persistence across restarts | ✓ Good |
 | Nailgun warm JVM behind feature flag | v1.2: Opt-in for power users, safe default off | ✓ Good |
 | AI failure logs warning, continues with static fallback | v1.2: Diagrams always produced even when AI unavailable | ✓ Good |
+| Remove settings landing page, legacy toolbar, DiagramInfo sidebar | v1.3: Clear canvas for browse-first explorer UX | ✓ Good |
+| C4HierarchyTree with local useState for collapse | v1.3: Minimizes shared state, sidebar is self-contained | ✓ Good |
+| Zustand field-level selectors over full store subscription | v1.3: Reactive highlight updates on drill-down navigation | ✓ Good |
+| generateAllDiagrams bypasses component state | v1.3: Avoids React re-render churn during multi-level async generation | ✓ Good |
+| GEN-01 partial (component/code require elementId) | v1.3: Architectural constraint — deferred rather than blocking ship | ⚠️ Revisit |
 
 ---
-*Last updated: 2026-03-03 after v1.3 milestone started*
+*Last updated: 2026-03-26 after v1.3 milestone*
