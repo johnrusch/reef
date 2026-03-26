@@ -1,57 +1,25 @@
 # Feature Research
 
-**Domain:** C4 diagram quality and rendering performance for AI-generated architecture diagrams
-**Researched:** 2026-03-02
+**Domain:** Repo-stored C4 diagram artifacts for a desktop Git client
+**Researched:** 2026-03-26
 **Confidence:** HIGH
 
 ## Context
 
-This is a SUBSEQUENT MILESTONE research pass for v1.2 "Diagrams That Deliver." The v1.1 features
-(persistent storage, change tracking, amber highlighting, diff navigation) are already shipped.
-This research focuses exclusively on what makes C4 diagrams useful vs shallow, and what rendering
-performance improvements are achievable.
+This is a SUBSEQUENT MILESTONE research pass for v1.4 "Repo-Stored Diagrams." All prior features
+(C4 generation pipeline, SQLite persistent storage, change tracking, amber highlighting, diff navigation,
+C4HierarchyTree sidebar, background generation queue) are shipped in v1.0–v1.3.
 
-The existing pipeline: ts-morph static analysis → Claude API enrichment → C4PlantUMLGenerator →
-PlantUML SVG → React renderer. Diagrams are described as "shallow/empty" and Component level
-errors out.
+This research focuses exclusively on what is needed to store diagram artifacts in a `.reef/` folder
+within each repository so diagrams are shared, version-controlled, and render instantly.
 
-## Diagnosis: Why Diagrams Are Currently Shallow
-
-Code audit revealed three root causes:
-
-**1. AI enrichment output is not used for diagram content (critical bug)**
-In `c4PlantUMLGenerator.ts`, every generator method ignores the `enrichedData` parameter:
-```typescript
-generateContainerDiagram(_enrichedData: string, staticData: AnalysisResult): string
-generateComponentDiagram(_enrichedData: string, staticData: AnalysisResult, containerId: string): string
-generateCodeDiagram(_enrichedData: string, staticData: AnalysisResult, componentId: string): string
-```
-The underscore prefix is the TypeScript convention for "intentionally unused." The AI enrichment
-call costs tokens but its output is discarded. Only static analysis data shapes the diagram.
-
-**2. Static analysis extracts raw structure but no architectural semantics**
-`staticAnalyzerService.ts` extracts classes, interfaces, imports, and entry points — but passes
-raw file paths and class names to the generator. The generator's `detectContainers()` matches
-only known Electron patterns (hardcoded) and `detectComponents()` groups by directory name, not
-architectural role. For non-Electron repos, containers default to sequential `Rel(A, B, "Uses")`
-chains with no semantic labeling.
-
-**3. Component diagram fails when elementId format doesn't match container path mapping**
-`getContainerPath()` has a hardcoded map of `{'Main Process': 'src/main', 'Renderer Process': 'src/renderer'}`.
-Any container name not in this map returns `containerId.toLowerCase()`, which never matches file
-paths. `detectComponents()` returns empty array → diagram generates with no components inside the
-boundary → PlantUML may error on empty `Container_Boundary` block.
-
-**4. Code diagram filtering uses filename substring match, not class lookup**
-```typescript
-const classes = staticData.structure.classes.filter(cls => {
-  const fileName = cls.file.split('/').pop() || '';
-  return fileName.includes(componentId) || cls.name === componentId;
-});
-```
-If `componentId` is "Services" (directory-derived), this matches no classes by name. If it is
-"GitService", it matches the file `gitService.ts` via substring but misses all classes in that
-file that don't have "gitservice" in their name.
+**Existing pipeline to build on:**
+- Three-phase generation: Static Analysis → AI Enrichment → PlantUML Generation → SVG render
+- SQLite storage with `diagram_storage` table: `diagram_content` (PlantUML source) + `svg_content` (rendered SVG)
+- `C4StorageService` singleton for all reads/writes
+- `generationQueueService` for background async generation with IPC progress events
+- `chokidar` file watching for change detection
+- `C4AnalyzerService` coordinates the full generation pipeline
 
 ---
 
@@ -63,13 +31,13 @@ Features users assume exist. Missing these = product feels incomplete.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Container diagram shows real tech stack | "Container = technology choice" is the C4 contract. Users expect React app, Node API, SQLite DB — not "Renderer Process (TypeScript)" | MEDIUM | Fix `detectContainers()` to use technology detection + directory heuristics. Add protocols to relationships (IPC, REST, JDBC). |
-| Component diagram works end-to-end | Core value proposition of drill-down. Currently errors at Component level | HIGH | Fix elementId passing: use sanitized container names in IDs, fix `getContainerPath()` to derive paths dynamically, not from hardcoded map. |
-| Component diagram shows architectural roles | Users expect to see services, controllers, stores, repositories — not directory buckets like "services" and "stores" | HIGH | Use class name suffix patterns (Service, Controller, Store, Repository, Handler) to assign `Component()` vs `ComponentDb()` shapes. Name components individually, not as folders. |
-| Code diagram shows classes for a component | When drilling from Component to Code, users expect to see the classes in that component | MEDIUM | Fix filtering: look up classes by which container/component they belong to using the hierarchical elementId, not filename substring. |
-| AI enrichment content appears in diagrams | Users pay API costs expecting AI to enrich diagrams. Currently a no-op | HIGH | Parse AI enrichment output (structured JSON or prose) and merge into PlantUML generation: relationship labels, component descriptions, external system details. |
-| Relationships labeled with protocols | C4 container diagrams must show communication protocols (IPC, HTTP/REST, JDBC). Unlabeled arrows are insufficient | MEDIUM | Static analysis can detect protocols: Octokit imports → REST, better-sqlite3 imports → SQL, IPC channels → Electron IPC. |
-| Non-TypeScript repos produce useful diagrams | Users analyze JS, Python, and other language repos. ts-morph only handles TypeScript | HIGH | Fallback to file structure heuristics + AI-only generation when no tsconfig.json. Currently returns empty analysis with error message. |
+| Read existing `.reef/` on repo import | If diagrams exist in the repo, the app must use them — regenerating on every import is a jarring experience, wastes AI spend, and contradicts the "shared diagrams" value | MEDIUM | Check for `.reef/` presence before enqueuing generation. If found, load from files into SQLite. Requires new IPC handler: `c4-reef:import`. |
+| Write `.reef/` after generation | Generated diagrams must be persisted to the repo folder, not only to the app's private SQLite DB. Without this, diagrams can't be shared via git | MEDIUM | After successful generation of all 4 levels, write PlantUML source + JSON metadata + SVG to `.reef/`. Wire into existing `generationQueueService` completion path. |
+| Instant SVG display from stored files | Team members who clone a repo with `.reef/` present expect the diagram to open instantly — no PlantUML rendering, no AI call | LOW | On import, read SVG files from `.reef/` and populate `svg_content` in SQLite. The existing two-tier cache (LRU + SQLite) then serves them at <100ms. |
+| Manual "Regenerate and Save" | After code changes, the user needs an explicit action to refresh diagrams and write updated files back to `.reef/`. Automatic background regeneration is explicitly out of scope (per PROJECT.md) | LOW | Add a "Regenerate and Save" button in the toolbar. Reuse existing `c4-generation:enqueue` IPC path, then trigger `.reef/` write on completion. |
+| Consistent diagrams across team | The primary stated goal: commit `.reef/` to the repo so all team members see the same diagram | LOW (UX clarity) | This is mostly a documentation/onboarding concern — the technical work is write + read. The UI should show a "Save to Repo" affordance that makes the action explicit. |
+| Graceful fallback when `.reef/` absent | First-time users (or repos without `.reef/`) must still work normally — show the "Generate All Diagrams" prompt exactly as in v1.3 | LOW | Keep existing code path. Only diverge when `.reef/` is detected at import time. |
+| `.reef/` folder structure is stable and predictable | Team members and CI tools that inspect `.reef/` files must be able to rely on a stable layout: `context.puml`, `context.svg`, `metadata.json` — not opaque binary blobs | LOW | Define the folder layout once and treat it as a public contract. Use flat per-level naming (`context.puml`, `container.puml`, etc.) plus a single `metadata.json`. |
 
 ### Differentiators (Competitive Advantage)
 
@@ -77,12 +45,10 @@ Features that set the product apart. Not required, but valuable.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| AI-driven container inference (not rule-based) | Instead of hardcoded Electron patterns, AI analyzes actual code and produces real containers. Generalist approach works for any codebase | HIGH | Restructure pipeline: AI output must be structured JSON. Prompt asks for container list with name, tech, description, relationships. Generator renders from structured AI output. |
-| Domain-specific few-shot prompting | Research shows domain examples dramatically improve LLM architecture output quality. Electron prompts differ from Django prompts | MEDIUM | Add detected framework to system prompt. Include concrete C4-PlantUML syntax examples in prompt. Specify expected output structure (JSON schema or PlantUML skeleton). |
-| Relationship labels from import analysis | Call relationships labeled with actual protocol: `Rel(main, db, "Reads/writes", "SQL/SQLite")` instead of just `Rel(A, B, "uses")` | MEDIUM | Map known package imports to protocols in `detectExternalSystems()`. Extend to container-to-container relationships. |
-| Pre-render SVG from cached PlantUML | Currently the PlantUML → SVG conversion runs every time the diagram tab is opened, adding 5+ seconds even for cached diagrams | MEDIUM | Store SVG in SQLite alongside PlantUML source. On cache hit, return stored SVG directly. Only re-render when PlantUML source changes. This is the most impactful rendering speed fix. |
-| Structured AI output format | Prompting AI for free-form architectural prose then ignoring it is the core quality bug. Prompt for JSON with elements + relationships arrays | HIGH | Change `aiEnricherService.ts` to request structured JSON output. Add response parsing + validation. Feed structured data to generator instead of static-analysis-only path. |
-| Component-level architecture classification | Beyond directory grouping: classify components by architectural role (API layer, business logic, data access, infrastructure) | MEDIUM | Analyze class names + import patterns. Classes importing from `express`/`fastify` → API layer. Classes importing `prisma`/`sqlite` → data access. Display role as `Component()` technology field. |
+| AI metadata preserved in `.reef/` | Storing the AI enrichment data (model used, prompt version, token cost, generation timestamp) alongside diagrams lets teams track diagram freshness and cost. No other tool does this transparently | LOW | `metadata.json` already has a natural home for this. Map from `diagram_storage` columns: `model_used`, `prompt_version`, `tokens_used`, `generation_cost`, `updated_at`. |
+| Stale-on-import detection | When a repo is imported with `.reef/` data, compare the stored `generated_at` timestamp against the repo's most recent commit date. If code has changed since diagrams were generated, show a "Diagrams may be outdated" warning with a "Regenerate and Save" CTA | MEDIUM | Requires `git log --format="%ai" -1` via `simple-git` to get the last commit date. Compare against `metadata.json:generated_at`. Flag as stale in UI using existing `DiagramState` enum. |
+| `.gitattributes` recommendation | SVG files are XML-based text, but generated SVGs from PlantUML include embedded metadata that makes diffs noisy. Recommend (or auto-write) `.gitattributes` entries that mark `.reef/*.svg` as `binary` or `linguist-generated=true` to reduce PR noise | LOW | Auto-append to `.gitattributes` on first "Save to Repo." Non-destructive: only add lines if they don't already exist. |
+| Import without overwriting newer local data | If the app already has a `fresh` diagram in SQLite (generated more recently than what's in `.reef/`), don't overwrite local data on import. Let the user decide which to keep | MEDIUM | Compare `diagram_storage.updated_at` vs `metadata.json.generated_at`. If local is newer, prompt user: "Local diagrams are newer than repo — keep local or load from `.reef/`?" |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
@@ -90,213 +56,199 @@ Features that seem good but create problems.
 
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| Show all classes as components | "I want to see every class in the diagram" | 50+ class nodes in one diagram is unreadable. C4 Component level is for logical groupings, not individual classes | Show individual classes only at Code level. Component level groups related classes into architectural roles. |
-| Auto-detect language and switch parsers | "It should work for Python, Go, Java repos" | Multi-language AST parsing is a separate product. Each language needs a different parser, different heuristics | AI-only mode for non-TS repos: use file structure + imports from package.json/requirements.txt/go.mod. Flag as lower confidence. |
-| Real-time diagram updates as user edits code | "The diagram should live-update" | SVG render takes 5+ seconds even cached. PlantUML JVM startup costs. API calls for AI enrichment. Unworkable | Stale indicators (v1.1 already built). User-initiated regeneration. Pre-rendered SVG for instant display of cached results. |
-| Include node_modules in analysis | "Show all dependencies including libraries" | Produces hundreds of external system nodes. Illegible. Static analysis with `skipFileDependencyResolution: false` is prohibitively slow | Detect libraries from package.json (already done). Show as `System_Ext()` at Context/Container level only. Never include in Component/Code diagrams. |
-| Full class diagrams with all methods and properties | "Show all getters/setters/private methods" | PlantUML class diagram with 30 methods per class is wall-of-text. C4 Code level is for key public API | Filter to public methods only. Omit getters/setters. Maximum 8-10 methods per class in Code diagram. |
-| Diagram-level manual editing | "Let me adjust the generated diagram" | Manual edits are overwritten on regeneration. Maintenance nightmare. PlantUML source editing is developer-hostile | Copy PlantUML source to clipboard (already exists). External editing with copy-paste is sufficient for power users. |
+| Automatic `.reef/` sync on every file save | "Keep the repo diagrams always current" | Silent AI costs with no user control over spending. Already explicitly out of scope in PROJECT.md. File saves trigger chokidar events which already mark diagrams as stale | Show stale indicator (already built). Let user trigger "Regenerate and Save" explicitly. |
+| Conflict-resolved merge of `.reef/` files | "What happens when two devs generate diagrams concurrently and both push?" | SVG and PlantUML files do not merge meaningfully — git will produce a conflict on auto-generated XML. Automated conflict resolution introduces silent data corruption risk | Treat `.reef/` files as last-writer-wins. Document in the commit message convention: "chore: regenerate reef diagrams." Teams pick one person to maintain diagrams like they would any generated asset. |
+| Per-branch `.reef/` storage | "Feature branch A has different architecture than main" | Requires branch-aware import logic, multiplies folder complexity, and creates confusion about which diagram is canonical | The `.reef/` folder tracks the current branch's HEAD by definition. Branch-specific diagrams are addressed by committing to that branch. No special handling needed. |
+| Diagram version history in-app | "Let me browse how the architecture changed over git history" | High complexity. Requires reading git object store (not just worktree), parsing historical `.reef/` folder contents, and threading through the existing viewer. Enormous scope | Existing git clients (including Reef's own diff view) already provide file history for `.reef/*.puml`. The diagram-as-text value is that `git log -- .reef/context.puml` works for free. |
+| Encrypt `.reef/` contents | "Our architecture is sensitive" | Encrypted files cannot be diffed or reviewed in PRs, defeating the point of repo storage. Electron's `safeStorage` is per-machine, not shareable | Use repo-level access controls (private repositories). Encryption of architecture diagrams is security theater for most teams. |
+| Binary format for SVG to prevent diffs | "SVG diffs are noisy in PRs" | Binary SVGs cannot be inspected, diffed for sanity, or recovered if corrupted | Use `.gitattributes linguist-generated=true` to collapse diffs in GitHub PR UI without making files binary. Noisy diffs are a cosmetic problem, not a data problem. |
+
+---
 
 ## Feature Dependencies
 
 ```
-[Structured AI output format]
-    └──requires──> [Prompt engineering for JSON output]
-    └──enables──> [AI-driven container inference]
-    └──enables──> [Relationship labels from AI]
-    └──enables──> [Component classification]
+[Read .reef/ on import]
+    └──requires──> [Define .reef/ folder structure and file naming]
+    └──requires──> [IPC handler: c4-reef:import]
+    └──enables──> [Instant SVG display from stored files]
+    └──enables──> [Stale-on-import detection]
 
-[Fix elementId passing for Component level]
-    └──requires──> [Understand container name → path mapping]
-    └──enables──> [Component diagram end-to-end]
-    └──enables──> [Code diagram end-to-end]
+[Write .reef/ after generation]
+    └──requires──> [Define .reef/ folder structure and file naming]
+    └──requires──> [Hook into generationQueueService completion]
+    └──enables──> [Consistent diagrams across team]
+    └──enables──> [Manual Regenerate and Save]
 
-[Pre-render SVG caching]
-    └──requires──> [SQLite schema addition: svg_content column]
-    └──requires──> [PlantUML service returns SVG on generation]
-    └──conflicts with──> [Current storage only saves PlantUML source]
+[Manual Regenerate and Save]
+    └──requires──> [Write .reef/ after generation]
+    └──requires──> [Existing c4-generation:enqueue IPC path]
+    └──enhances──> [Stale-on-import detection] (resolves stale state)
 
-[AI-driven container inference]
-    └──requires──> [Structured AI output format]
-    └──requires──> [Generator can accept structured data, not just AnalysisResult]
+[Stale-on-import detection]
+    └──requires──> [Read .reef/ on import]
+    └──requires──> [simple-git: git log --format="%ai" -1]
+    └──enhances──> [Manual Regenerate and Save] (triggers CTA)
 
-[Relationship labels with protocols]
-    └──requires──> [Protocol detection from imports]
-    └──enhances──> [Container diagram quality]
-    └──enhances──> [Component diagram quality]
+[.gitattributes recommendation]
+    └──requires──> [Write .reef/ after generation]
+    └──enhances──> [Consistent diagrams across team] (reduces PR noise)
 
-[Domain-specific few-shot prompting]
-    └──requires──> [Technology detection already working]
-    └──enhances──> [Structured AI output format]
-    └──enhances──> [All four C4 levels]
+[Import without overwriting newer local data]
+    └──requires──> [Read .reef/ on import]
+    └──requires──> [metadata.json:generated_at comparison against SQLite updated_at]
+    └──conflicts with──> [Simple always-overwrite import logic] (adds a decision branch)
 ```
 
 ### Dependency Notes
 
-- **Structured AI output is the foundational fix:** Currently the most expensive API call produces output that is completely discarded. Fixing this one issue improves all four C4 levels simultaneously. Must be first.
-- **elementId fix unblocks Component + Code levels:** Two diagrams (out of four) fail because of the path mapping bug. High value fix with low risk.
-- **Pre-render SVG caching is independent:** Can be done in parallel with content quality fixes. Requires schema change to add `svg_content` column in `diagram_storage` table.
-- **AI-driven container inference requires structured AI output:** Do not attempt inference rewrite until JSON output format is reliable.
-- **Protocol detection enhances but doesn't block:** Container diagram already generates. Protocol labels make it richer.
+- **Folder structure definition must come first.** Every other feature reads or writes to `.reef/`. Define the schema once — file names, JSON fields, encoding — and treat it as stable. Changing it later breaks any repo that already has `.reef/` committed.
+- **Read path unblocks instant display.** Once import reads SVGs into SQLite, the existing two-tier cache serves them instantly. No changes to the renderer or viewer are needed.
+- **Write path hooks into existing completion events.** `generationQueueService` broadcasts `c4-generation:complete` with `repoPath` and `completedLevels`. The write-to-reef step should be a listener on this event, keeping concerns separated.
+- **Stale detection is independent and additive.** Can be added after read/write paths are stable. Uses `simple-git` which is already a dependency.
+- **`.gitattributes` write is cosmetic but high-signal.** Teams that don't know to do this will get noisy PRs. Auto-writing it on first "Save to Repo" is a professional touch with low implementation cost.
+
+---
 
 ## MVP Definition
 
-### Launch With (v1.2)
+### Launch With (v1.4)
 
-Minimum features to meet "diagrams that deliver rich, useful content" goal.
+Minimum features to deliver "diagrams are shared, version-controlled, and render instantly."
 
-- [ ] Fix: Use AI enrichment output in PlantUML generation — eliminates the biggest quality gap
-- [ ] Fix: elementId passing for Component diagram (dynamic path mapping, not hardcoded) — unblocks Component level
-- [ ] Fix: Code diagram class filtering uses elementId hierarchy, not filename substring — unblocks Code level
-- [ ] Prompt AI for structured JSON output (containers, components, relationships arrays) — enables all downstream quality
-- [ ] Container diagram: show actual named tech components with relationship protocols — table stakes
-- [ ] Component diagram: show individual classes in architectural roles, not directory buckets — table stakes
-- [ ] Pre-render SVG on generation and cache in SQLite — eliminates 5+ second render delay for cached diagrams
+- [ ] **Define `.reef/` folder structure** — flat per-level files with single `metadata.json`. This is the contract everything else depends on.
+- [ ] **Read `.reef/` on repo import** — check for `.reef/` existence at import time; if found, parse files and load into SQLite (diagram_content + svg_content). Skip generation queue. Show diagrams immediately.
+- [ ] **Write `.reef/` after generation** — on `c4-generation:complete`, write all generated levels to `.reef/`. Create folder if absent.
+- [ ] **Manual "Regenerate and Save" button** — toolbar button that triggers `c4-generation:enqueue` and then writes `.reef/` on completion. Replaces the current "Regenerate" button or sits alongside it.
+- [ ] **Graceful fallback when `.reef/` absent** — existing "Generate All Diagrams" first-visit flow unchanged.
 
-### Add After Validation (v1.2.x)
+### Add After Validation (v1.4.x)
 
-Features to add once core quality is working and tested.
+Features to add once core read/write loop is working and tested.
 
-- [ ] Domain-specific few-shot examples in prompts — improves AI output quality further
-- [ ] Non-TypeScript repo fallback (file structure heuristics) — broadens usability
-- [ ] Component role classification (API/Business/Data/Infra layers) — richer component diagrams
-- [ ] Relationship protocol auto-detection from import patterns — richer container diagrams
+- [ ] **Stale-on-import detection** — compare `metadata.json:generated_at` vs last commit date via `simple-git`. Show warning badge + CTA if stale.
+- [ ] **Auto-write `.gitattributes`** — append `linguist-generated=true` for `.reef/*.svg` and `.reef/*.puml` on first "Save to Repo."
+- [ ] **Import conflict resolution** — if local SQLite data is newer than `.reef/`, prompt the user instead of silently overwriting.
 
 ### Future Consideration (v2+)
 
-Features to defer until product-market fit is established.
+Features to defer until repo-stored diagrams are adopted and stable.
 
-- [ ] Multi-language AST parsing (Python, Go, Java) — requires separate parsers per language
-- [ ] Diagram version comparison — show architecture drift over time
-- [ ] Interactive component filtering — hide/show architectural layers
-- [ ] Architecture validation rules — flag violations of detected patterns
+- [ ] **`.reef/` change propagation via chokidar** — watch `.reef/` folder for changes (e.g., external editor or CI pipeline updated diagrams). Auto-import updated files into SQLite.
+- [ ] **Diagram freshness badge in sidebar** — show age of stored diagrams (e.g., "Generated 3 weeks ago") in the C4HierarchyTree.
+- [ ] **CI/CD export hook** — document or provide a CLI path for generating and committing `.reef/` in GitHub Actions / GitLab CI.
+
+---
 
 ## Feature Prioritization Matrix
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Use AI output in generation | HIGH | MEDIUM | P1 |
-| Fix elementId for Component level | HIGH | MEDIUM | P1 |
-| Fix Code diagram class filtering | HIGH | LOW | P1 |
-| Structured JSON AI output | HIGH | MEDIUM | P1 |
-| Container diagram with protocols | HIGH | MEDIUM | P1 |
-| Individual class components (not dir buckets) | HIGH | MEDIUM | P1 |
-| Pre-render SVG caching | HIGH | MEDIUM | P1 |
-| Domain-specific prompting | MEDIUM | LOW | P2 |
-| Non-TS repo fallback | MEDIUM | HIGH | P2 |
-| Component role classification | MEDIUM | MEDIUM | P2 |
-| Protocol auto-detection | LOW | LOW | P2 |
-| Multi-language parsing | HIGH | HIGH | P3 |
-| Diagram version comparison | MEDIUM | HIGH | P3 |
+| Define `.reef/` folder structure | HIGH | LOW | P1 |
+| Read `.reef/` on repo import | HIGH | MEDIUM | P1 |
+| Write `.reef/` after generation | HIGH | MEDIUM | P1 |
+| Manual "Regenerate and Save" | HIGH | LOW | P1 |
+| Graceful fallback when `.reef/` absent | HIGH | LOW | P1 |
+| Stale-on-import detection | MEDIUM | MEDIUM | P2 |
+| Auto-write `.gitattributes` | LOW | LOW | P2 |
+| Import conflict resolution (local vs repo) | MEDIUM | MEDIUM | P2 |
+| `.reef/` chokidar watching | LOW | MEDIUM | P3 |
+| Diagram freshness badge | LOW | LOW | P3 |
+| CI/CD export documentation | MEDIUM | LOW | P3 |
 
 **Priority key:**
-- P1: Required for v1.2 — diagrams currently broken or empty without these
-- P2: Quality improvements — diagrams work but become noticeably richer
-- P3: Scope expansion — new user segments or advanced capabilities
+- P1: Required for v1.4 launch — core read/write loop for repo-stored diagrams
+- P2: Polishes the experience — add once core is working and tested
+- P3: Expands the surface — defer until adoption is validated
+
+---
+
+## `.reef/` Folder Structure Recommendation
+
+Based on patterns from Structurizr DSL (text source next to code), PlantUML CI workflows (`.puml` + rendered `.svg`), and the existing SQLite schema:
+
+```
+{repo-root}/
+  .reef/
+    context.puml         # PlantUML source for Context level
+    context.svg          # Pre-rendered SVG for Context level
+    container.puml       # PlantUML source for Container level
+    container.svg        # Pre-rendered SVG for Container level
+    component.puml       # PlantUML source for Component level (top-level only)
+    component.svg        # Pre-rendered SVG for Component level (top-level only)
+    code.puml            # PlantUML source for Code level (top-level only)
+    code.svg             # Pre-rendered SVG for Code level (top-level only)
+    metadata.json        # Generation metadata (see schema below)
+```
+
+**`metadata.json` schema:**
+
+```json
+{
+  "reef_version": "1.4",
+  "generated_at": "2026-03-26T12:00:00Z",
+  "repo_path": "/absolute/path/to/repo",
+  "levels": {
+    "context":   { "model_used": "claude-haiku-4", "prompt_version": "1.2", "tokens_used": 1200, "generation_cost": 0.0003 },
+    "container": { "model_used": "claude-haiku-4", "prompt_version": "1.2", "tokens_used": 2100, "generation_cost": 0.0005 },
+    "component": { "model_used": "claude-haiku-4", "prompt_version": "1.2", "tokens_used": 1800, "generation_cost": 0.0004 },
+    "code":      { "model_used": "claude-haiku-4", "prompt_version": "1.2", "tokens_used": 900,  "generation_cost": 0.0002 }
+  }
+}
+```
+
+**Why this structure:**
+- Flat layout (not nested by level) keeps git history per-file meaningful: `git log -- .reef/context.puml`
+- `.puml` extension is the established PlantUML convention recognized by GitHub syntax highlighting
+- `metadata.json` is a single source for all generation provenance — one file to inspect, one file to parse
+- `reef_version` field allows future format migrations without silent breakage
+- Excludes component/code drill-down diagrams (those are repo-specific sub-element diagrams): the top 4 levels are sufficient for sharing; drill-down is generated on-demand
+
+**Rationale for excluding drill-down component/code diagrams from `.reef/`:**
+The existing SQLite schema stores component and code diagrams keyed by `element_id` (e.g., `component:GitService`). Storing these in `.reef/` would require either a sub-folder per element or a naming scheme like `component__GitService.puml`. This multiplies file count unpredictably across repos and complicates the read path. The four top-level diagrams (Context, Container, top-level Component, top-level Code) cover the shareable architecture overview. Drill-down diagrams remain local-only in SQLite.
+
+---
+
+## Implementation Dependencies on Existing Pipeline
+
+| Needed For | Existing Hook | Change Required |
+|------------|---------------|-----------------|
+| Write `.reef/` after generation | `c4-generation:complete` IPC broadcast in `generationQueueService.ts` | Add listener that calls new `ReefFileService.write(repoPath, levels)` |
+| Read `.reef/` on import | `repositoryStore.ts` `addRepository()` action | Before calling `c4-generation:enqueue`, check `fs.existsSync(path.join(repoPath, '.reef'))`. If true, call `c4-reef:import` IPC instead. |
+| Manual Regenerate and Save | Existing toolbar "Regenerate" button + `c4-generation:enqueue` | Either repurpose existing button or add second button. On completion, trigger `.reef/` write. |
+| SVG instant display | `C4StorageService.storeSvg()` and `getSvg()` already exist | No changes — import path writes SVGs to SQLite, cache serves them. |
+| Stale detection | `gitService.ts` already wraps `simple-git` | Add `getLastCommitDate(repoPath): Promise<Date>` method |
+
+---
 
 ## Competitor Feature Analysis
 
-| Feature | Structurizr | IcePanel | Swimm | Our v1.2 Approach |
-|---------|-------------|----------|-------|-------------------|
-| Container detail level | Named services, protocols, technologies | Named services, explicit protocols | N/A | Fix to show named services + protocols |
-| Component detail level | Individual named components by role | Individual named components | Named components | Fix to show individual classes in roles |
-| AI generation | None (manual only) | AI drafting (partial) | AI suggestions | AI provides structure; static validates |
-| SVG render speed | Instant (pre-generated) | ~2s (their server) | N/A | Fix: pre-render + cache SVG in SQLite |
-| Non-TS language support | All languages (manual) | All languages | N/A | Fallback to AI-only for non-TS |
+| Feature | Structurizr | Swark (VS Code) | GitDiagram | Reef v1.4 Approach |
+|---------|-------------|-----------------|-----------|-------------------|
+| Diagram storage location | External SaaS or self-hosted server | Generates on-demand, no persistence | Generates on-demand, no persistence | `.reef/` folder in repo — works offline, no server |
+| Team sharing | Workspace sync via API | No sharing | No sharing | Git commit of `.reef/` — inherits team's existing git workflow |
+| Re-use existing diagrams | Yes (workspace is persistent) | No (regenerates each time) | No (regenerates each time) | Yes — reads `.reef/` on import, skips generation |
+| On-demand refresh | Manual "Publish" action | Explicit generation action | Explicit generation action | Manual "Regenerate and Save" button |
+| Metadata/provenance | Workspace revision history | None | None | `metadata.json` with model, version, cost, timestamp |
+| SVG pre-render | Yes (server renders) | No | No | Yes — SVGs stored in `.reef/` + SQLite, served at <100ms |
 
-**Key differentiator preserved:** Reef generates diagrams automatically from code without manual
-authoring. Quality fix closes the gap between "AI generated something" and "AI generated something
-useful." Structurizr requires architects to write DSL. IcePanel requires manual layout. Reef's
-value is automation — the v1.2 work makes that automation produce real results.
+**Key differentiator preserved:** Reef stores everything locally in the repo itself (no SaaS account, no server, no token required for reading). Teams can share diagrams via their existing git infrastructure without new tooling.
 
-## C4 Level Quality Standards
-
-What each level must show to be considered non-shallow (based on official C4 model guidance):
-
-### Context Level (currently functional, minor gaps)
-- Primary user personas (not just "User") — detect from README or class names like `AdminDashboard`
-- External systems with purpose descriptions: "GitHub (stores repositories, REST API)" not just "GitHub"
-- Relationship labels explaining data flow: "Fetches repo metadata and file contents" not just "Uses"
-- Current status: ACCEPTABLE — produces real diagram, could be richer
-
-### Container Level (currently shallow)
-**Must have:**
-- Named, deployable units with specific technology: "React Frontend (React 18, Vite)" not "Renderer Process (TypeScript)"
-- Database containers with technology: "Diagram Store (SQLite, WAL mode)" not just "Config Store (electron-store)"
-- Relationship protocols between containers: `Rel(frontend, api, "Reads/writes diagrams", "Electron IPC")` not `Rel(A, B, "Uses")`
-- External system relationships labeled with protocols: `Rel(mainProcess, github, "Fetches repos", "REST/HTTPS")`
-**Currently missing:** Protocols on relationships, meaningful technology descriptions, database differentiation
-
-### Component Level (currently broken)
-**Must have:**
-- Individual named components (classes/class groups) shown inside Container_Boundary
-- Architectural role visible via shape: `Component()` for services, `ComponentDb()` for repositories
-- Technology in component: "Spring Bean" → for us "TypeScript Service Class" or specific framework
-- Relationships between components: `Rel(gitService, fileWatcher, "Notifies of changes", "events")`
-- Description explaining responsibility: "Manages git operations and repository status" not "1 services handling service logic"
-**Currently missing:** Everything — empty Container_Boundary due to path mapping bug
-
-### Code Level (currently broken)
-**Must have:**
-- Individual class boxes with public methods listed
-- Interface definitions with property signatures
-- Inheritance arrows: `Parent <|-- Child`
-- Implementation arrows: `Interface <|.. ImplementingClass`
-- Usage relationships between classes in scope: `ServiceA --> ServiceB : uses`
-- Omit private methods, getters/setters — only show public contract
-**Currently missing:** Everything — filename-substring filter returns empty for directory-named components
-
-## Rendering Performance Analysis
-
-### Current Architecture (Why 5+ Seconds)
-
-```
-Tab open → PlantUMLRenderer mounts → useEffect fires
-→ window.reef.plantuml.checkJava() [IPC round-trip, ~200ms]
-→ window.reef.plantuml.generateSVG(plantUML) [IPC + JVM + render, ~4-8s]
-→ setSvgContent() → DOM injection
-```
-
-Even for cached diagrams (PlantUML source already in SQLite), the SVG is re-rendered from scratch on every tab open. The PlantUML JAR generates SVG by spawning a Java process each time.
-
-### Recommended Fix: Store SVG in SQLite
-
-Add `svg_content TEXT` column to `diagram_storage` table. When diagram is generated:
-1. Call PlantUML → get SVG string
-2. Store both `diagram_content` (PlantUML source) and `svg_content` (rendered SVG)
-
-On tab open:
-1. Check SQLite for stored diagram
-2. If `svg_content` exists and is non-null → return SVG directly, skip Java entirely
-3. Only trigger PlantUML render when PlantUML source changes
-
-This reduces cached diagram display from 5+ seconds to <100ms (SQLite read + DOM injection).
-
-### Secondary Fix: Remove Java Check on Every Render
-
-`PlantUMLRenderer` calls `checkJava()` on every render, even when Java was confirmed available
-moments ago. Cache this result in app-level state (Zustand or module-level singleton). One check
-at startup is sufficient.
-
-### Why Not Switch to Pure Server-Side Rendering
-
-The current architecture already falls back to a PlantUML server when Java is absent. The issue
-is not the rendering engine — it is the lack of SVG caching. Local Java rendering is fast per-diagram
-once the JVM is warm; the problem is cold-starting on every view.
+---
 
 ## Sources
 
-- [C4 model - Container Diagram specification](https://c4model.com/diagrams/container) — HIGH confidence (official)
-- [C4 model - Component Diagram specification](https://c4model.com/diagrams/component) — HIGH confidence (official)
-- [C4 model - Code Diagram specification](https://c4model.com/diagrams/code) — HIGH confidence (official)
-- [C4-PlantUML Component Diagrams - DeepWiki](https://deepwiki.com/plantuml-stdlib/C4-PlantUML/3.3-component-diagrams) — HIGH confidence (comprehensive C4-PlantUML reference)
-- [Generating C4 Diagrams with LLMs - IcePanel comparison](https://icepanel.io/blog/2025-08-18-comparison-llms-for-creating-software-architecture-diagrams) — MEDIUM confidence (2025 empirical comparison)
-- [LLM-Based Architecture Diagram Generation from Source Code](https://arxiv.org/html/2511.05165v1) — HIGH confidence (peer-reviewed, 2025)
-- [Auto-Generate Architecture Diagrams from Code - BSWEN](https://docs.bswen.com/blog/2026-02-25-auto-generate-architecture-diagrams/) — MEDIUM confidence (current practice patterns, 2026)
-- [Practical C4 Modeling Tips - Revision](https://revision.app/blog/practical-c4-modeling-tips) — MEDIUM confidence
-- [C4 Diagram Best Practices - Visual C4](https://visual-c4.com/blog/c4-component-diagram-best-practices) — MEDIUM confidence
+- [Structurizr DSL — Repository patterns](https://docs.structurizr.com/dsl) — MEDIUM confidence (official docs, describes per-repo workspace.dsl pattern)
+- [PlantUML SVG metadata embedding](https://plantuml.com/svg) — HIGH confidence (official PlantUML docs)
+- [PlantUML -checkmetadata for incremental processing](https://plantuml.com/command-line) — HIGH confidence (official PlantUML CLI reference)
+- [Version Control Your Diagrams — Automated PlantUML + GitHub Actions](https://msicc.net/version-control-your-diagrams-automated-plantuml-rendering-github-actions) — MEDIUM confidence (community patterns, establishes `.puml` + `.svg` file pair convention)
+- [.gitattributes for SVG merge strategies](https://git-scm.com/book/en/v2/Customizing-Git-Git-Attributes) — HIGH confidence (official git docs)
+- [Swark — VS Code AI architecture diagrams](https://github.com/swark-io/swark) — MEDIUM confidence (shows on-demand-only approach as alternative pattern)
+- [Nodinite C4 import/draft/active state pattern](https://docs.nodinite.com/Documentation/RepositoryModel?doc=/C4+Diagrams/Getting+Started/Creating+Your+First+C4+Diagram) — MEDIUM confidence (establishes import + state transition pattern)
+- C4 model official site (c4model.com) — HIGH confidence (guides on what 4 levels to share as architecture documentation)
+- Reef v1.0–v1.3 codebase audit: `c4StorageService.ts`, `generationQueueService.ts`, `c4StorageHandlers.ts`, PROJECT.md — HIGH confidence (direct code read)
 
 ---
-*Feature research for: C4 diagram quality improvements and rendering performance (v1.2)*
-*Researched: 2026-03-02*
-*Context: v1.1 shipped — persistent storage, change tracking, amber highlighting, diff navigation all working. v1.2 goal: make diagrams rich and useful end-to-end.*
+*Feature research for: Repo-stored C4 diagram artifacts (v1.4 — `.reef/` folder)*
+*Researched: 2026-03-26*
+*Context: v1.0–v1.3 shipped. Goal: write and read diagram artifacts from a `.reef/` folder so teams can share diagrams via git without AI regeneration costs on every clone.*

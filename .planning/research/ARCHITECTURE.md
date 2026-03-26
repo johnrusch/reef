@@ -1,452 +1,470 @@
 # Architecture Research
 
-**Domain:** C4 Diagram Quality and Rendering — Electron Desktop App (v1.2)
-**Researched:** 2026-03-02
-**Confidence:** HIGH (based on direct codebase analysis)
+**Domain:** Repo-Stored C4 Diagram Artifacts — Electron Desktop App (v1.4)
+**Researched:** 2026-03-26
+**Confidence:** HIGH (based on direct codebase analysis of ~40,000 lines)
 
 ## Standard Architecture
 
-### System Overview
+### System Overview (v1.4 target state)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        MAIN PROCESS (Node.js)                        │
 ├─────────────────────────────────────────────────────────────────────┤
 │  ┌───────────────────────────────────────────────────────────────┐  │
-│  │                  C4 GENERATION PIPELINE                        │  │
-│  │  ┌──────────────┐   ┌───────────────┐   ┌──────────────────┐ │  │
-│  │  │ Static       │──▶│ AI Enrichment │──▶│ PlantUML         │ │  │
-│  │  │ Analyzer     │   │ Service       │   │ Generator        │ │  │
-│  │  │ (ts-morph)   │   │ (Claude API)  │   │ (syntax gen)     │ │  │
-│  │  └──────────────┘   └───────────────┘   └──────────────────┘ │  │
+│  │              C4 GENERATION PIPELINE (unchanged)                │  │
+│  │  ┌──────────────┐   ┌───────────────┐   ┌──────────────────┐  │  │
+│  │  │ Static       │──▶│ AI Enrichment │──▶│ PlantUML         │  │  │
+│  │  │ Analyzer     │   │ Service       │   │ Generator        │  │  │
+│  │  │ (ts-morph)   │   │ (Claude API)  │   │ (syntax gen)     │  │  │
+│  │  └──────────────┘   └──────────────┘   └────────┬─────────┘  │  │
+│  └───────────────────────────────────────────────────┼───────────┘  │
+│                                                       │              │
+│  ┌────────────────────────────────────────────────────▼───────────┐  │
+│  │                 C4AnalyzerService (modified)                    │  │
+│  │  storeDiagram() → C4StorageService (SQLite) [existing]         │  │
+│  │  writeArtifacts() → ReefStorageService (.reef/ files) [NEW]    │  │
 │  └───────────────────────────────────────────────────────────────┘  │
 │                                                                      │
-│  ┌────────────────┐   ┌───────────────────┐   ┌─────────────────┐  │
-│  │ PlantUML       │   │ C4StorageService  │   │ ChangeTracking  │  │
-│  │ Service        │   │ (SQLite WAL)      │   │ Service         │  │
-│  │ (node-plantuml)│   │ diagram_storage   │   │ (chokidar)      │  │
-│  └────────────────┘   └───────────────────┘   └─────────────────┘  │
-│                                                                      │
-│  ┌────────────────────────────────────────────────────────────────┐ │
-│  │  IPC HANDLERS (preload bridge via contextBridge)               │ │
-│  │  plantuml:generate-svg  c4-storage:*  c4-generation:*          │ │
-│  └────────────────────────────────────────────────────────────────┘ │
-└───────────────────────────────────────────┬─────────────────────────┘
-                                            │ IPC (contextBridge)
-┌───────────────────────────────────────────▼─────────────────────────┐
+│  ┌──────────────────────┐  ┌────────────────────────────────────┐   │
+│  │ ReefStorageService   │  │ C4StorageService (existing)        │   │
+│  │ [NEW]                │  │ - SQLite WAL mode                  │   │
+│  │ - read .reef/        │  │ - diagram_storage table            │   │
+│  │ - write .reef/       │  │ - svg_content column               │   │
+│  │ - detect presence    │  │ - change_tracking table            │   │
+│  │ - validate schema    │  │                                    │   │
+│  └──────────┬───────────┘  └──────────────────┬─────────────────┘   │
+│             │                                 │                     │
+│  ┌──────────▼───────────────────────────────── ▼──────────────────┐  │
+│  │               IPC HANDLERS (preload bridge)                    │  │
+│  │  c4-storage:*  c4-generation:*  reef-storage:*  [NEW channel]  │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────┬──────────────────────────────┘
+                                       │ IPC (contextBridge)
+┌──────────────────────────────────────▼──────────────────────────────┐
 │                        RENDERER PROCESS (React)                      │
 ├─────────────────────────────────────────────────────────────────────┤
-│  ┌──────────────────────┐   ┌────────────────────────────────────┐  │
-│  │ DiagramViewer        │   │ ZUSTAND STORES                     │  │
-│  │ - handleElementClick │   │ navigationStore (stack, persist)   │  │
-│  │ - handleDrillDown    │   │ diagramStateStore (states, changes) │  │
-│  │ - breadcrumbs        │   │ diagramNavigationStore (intent)    │  │
-│  └──────────┬───────────┘   └────────────────────────────────────┘  │
-│             │                                                        │
-│  ┌──────────▼───────────┐                                           │
-│  │ PlantUMLRenderer     │                                           │
-│  │ - IPC SVG fetch      │                                           │
-│  │ - SVG injection      │                                           │
-│  │ - click detection    │                                           │
-│  │ - change highlighting│                                           │
-│  └──────────────────────┘                                           │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │                  AddRepositoryModal (modified)               │    │
+│  │  1. repo selected → 2. check .reef/ exists [NEW step]       │    │
+│  │  3a. .reef/ found → load from files, skip generation        │    │
+│  │  3b. .reef/ absent → show generation prompt (existing)      │    │
+│  └──────────────────────────────────┬──────────────────────────┘    │
+│                                     │                                │
+│  ┌──────────────────────────────────▼──────────────────────────┐    │
+│  │              DiagramViewer / VisualMapTab (unchanged)        │    │
+│  │              PlantUMLRenderer (unchanged)                    │    │
+│  │              C4HierarchyTree sidebar (unchanged)             │    │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+│  ┌───────────────────────────────────────────────────────────────┐   │
+│  │  ZUSTAND STORES                                               │   │
+│  │  repositoryStore (unchanged)                                  │   │
+│  │  diagramStateStore (unchanged)                                │   │
+│  │  generationQueueStore (unchanged)                             │   │
+│  └───────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+
+REPOSITORY FILE SYSTEM (on disk, version-controlled)
+┌─────────────────────────────────────────────────────────────────────┐
+│  <repo-root>/                                                        │
+│  ├── .reef/                                                          │
+│  │   ├── context.puml        PlantUML source (context level)        │
+│  │   ├── context.svg         Pre-rendered SVG                        │
+│  │   ├── context.meta.json   AI enrichment metadata + generation info│
+│  │   ├── container.puml                                              │
+│  │   ├── container.svg                                               │
+│  │   ├── container.meta.json                                         │
+│  │   ├── component.<id>.puml  Per-container component diagrams       │
+│  │   ├── component.<id>.svg                                          │
+│  │   ├── component.<id>.meta.json                                    │
+│  │   ├── code.<id>.puml       Per-component code diagrams (optional) │
+│  │   ├── code.<id>.svg                                               │
+│  │   └── code.<id>.meta.json                                         │
+│  └── src/                                                            │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Component Responsibilities
 
-| Component | Responsibility | Location |
-|-----------|----------------|----------|
-| `StaticAnalyzerService` | ts-morph AST extraction: classes, interfaces, imports, exports, package.json tech detection | `src/main/services/c4/staticAnalyzerService.ts` |
-| `AIEnricherService` | Claude API calls with prompt caching; returns free-text architectural insight string | `src/main/services/c4/aiEnricherService.ts` |
-| `C4PlantUMLGenerator` | Template-based PlantUML syntax generation; largely ignores enriched AI text | `src/main/services/c4/c4PlantUMLGenerator.ts` |
-| `C4AnalyzerService` | Orchestrator: runs 3 phases, checks storage cache first, persists result | `src/main/services/c4/c4AnalyzerService.ts` |
-| `PlantUMLService` | Wraps node-plantuml; handles Java/JVM subprocess, SVG stream output | `src/main/services/plantUmlService.ts` |
-| `C4StorageService` | SQLite WAL; stores PlantUML text, states, change tracking | `src/main/services/c4/c4StorageService.ts` |
-| `ChangeTrackingService` | Debounced file-to-element mapping; IPC broadcasts on file change | `src/main/services/changeTrackingService.ts` |
-| `GenerationQueueService` | Sequential level-by-level generation with cancellation support | `src/main/services/c4/generationQueueService.ts` |
-| `PlantUMLRenderer` | React component; IPC call for SVG, DOM injection, click detection, change highlighting | `src/renderer/components/PlantUMLRenderer.tsx` |
-| `DiagramViewer` | Navigation state machine; orchestrates drill-down, breadcrumbs, IPC state sync | `src/renderer/components/DiagramViewer/DiagramViewer.tsx` |
-| `navigationStore` | Zustand persisted store: navigation stack (level + elementId per entry) | `src/renderer/stores/navigationStore.ts` |
-| `diagramStateStore` | Zustand in-memory store: diagram states and affected elements per (repo, level) | `src/renderer/stores/diagramStateStore.ts` |
+| Component | Responsibility | Status |
+|-----------|----------------|--------|
+| `C4AnalyzerService` | Orchestrates generation pipeline; calls ReefStorageService after SQLite write | Modified |
+| `ReefStorageService` | Reads/writes .reef/ folder; file naming, schema validation, atomic writes | New |
+| `ReefStorageHandlers` | IPC handlers for `reef-storage:*` channel | New |
+| `C4StorageService` | SQLite persistence for app-local state; unchanged role | Unchanged |
+| `generationQueueService` | Background queue; calls reef write after each level completes | Modified |
+| `FileWatcherService` | Must exclude `.reef/` from change detection to prevent regeneration loop | Modified |
+| `AddRepositoryModal` | Check `.reef/` on repo add; branch into load-from-file vs generate prompt | Modified |
+| `preload.ts` | Expose `reef-storage:*` IPC channel to renderer | Modified |
 
----
+## .reef/ Folder Schema
 
-## Recommended Project Structure for v1.2 Changes
+### File Naming Convention
 
 ```
-src/main/services/c4/
-├── staticAnalyzerService.ts      MODIFY — richer extraction
-├── aiEnricherService.ts          MODIFY — structured output, level-aware prompts
-├── c4PlantUMLGenerator.ts        MODIFY — consume structured AI output
-├── c4AnalyzerService.ts          MODIFY — pass level context for component/code
-├── elementIdRegistry.ts          NEW — canonical ID registry
-├── svgCacheService.ts            NEW — pre-rendered SVG storage
-└── types/
-    ├── analysisTypes.ts          MODIFY — add FunctionInfo, DirectoryStructure
-    ├── c4Types.ts                no change
-    └── enrichedTypes.ts          NEW — structured AI enrichment output types
+context.puml                   — context level PlantUML source
+context.svg                    — context level rendered SVG
+context.meta.json              — context level metadata
+
+container.puml
+container.svg
+container.meta.json
+
+component.<elementId>.puml     — per-container component diagram
+component.<elementId>.svg
+component.<elementId>.meta.json
+
+code.<elementId>.puml          — per-component code diagram
+code.<elementId>.svg
+code.<elementId>.meta.json
+```
+
+`<elementId>` matches the sanitized IDs produced by `ElementIdRegistry.sanitizeId()` — the same IDs used for SQLite keys and SVG click detection. Reusing this ID system ensures consistency without a new naming scheme.
+
+### meta.json Schema
+
+```json
+{
+  "version": "1",
+  "level": "context",
+  "elementId": null,
+  "generatedAt": "2026-03-26T10:00:00.000Z",
+  "modelUsed": "claude-haiku-20240307",
+  "promptVersion": "1.0",
+  "reefVersion": "1.4.0",
+  "tokensUsed": 12400,
+  "analysisMetadata": {
+    "filesAnalyzed": 42,
+    "totalFiles": 55,
+    "coveragePercent": 76
+  }
+}
+```
+
+The `analysisMetadata` block is derived from the `AnalysisResult.metadata` object already produced by `StaticAnalyzerService`. No new analysis is needed.
+
+## Recommended Project Structure (new files)
+
+```
+src/main/services/
+├── c4/
+│   ├── c4AnalyzerService.ts        (modified — call ReefStorageService)
+│   ├── c4StorageService.ts         (unchanged)
+│   ├── c4StorageHandlers.ts        (unchanged)
+│   ├── c4PlantUMLGenerator.ts      (unchanged)
+│   ├── generationQueueService.ts   (modified — call reef write after each level)
+│   ├── reefStorageService.ts       [NEW] core read/write logic
+│   └── reefStorageHandlers.ts      [NEW] IPC registration for reef-storage:*
+
+src/main/services/
+├── fileWatcherService.ts           (modified — exclude .reef/ from watched paths)
 
 src/renderer/components/
-└── PlantUMLRenderer.tsx          MODIFY — serve SVG from cache, skip IPC round-trip
+├── AddRepositoryModal.tsx          (modified — .reef/ detection branch)
 ```
-
-### Structure Rationale
-
-- **`elementIdRegistry.ts` (new):** Centralizes element ID generation and reverse-lookup so PlantUML generator and change tracking use identical IDs. Eliminates the current mismatch where `sanitizeId()` is duplicated across `c4PlantUMLGenerator.ts` and `changeTrackingService.ts`.
-- **`svgCacheService.ts` (new):** Stores pre-rendered SVG strings alongside PlantUML text in SQLite; eliminates the 5+ second Java subprocess call for diagrams that were rendered before and have not changed.
-- **`enrichedTypes.ts` (new):** Structured types for AI enrichment output. Currently, `AIEnricherService.enrichArchitecture()` returns a free-form `string` that `C4PlantUMLGenerator` largely ignores. Structured output enables the generator to actually incorporate AI insights.
-- **`analysisTypes.ts` (modified):** Adds `FunctionInfo` (exported functions, React components), `DirectoryStructure` (folder groupings for container/component inference), and `FileRole` (entry-point classification) to close the gaps that cause shallow diagrams.
-
----
 
 ## Architectural Patterns
 
-### Pattern 1: Structured AI Enrichment Output
+### Pattern 1: Dual-Write After Generation
 
-**What:** Instead of the AI returning free-form text, the enricher returns a typed object that the PlantUML generator consumes directly.
+After each level completes generation, the pipeline writes to two destinations sequentially: SQLite first (existing path, fast, reliable), then `.reef/` files second (new path, may fail gracefully).
 
-**When to use:** Immediately — the current pipeline ignores AI output almost entirely. `C4PlantUMLGenerator` accepts `_enrichedData: string` and marks it unused with `_`.
+**What:** Write SQLite entry, then write `.reef/` files in the same post-generation step.
+**When to use:** Any time a diagram is generated or regenerated.
+**Trade-offs:** If the `.reef/` write fails (disk full, permissions), SQLite still has the data so the app continues working. The failure is logged and surfaced to the user without blocking the generation.
 
-**Trade-offs:** Slightly more complex prompt engineering. Requires structured JSON output from Claude. Validated with `zod` schema before use. Claude claude-sonnet-4-6 and Haiku both support reliable JSON mode via system prompt instructions.
-
-**Example:**
 ```typescript
-// enrichedTypes.ts (NEW)
-export interface EnrichedContextData {
-  actors: Array<{ name: string; description: string }>;
-  externalSystems: Array<{ name: string; description: string; relationship: string; tech: string }>;
-  systemPurpose: string;
-}
-
-export interface EnrichedContainerData {
-  containers: Array<{
-    id: string;           // Must match StaticAnalyzerService container detection
-    name: string;
-    tech: string;
-    description: string;
-    type: 'app' | 'database' | 'queue' | 'store';
-  }>;
-  relationships: Array<{ from: string; to: string; label: string; tech?: string }>;
-}
-
-export interface EnrichedComponentData {
-  containerId: string;
-  components: Array<{
-    id: string;           // Matches file path grouping key
-    name: string;
-    tech: string;
-    description: string;
-  }>;
-  relationships: Array<{ from: string; to: string; label: string }>;
-}
-
-export interface EnrichedCodeData {
-  componentId: string;
-  classes: Array<{ name: string; role: string }>;      // role = "service" | "store" | "controller" etc.
-  keyPatterns: string[];  // design patterns observed
-}
-
-export type EnrichedData =
-  | EnrichedContextData
-  | EnrichedContainerData
-  | EnrichedComponentData
-  | EnrichedCodeData;
+// In generationQueueService.ts — after each level:
+await analyzer.generateC4Diagram(repoPath, level);  // writes SQLite internally
+await reefStorage.writeDiagramArtifacts(repoPath, level, {
+  plantUML: result.diagram,
+  svg: renderedSvg,
+  metadata: buildMetadata(result),
+});
 ```
 
-```typescript
-// aiEnricherService.ts (MODIFIED)
-async enrichArchitecture(
-  staticData: AnalysisResult,
-  level: C4Level,
-  elementId?: string
-): Promise<EnrichedData> {  // Return typed, not string
-  const response = await this.client.messages.create({
-    system: [...],
-    messages: [{
-      role: 'user',
-      content: `Output valid JSON matching this schema: ${JSON.stringify(schemaForLevel(level))}`
-    }]
-  });
+### Pattern 2: Read-First on Repo Import
 
-  const parsed = JSON.parse(content.text);
-  return validateWithZod(schemaForLevel(level), parsed);
+When a repository is added, check for `.reef/` before triggering the generation prompt. If valid artifacts exist, load them into SQLite and skip generation entirely.
+
+**What:** `reef-storage:check-exists` IPC call in `AddRepositoryModal` between step "repo validated" and step "show generation prompt".
+**When to use:** Every repo add, whether manual or first-time.
+**Trade-offs:** Adds ~5ms async check per repo add (filesystem stat). Eliminates multi-second generation for repos that already have `.reef/` artifacts from teammates.
+
+```typescript
+// In AddRepositoryModal.tsx — modified handleAddRepository:
+const reefCheck = await window.reef.reefStorage.checkExists(selectedPath);
+if (reefCheck.hasArtifacts) {
+  await window.reef.reefStorage.loadIntoSqlite(selectedPath);
+  onClose();
+} else {
+  // Existing flow: show generation prompt
+  setShowGenerationPrompt(true);
 }
 ```
 
-### Pattern 2: Canonical Element ID Registry
+### Pattern 3: .reef/ Exclusion from File Watching
 
-**What:** A singleton registry that maps human-readable element names to stable PlantUML-safe IDs, and stores the reverse mapping. All three places that currently need sanitized IDs (generator, change tracking, SVG click detection) consult the same registry.
+`FileWatcherService` must explicitly skip the `.reef/` directory, or any SVG/PUML write to `.reef/` would trigger "diagram stale" state — an infinite regeneration loop.
 
-**When to use:** Central to fixing drill-down. The current bug is that element IDs in PlantUML SVG output (e.g., `elem_Main_Process`) do not always match what the change tracking service predicts or what the navigation store stores.
+**What:** Add `.reef` to the chokidar `ignored` predicate in `fileWatcherService.ts`.
+**When to use:** Always — this is a correctness fix, not an optimization.
 
-**Trade-offs:** Adds a singleton dependency. The registry must be populated at generation time and survive for the life of the diagram. Store it in `diagram_metadata` JSON column or in-memory, rebuilt on app start from stored diagrams.
-
-**Example:**
 ```typescript
-// elementIdRegistry.ts (NEW)
-export class ElementIdRegistry {
-  private static instance: ElementIdRegistry;
-  // Maps (repoPath, level, elementId) -> human name
-  private registry: Map<string, string> = new Map();
-
-  static getInstance(): ElementIdRegistry {
-    if (!ElementIdRegistry.instance) {
-      ElementIdRegistry.instance = new ElementIdRegistry();
-    }
-    return ElementIdRegistry.instance;
-  }
-
-  // Called by C4PlantUMLGenerator when emitting each element
-  register(repoPath: string, level: C4Level, elementId: string, humanName: string): void {
-    const key = `${repoPath}:${level}:${elementId}`;
-    this.registry.set(key, humanName);
-  }
-
-  // Called by DiagramViewer.handleElementClick to resolve click to name
-  resolve(repoPath: string, level: C4Level, elementId: string): string | undefined {
-    return this.registry.get(`${repoPath}:${level}:${elementId}`);
-  }
-
-  // Called by ChangeTrackingService to produce matching IDs
-  sanitize(name: string): string {
-    return name.replace(/[^a-zA-Z0-9_]/g, '_').replace(/^[0-9]/, '_$&');
-  }
-}
+// In fileWatcherService.ts — existing ignored predicate:
+ignored: (filePath: string) =>
+  /node_modules|\.git[/\\]|[/\\]dist[/\\]|dist-electron|\.cache|[/\\]build[/\\]|[/\\]coverage[/\\]|[/\\]\.reef[/\\]/.test(filePath),
 ```
 
-### Pattern 3: Pre-Rendered SVG Cache
+### Pattern 4: Atomic File Writes
 
-**What:** After PlantUML generates a diagram, immediately render it to SVG via the Java subprocess and store the SVG string in the existing `diagram_storage` table (a new `svg_content` column). On subsequent loads, serve the cached SVG directly — no Java subprocess, no 5-second wait.
+Write `.reef/` files atomically by writing to `.reef/<file>.tmp` first, then renaming. This prevents partially-written files from being read by a teammate's Reef instance.
 
-**When to use:** For any diagram with state `fresh`. Cache is invalidated (SVG column cleared) when diagram is marked `stale` and re-rendered after regeneration.
-
-**Trade-offs:** SVG strings can be large (~50–500KB per diagram). SQLite handles this well. Total storage for a 4-level diagram suite is typically under 2MB, well within SQLite's comfort zone. Invalidation is simple: set `svg_content = NULL` when state transitions to `generating`.
-
-**Example:**
-```typescript
-// svgCacheService.ts (NEW) — or extend C4StorageService
-
-// Schema addition (migration to user_version = 3)
-ALTER TABLE diagram_storage ADD COLUMN svg_content TEXT;
-
-// In PlantUMLService — call after generation completes
-async renderAndCacheSVG(repoPath: string, level: C4Level, plantUML: string, elementId?: string): Promise<string> {
-  const svg = await this.generateSVG(plantUML);
-  storageService.storeSVG(repoPath, level, elementId, svg);
-  return svg;
-}
-
-// In PlantUMLRenderer — check IPC for cached SVG first
-const loadDiagram = async () => {
-  const cached = await window.reef.plantuml.getCachedSVG(content_hash);
-  if (cached) {
-    setSvgContent(cached);
-    setLoading(false);
-    return;
-  }
-  // Fall through to Java subprocess
-};
-```
-
-### Pattern 4: Directory-Aware Static Analysis
-
-**What:** Extend `StaticAnalyzerService` to extract directory structure alongside class/interface extraction. Container and component detection currently relies on entry-point file names and class suffix matching (`Service`, `Controller`, etc.). Directory structure is a more reliable signal.
-
-**When to use:** Required for non-TypeScript or JavaScript repos that use flat class naming. Also improves component grouping for Electron apps where `src/main/services/`, `src/renderer/components/`, `src/renderer/stores/` are meaningful groupings.
-
-**Trade-offs:** Minimal: reads directory tree once, O(n) in file count. No AST overhead.
-
-**Example:**
-```typescript
-// In StaticAnalyzerService — new extraction method
-private extractDirectoryStructure(sourceFiles: SourceFile[], repoPath: string): DirectoryNode[] {
-  const dirs = new Map<string, { files: string[]; depth: number }>();
-
-  for (const file of sourceFiles) {
-    const rel = path.relative(repoPath, file.getFilePath());
-    const parts = rel.split('/');
-    // Record directories at depth 1-3 under src/
-    for (let d = 1; d <= Math.min(3, parts.length - 1); d++) {
-      const dirPath = parts.slice(0, d).join('/');
-      if (!dirs.has(dirPath)) dirs.set(dirPath, { files: [], depth: d });
-      dirs.get(dirPath)!.files.push(rel);
-    }
-  }
-
-  return Array.from(dirs.entries()).map(([path, info]) => ({
-    path,
-    depth: info.depth,
-    fileCount: info.files.length,
-    name: path.split('/').pop()!,
-  }));
-}
-```
-
----
+**What:** `fs.writeFileSync(tmpPath)` then `fs.renameSync(tmpPath, finalPath)` for each artifact.
+**When to use:** Every `.reef/` write.
+**Trade-offs:** Two syscalls instead of one. Rename is atomic on POSIX; on Windows it may fail if destination exists — use `fs.rmSync` before rename on Windows.
 
 ## Data Flow
 
-### Request Flow: Drill-Down Navigation (Fixed)
+### Flow 1: First-Time Generation (no .reef/ present)
 
 ```
-User clicks element in SVG
+User selects directory
     ↓
-PlantUMLRenderer.handleSvgClick
-  → traverse DOM: elem_ prefix strip → raw elementId (e.g. "Main_Process")
+AddRepositoryModal: git validate → addRepository()
     ↓
-DiagramViewer.handleElementClick(elementId)
-  → ElementIdRegistry.resolve(repoPath, level, elementId)
-    → humanName = "Main Process"
-  → navigationStore.push({ level: 'component', elementId, elementName: humanName })
-  → onRegenerateDiagram({ type: 'c4-component', elementId })
+reef-storage:check-exists → .reef/ absent → show GenerationPromptModal
     ↓
-C4AnalyzerService.generateC4Diagram(repoPath, 'component', elementId)
-  → StaticAnalyzerService.analyzeProject()  [Phase 1]
-  → AIEnricherService.enrichArchitecture(staticData, 'component', elementId)
-      → structured EnrichedComponentData JSON  [Phase 2]
-  → C4PlantUMLGenerator.generateComponentDiagram(enriched, staticData, elementId)
-      → ElementIdRegistry.register() for each emitted element  [Phase 3]
+User clicks "Generate"
     ↓
-C4StorageService.storeDiagram()  →  PlantUMLService.renderAndCacheSVG()
+c4-generation:enqueue (IPC) → generationQueueService
     ↓
-IPC response → PlantUMLRenderer displays SVG
+For each level (context→container→component→code):
+  C4AnalyzerService.generateC4Diagram()
+    ├─ Phase 1: StaticAnalyzerService (ts-morph)
+    ├─ Phase 2: AIEnricherService (Claude API)
+    └─ Phase 3: C4PlantUMLGenerator
+         ↓
+  C4StorageService.storeDiagram()        → SQLite (diagram_content)
+         ↓
+  PlantUMLService.generateSVG()          → rendered SVG string
+         ↓
+  C4StorageService.storeSvg()            → SQLite (svg_content)
+  svgLruCache.set()                      → in-process LRU
+         ↓
+  ReefStorageService.writeDiagramArtifacts() → .reef/ files (puml + svg + meta.json)
+         ↓
+  IPC broadcast: c4-storage:state-changed (state: 'fresh')
+    ↓
+Renderer: diagramStateStore updates, DiagramViewer fetches SVG from LRU/SQLite
 ```
 
-### SVG Rendering Flow: Cached Fast Path (New)
+### Flow 2: Repo Import with Existing .reef/ (teammate sharing)
 
 ```
-DiagramViewer mounts or level changes
+User selects directory (teammate's repo with .reef/)
     ↓
-PlantUMLRenderer receives content (PlantUML text string)
+AddRepositoryModal: git validate → addRepository()
     ↓
-Hash content → window.reef.plantuml.getSVG(repoPath, level, elementId)
+reef-storage:check-exists → .reef/ present + valid schema
     ↓
-  [HIT] C4StorageService returns svg_content column → setSvgContent → done (< 50ms)
-  [MISS] plantuml:generate-svg IPC → Java subprocess → SVG (5-8 seconds)
-       → C4StorageService.storeSVG() → setSvgContent
+reef-storage:load-into-sqlite (IPC)
+    ↓
+ReefStorageService.loadArtifacts()
+  ├─ For each artifact: read .puml, .svg, .meta.json
+  └─ C4StorageService.storeDiagram() + storeSvg() for each
+    ↓
+svgLruCache populated from loaded SVGs
+    ↓
+IPC broadcast: c4-storage:state-changed (state: 'fresh') for each level
+    ↓
+AddRepositoryModal closes — no generation prompt shown
+    ↓
+DiagramViewer fetches SVG instantly from LRU cache
+```
+
+### Flow 3: Manual Regenerate-and-Save
+
+```
+User clicks "Regenerate" button (existing toolbar)
+    ↓
+c4-generation:enqueue (existing flow)
+    ↓
+GenerationQueueService runs full pipeline (same as Flow 1)
+    ↓
+ReefStorageService.writeDiagramArtifacts() overwrites existing .reef/ files
+    ↓
+User can git commit .reef/ changes to share updated diagrams with team
+```
+
+### Flow 4: Stale State (code changed, .reef/ now outdated)
+
+```
+FileWatcherService detects source file change (NOT .reef/)
+    ↓
+ChangeTrackingService.recordChange()
+    ↓
+C4StorageService.updateState('stale')
+    ↓
+IPC broadcast → diagramStateStore → "stale" badge in UI
+    ↓
+.reef/ files remain on disk (stale but present — team members still see last good diagrams)
+    ↓
+User clicks "Regenerate" → Flow 3 runs → .reef/ updated to fresh
 ```
 
 ### State Management
 
 ```
-navigationStore (persisted)
-  stack: [
-    { level: 'context', elementName: 'System Context' },
-    { level: 'container', elementId: 'Main_Process', elementName: 'Main Process' },
-    { level: 'component', elementId: 'Services', elementName: 'Services' },
-  ]
-    ↓ (consumed by DiagramViewer)
-
-diagramStateStore (in-memory)
-  states: Map<"repoPath:level:elementId", DiagramState>
-  affectedElements: Map<"repoPath:level", AffectedElement[]>
-    ↓ (consumed by PlantUMLRenderer for amber highlighting)
+diagramStateStore (Zustand)
+  ↓ (subscribes)
+DiagramViewer, C4HierarchyTree ← (actions) → IPC calls → Main Process
 ```
 
-### Key Data Flows
-
-1. **Generation → Registry:** `C4PlantUMLGenerator` calls `ElementIdRegistry.register()` for every element emitted. Registry is keyed by `(repoPath, level, elementId)`. Stored in `diagram_storage.diagram_metadata` JSON column so it survives app restarts.
-
-2. **Click → Navigation:** `PlantUMLRenderer` strips `elem_` prefix, passes raw ID to `DiagramViewer`. `DiagramViewer` resolves to human name via registry before pushing to `navigationStore`. Navigation store passes `elementId` to regeneration call.
-
-3. **File Change → Highlighted Element:** `ChangeTrackingService` uses `ElementIdRegistry.sanitize()` (same function as generator) to predict element IDs. The IDs reach `diagramStateStore.affectedElements`, consumed by `applyChangeHighlighting()` in `PlantUMLRenderer`.
-
----
+No new Zustand store is needed. The existing `diagramStateStore` already tracks state per repo+level. The `reefStorage` check result is ephemeral to the import flow and does not need global state.
 
 ## Integration Points
 
-### New vs Modified Components
+### Modified Components
 
-| Component | Status | Change Description |
-|-----------|--------|--------------------|
-| `elementIdRegistry.ts` | NEW | Canonical ID registry, singleton, consulted by generator + change tracking + viewer |
-| `svgCacheService.ts` / `C4StorageService` | MODIFIED | Add `svg_content` column, `storeSVG()`, `getSVG()` methods; schema migration to v3 |
-| `enrichedTypes.ts` | NEW | Typed interfaces for AI enrichment output per C4 level |
-| `StaticAnalyzerService` | MODIFIED | Add `extractDirectoryStructure()`, `extractFunctions()`, richer `AnalysisResult` |
-| `AIEnricherService` | MODIFIED | Return `EnrichedData` (typed) instead of `string`; structured JSON prompts |
-| `C4PlantUMLGenerator` | MODIFIED | Consume `EnrichedData` instead of ignoring `_enrichedData`; call `ElementIdRegistry.register()` per element |
-| `C4AnalyzerService` | MODIFIED | Pass `elementId` through to component/code generator; store SVG after generation |
-| `PlantUMLRenderer` | MODIFIED | Fast path: check SVG cache before Java IPC; serve from cache on hit |
-| `preload.ts` + `main.ts` | MODIFIED | Add `plantuml.getSVG()` / `plantuml.storeSVG()` IPC handlers |
-| `analysisTypes.ts` | MODIFIED | Add `FunctionInfo`, `DirectoryNode`, `FileRole` to `AnalysisResult` |
-| `DiagramViewer` | MODIFIED | Resolve click element IDs via registry for human name; no behavioral change |
+| Component | Change | Risk |
+|-----------|--------|------|
+| `c4AnalyzerService.ts` | Call `ReefStorageService.writeDiagramArtifacts()` after `storeDiagram()` | LOW — additive, fallback on error |
+| `generationQueueService.ts` | Pass rendered SVG to reef write step; SVG is currently available in handler | MEDIUM — must extract SVG from pipeline |
+| `fileWatcherService.ts` | Add `\.reef` to ignored predicate | LOW — one-line regex change |
+| `AddRepositoryModal.tsx` | Add `.reef/` check before showing generation prompt | LOW — new branch, existing flow unchanged |
+| `preload.ts` | Add `reefStorage` namespace with 4 methods | LOW — additive |
+| `main.ts` | Import and register `reefStorageHandlers` | LOW — follows existing pattern |
 
-### Internal Boundaries
+### New Components
 
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| StaticAnalyzer → AIEnricher | `AnalysisResult` object (in-process) | No IPC; stays in main process |
-| AIEnricher → PlantUML Generator | `EnrichedData` typed struct (in-process) | Replaces ignored `string` |
-| PlantUML Generator → ElementIdRegistry | Synchronous calls during generation (in-process) | Registry must be singleton |
-| PlantUML Generator → StorageService | `storeDiagram()` + new `storeSVG()` | Keep transactional — store PlantUML then SVG |
-| StorageService → PlantUMLRenderer | New IPC: `plantuml:get-svg` | Renderer checks cache first, falls back to generate |
-| ElementIdRegistry → ChangeTrackingService | Shared `sanitize()` utility function | Both must produce identical IDs |
-| NavigationStore → DiagramViewer | Zustand subscription | `elementId` in stack must match PlantUML-generated ID exactly |
+| Component | Purpose | Notes |
+|-----------|---------|-------|
+| `reefStorageService.ts` | Core read/write/validate logic for `.reef/` folder | No new npm deps; uses built-in `fs`, `path` |
+| `reefStorageHandlers.ts` | IPC registration; follows exact pattern of `c4StorageHandlers.ts` | Exposes 4 channels: check-exists, load-into-sqlite, write-artifacts, clear |
 
-### External Services
+### IPC Channels (new)
 
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| Claude API | `AIEnricherService` via `@anthropic-ai/sdk` | Prompt caching reduces cost 90%; structured JSON output mode added in v1.2 |
-| PlantUML / Java | `node-plantuml` subprocess in `PlantUMLService` | Only called on cache miss; Java process start is the main latency source |
-| SQLite | `better-sqlite3` synchronous in main process | WAL mode; add `svg_content` column via migration; size stays well under 50MB |
+| Channel | Direction | Purpose |
+|---------|-----------|---------|
+| `reef-storage:check-exists` | Renderer→Main | Does `.reef/` exist and have valid artifacts? |
+| `reef-storage:load-into-sqlite` | Renderer→Main | Read `.reef/` files, populate SQLite + LRU |
+| `reef-storage:write-artifacts` | Main internal | Write generation output to `.reef/` (not exposed to renderer) |
+| `reef-storage:clear` | Renderer→Main | Delete `.reef/` folder (for "reset" workflows) |
 
----
+`write-artifacts` does not need an IPC channel — it is called directly by `generationQueueService` and `c4AnalyzerService` in the main process. Only the renderer-triggered operations need IPC exposure.
 
-## Scaling Considerations
+### SVG Pipeline Gap (critical)
 
-| Scale | Architecture Adjustments |
-|-------|--------------------------|
-| 1-10 repos | Current approach — all in SQLite, no changes needed |
-| 10-50 repos | SVG cache becomes important; storage budget ~50MB at 4 diagrams × 500KB each per repo |
-| 50+ repos | Consider LRU eviction for SVG cache; prune SVGs for repos not accessed in 30 days |
+Currently, the SVG rendering step occurs in `plantUmlService.ts` and the result is stored via `c4-storage:store-svg` IPC — which means the SVG is available in the handler context in `c4StorageHandlers.ts`, but not inside `c4AnalyzerService.ts` where the PlantUML string is produced. For v1.4, the SVG must be available at the point where `.reef/` files are written.
 
-### Scaling Priorities
+**Resolution options (ranked by risk):**
 
-1. **First bottleneck:** Java subprocess latency (5-8 sec per diagram). Solved by SVG cache — most loads become <100ms reads.
-2. **Second bottleneck:** AI enrichment token cost at scale. Already solved via prompt caching (90% cost reduction). Haiku model keeps marginal cost under $0.01 per generation.
-3. **Third bottleneck:** ts-morph analysis on large repos (>10k files). Already handles this via `skipFileDependencyResolution` and `maxFiles` option. No changes needed.
+1. **Option A (recommended):** Write `.reef/` at the `c4-storage:store-svg` IPC handler in `c4StorageHandlers.ts` — the handler already has the SVG string and knows the repo+level+elementId key. Call `ReefStorageService.writeSvg()` here. The PlantUML source must also be passed through or fetched from SQLite at that point.
 
----
+2. **Option B:** Return the rendered SVG from `generateC4Diagram()` and write artifacts in `generationQueueService` after the level completes. Requires threading SVG through `DiagramResult` (adds one field) or fetching from SQLite immediately after store.
+
+3. **Option C:** Separate "write .reef/" IPC call triggered after `store-svg` returns. Adds network round-trip complexity without benefit.
+
+**Recommendation: Option A.** The `c4-storage:store-svg` handler is the correct write point — it already has both repo+level key and the SVG content. Fetching the PlantUML source from SQLite at that moment adds one SELECT query (already indexed), is safe, and avoids threading new parameters through the generation pipeline.
+
+## Suggested Build Order (considering dependencies)
+
+### Phase 1: ReefStorageService (no dependencies)
+
+Build the new service first, in isolation. No IPC, no UI changes.
+
+- Create `reefStorageService.ts` with: `checkExists()`, `readArtifacts()`, `writeArtifacts()`, `writeSvg()`, `buildMetaJson()`, atomic write helpers
+- Unit-testable with just `fs` mocks
+- Validates: file naming, meta.json schema, partial artifact detection
+
+**Deliverable:** Fully tested service class with no external dependencies.
+
+### Phase 2: ReefStorageHandlers + preload.ts (depends on Phase 1)
+
+Wire the service into IPC.
+
+- Create `reefStorageHandlers.ts` registering `reef-storage:check-exists` and `reef-storage:load-into-sqlite`
+- Modify `preload.ts` to expose `reefStorage` namespace
+- Modify `main.ts` to call `registerReefStorageHandlers()`
+- `load-into-sqlite` calls `ReefStorageService.readArtifacts()` then `C4StorageService.storeDiagram()` + `storeSvg()` for each artifact
+
+**Deliverable:** IPC surface working, testable end-to-end with a real `.reef/` folder.
+
+### Phase 3: FileWatcherService fix (no dependencies, low risk)
+
+- One-line regex change to exclude `.reef/` from chokidar watched paths
+- Must be done before Phase 4 or the first generated `.reef/` write will mark diagrams as stale
+
+**Deliverable:** No regeneration loop when `.reef/` files are written.
+
+### Phase 4: Generation pipeline write (depends on Phase 1, Phase 3)
+
+Wire `ReefStorageService.writeSvg()` into the `c4-storage:store-svg` IPC handler in `c4StorageHandlers.ts`.
+
+- After `getStorageService().storeSvg()` succeeds, fetch the PlantUML source from SQLite via `getStorageService().getDiagram()` (synchronous SQLite call, < 1ms)
+- Call `reefStorage.writeArtifacts({ plantUML: diagram.diagramContent, svg, metadata })` — atomic write
+- Error in `.reef/` write is logged but does not throw (SQLite already has the data)
+
+**Deliverable:** Every successful generation automatically creates/updates `.reef/` artifacts.
+
+### Phase 5: AddRepositoryModal integration (depends on Phase 2)
+
+- Add `reef-storage:check-exists` call immediately after `addRepository()` succeeds
+- Branch: `hasArtifacts=true` → call `reef-storage:load-into-sqlite` → close modal
+- Branch: `hasArtifacts=false` → existing generation prompt flow
+- Update `GenerationPromptModal` skip text to clarify ".reef/ not found"
+
+**Deliverable:** Import flow complete. Team sharing works end-to-end.
 
 ## Anti-Patterns
 
-### Anti-Pattern 1: AI Output as Free Text
+### Anti-Pattern 1: Watching .reef/ for Changes
 
-**What people do:** Call Claude API, receive natural-language response, pass it as an opaque string to the generator.
-**Why it's wrong:** The generator cannot extract structured data from prose. It falls back to template-only output, producing shallow diagrams. This is the root cause of the current "shallow/empty diagram" problem — the AI prompt result is actually good, but it is never consumed.
-**Do this instead:** Define a JSON schema per C4 level. Prompt Claude to output valid JSON matching the schema. Parse and validate the response with Zod before passing to the generator.
+**What people do:** Forget to exclude `.reef/` from chokidar watchers.
+**Why it's wrong:** Every SVG write to `.reef/` fires a change event which calls `updateState('stale')` — the UI immediately shows diagrams as stale right after generation completes. This creates an infinite "generate → stale → generate" loop if auto-regenerate is enabled.
+**Do this instead:** Add `[/\\]\.reef[/\\]` to the `ignored` predicate in `fileWatcherService.ts` before wiring up Phase 4.
 
-### Anti-Pattern 2: Duplicated sanitizeId Logic
+### Anti-Pattern 2: Loading .reef/ into LRU Only (Skipping SQLite)
 
-**What people do:** Copy `sanitizeId()` into every service that needs to construct or match PlantUML element IDs (`c4PlantUMLGenerator.ts`, `changeTrackingService.ts`, `PlantUMLRenderer.tsx`).
-**Why it's wrong:** Any divergence (even a single character difference) causes click detection, change highlighting, and drill-down navigation to silently fail on certain element names. This is already causing the broken Component-level drill-down.
-**Do this instead:** `ElementIdRegistry.sanitize()` is the single implementation. All callers import from the registry. Generator calls `register()` on every emit, creating the authoritative mapping.
+**What people do:** On repo import with existing `.reef/`, skip the SQLite write and read SVG from files directly at render time.
+**Why it's wrong:** The rest of the app (DiagramViewer, state tracking, change tracking, LRU cache) reads from SQLite. Bypassing SQLite means state is inconsistent — diagrams appear "never_generated" to the state machine even though they display correctly.
+**Do this instead:** Always load `.reef/` artifacts into SQLite on import. SQLite is the app's source of truth for state; `.reef/` is the transport layer.
 
-### Anti-Pattern 3: Java Subprocess on Every Diagram Load
+### Anti-Pattern 3: Partial Write on Failure
 
-**What people do:** Fetch cached PlantUML text from SQLite, then call `plantuml:generate-svg` IPC on every mount.
-**Why it's wrong:** The Java JVM startup plus PlantUML processing takes 5-8 seconds. Users experience this every time they switch C4 levels, drill down, or navigate breadcrumbs — even for diagrams that have not changed.
-**Do this instead:** Pre-render SVG at generation time. Store in `svg_content` column. Serve directly on cache hit. Only call Java when diagram content actually changes (regeneration). This turns a 5-8 second wait into a <100ms SQLite read.
+**What people do:** Write `context.puml` and `context.svg` but fail before writing `context.meta.json`, leaving a partial artifact set.
+**Why it's wrong:** On next repo import, `checkExists()` finds `.puml` files and skips generation, but loading fails due to missing metadata.
+**Do this instead:** Validate presence of all three files (puml + svg + meta.json) in `checkExists()`. Write atomically using tmp-rename. If any write fails, clean up the partial set for that level.
 
-### Anti-Pattern 4: Container/Component Detection via Class Name Suffixes Only
+### Anti-Pattern 4: Hardcoding .reef File Names
 
-**What people do:** Filter `structure.classes` for names ending in `Service`, `Controller`, `Manager`, `Handler`, `Store`, `Repository` to detect components.
-**Why it's wrong:** Many valid components (React UI sections, utility modules, config objects) do not follow this naming pattern. Non-TypeScript projects are entirely missed. The current detector produces empty component diagrams for repos that do not use these suffixes.
-**Do this instead:** Use directory structure as the primary grouping signal. `src/main/services/` is a component group regardless of class naming conventions. Class suffix matching becomes a secondary enrichment signal, not the primary detection strategy.
+**What people do:** Use string literals like `"context.svg"` scattered across handlers and the service.
+**Why it's wrong:** ElementId-keyed filenames for component/code levels need consistent derivation. Duplicating naming logic creates sync bugs when IDs change.
+**Do this instead:** Centralize all filename derivation in `ReefStorageService.getFilePaths(level, elementId)` — one method, one source of truth for all callers.
 
----
+## Scaling Considerations
+
+This is a local desktop app. "Scale" means handling large repositories and many C4 levels gracefully.
+
+| Concern | Approach |
+|---------|----------|
+| Many component diagrams | File system handles hundreds of `component.<id>.{puml,svg,meta.json}` files without issue. SQLite index on `(repo_path, level)` already efficient. |
+| Large SVG files | SVGs from PlantUML are typically 50-200KB per diagram. Atomic rename ensures no partial reads. LRU cache (15 entries) already sized for this. |
+| Multiple repos | Each repo has its own `.reef/` folder. SQLite path normalization already handles cross-platform paths. No shared state issues. |
+| Corrupt .reef/ | `checkExists()` validates schema version and required fields. Falls back to "generate fresh" path gracefully. |
 
 ## Sources
 
-- Direct codebase analysis: `src/main/services/c4/` and `src/renderer/components/` (HIGH confidence — first-party code)
-- Claude API structured output capability: Anthropic SDK documentation (HIGH confidence — known capability as of training cutoff Aug 2025)
-- SQLite BLOB/TEXT storage for SVG: well-established pattern, SQLite handles up to 1GB per column without issue (HIGH confidence)
-- ts-morph directory-level analysis patterns: ts-morph API documentation (MEDIUM confidence — `getSourceFiles()` is verified, directory grouping is deduced from ts-morph's file model)
-- PlantUML `elem_` SVG ID prefix behavior: observed directly in `PlantUMLRenderer.tsx` source (HIGH confidence — from existing code comment)
+- Direct analysis of `/Users/johnrusch/Code/reef/src/main/services/c4/` (all services)
+- `c4StorageHandlers.ts` — IPC pattern to follow for `reefStorageHandlers.ts`
+- `generationQueueService.ts` — entry point for generation pipeline wiring
+- `fileWatcherService.ts` — chokidar ignored predicate location
+- `AddRepositoryModal.tsx` — import flow branch point
+- `preload.ts` — IPC surface exposure pattern
 
 ---
-
-*Architecture research for: Reef v1.2 — C4 Diagram Quality and Rendering*
-*Researched: 2026-03-02*
+*Architecture research for: v1.4 Repo-Stored Diagrams (.reef/ folder integration)*
+*Researched: 2026-03-26*

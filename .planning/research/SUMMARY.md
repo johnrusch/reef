@@ -1,17 +1,17 @@
 # Project Research Summary
 
-**Project:** Reef v1.2 — Diagrams That Deliver
-**Domain:** C4 diagram quality and rendering performance for AI-assisted architecture visualization
-**Researched:** 2026-03-02
+**Project:** Reef — v1.4 Repo-Stored Diagrams (.reef/ Folder)
+**Domain:** Electron desktop app — file-system artifact storage layered on top of existing SQLite C4 diagram pipeline
+**Researched:** 2026-03-26
 **Confidence:** HIGH
 
 ## Executive Summary
 
-Reef v1.2 is a targeted quality milestone for an existing Electron-based C4 diagram generator. The v1.1 foundation (persistent storage, change tracking, amber highlighting, diff navigation) is already shipped. The v1.2 problem is precise: diagrams are shallow or empty, Component drill-down is broken, and cached diagrams still take 5+ seconds to render. Research across all four areas converges on three root causes that must be fixed in sequence. First, ts-morph's `forgetDescendants()` is called in the wrong order, corrupting multi-pass static analysis and producing incomplete dependency graphs. Second, the AI enrichment output is computed and paid for but entirely discarded — the `_enrichedData` parameter is intentionally unused (underscore prefix) in `c4PlantUMLGenerator.ts`. Third, the Component drill-down passes a sanitized PlantUML ID (`Main_Process`) to a method expecting a human-readable container name (`Main Process`), silently producing empty diagrams for every container regardless of what was clicked.
+v1.4 is a pure-code milestone that requires zero new npm dependencies. The goal is to make C4 architecture diagrams shareable across teams by writing generated diagram artifacts (PlantUML source, pre-rendered SVGs, AI enrichment metadata) into a `.reef/` folder inside each managed repository. This folder can be committed to git like any other file, allowing teammates to clone a repo and immediately see diagrams without triggering expensive AI regeneration. Every capability needed — file I/O, git operations, schema validation, file watching exclusion — already exists in the installed stack: Node.js `fs/promises`, `simple-git` v3.28.0, `zod` v4.3.6, and `chokidar` v4.0.3.
 
-The recommended approach is a four-phase fix ordered by dependency chain. Static analysis must be corrected first because every downstream phase depends on accurate structural data. The AI pipeline restructuring comes second and must produce typed JSON rather than free-form text before the generator can use it. The drill-down navigation fix comes third and requires a canonical element ID registry that all three subsystems (generator, change tracker, SVG click handler) share. Rendering performance comes last because it is independent of content quality and its fix — storing pre-rendered SVG in SQLite — is a straightforward schema migration once the generation pipeline is producing accurate content.
+The recommended architecture adds one new service (`ReefStorageService`), one new IPC handler file (`reefStorageHandlers.ts`), and a minimal set of targeted modifications to existing components. The write path hooks into the existing `c4-storage:store-svg` IPC handler (the point where both the SVG and PlantUML source are available), and the read path adds a `.reef/` presence check to `AddRepositoryModal` before showing the generation prompt. SQLite remains the primary app-state store; `.reef/` is a transportable, VCS-friendly export layer. The two must be kept in sync via a "SQLite-first, .reef/-second" write ordering and a "read .reef/ on import, populate SQLite" read ordering.
 
-The only new dependency required is `lru-cache ^11.2.6` for an in-process SVG cache layer. All other improvements are code changes to existing services using APIs that are already available: ts-morph functions not yet called, Anthropic structured output (`output_config`) already in `@anthropic-ai/sdk ^0.78.0`, and SQLite column additions via the existing migration service. There are no architectural rewrites required and no tooling changes — the fix surface is narrow and well-defined.
+The most critical risks are all preventable at Phase 1: the chokidar file watcher must exclude `.reef/` before any files are written there (or an infinite regeneration loop triggers), SVG files need a `.gitattributes binary` directive committed alongside the first SVG (or git merge conflicts corrupt diagrams for the whole team), and all file writes must use atomic temp-file-then-rename semantics (or concurrent regenerations produce corrupt partial SVGs on Windows). `schemaVersion: 1` must be in every `metadata.json` from day one to prevent silent breakage in future schema evolution. Path traversal validation is required in all IPC read handlers since `.reef/` files originate from external repositories.
 
 ---
 
@@ -19,141 +19,112 @@ The only new dependency required is `lru-cache ^11.2.6` for an in-process SVG ca
 
 ### Recommended Stack
 
-The v1.2 stack requires exactly one new dependency (`lru-cache`) and targeted code changes in seven existing files. The current stack (`ts-morph ^23.0.0`, `@anthropic-ai/sdk ^0.78.0`, `better-sqlite3 ^11.10.0`, `node-plantuml ^0.9.0`) already contains all capabilities needed. The primary work is activating unused API surface, not installing new tools.
-
-Alternatives considered and rejected: replacing ts-morph with tree-sitter (15MB native binaries, no benefit for TypeScript-only repos), replacing PlantUML with Mermaid (full rewrite, weaker C4 support), using Kroki.io (requires Docker, adds operational dependency). These remain valid v2+ considerations if PlantUML JVM distribution becomes a packaging problem.
+v1.4 needs no new packages installed. All required capabilities are available in the current stack. The implementation work is one new service file, one new IPC handler file, one shared type definition, a one-line chokidar regex change, and integration hooks in two existing files.
 
 **Core technologies:**
-- `ts-morph ^23.0.0`: Static analysis — extend to use `getFunctions()`, `getDecorators()`, `getJsDocs()`, method signatures, and directory structure enumeration (all unused today); fix `forgetDescendants()` call order
-- `@anthropic-ai/sdk ^0.78.0`: AI enrichment — switch from free-text to `output_config.format: json_schema` structured output (no upgrade needed; feature already in 0.78.0)
-- `better-sqlite3 ^11.10.0`: Storage — add `rendered_svg TEXT` column to `diagram_storage` via schema migration to v3
-- `node-plantuml ^0.9.0`: SVG rendering — optionally enable Nailgun mode (already built in); gate behind feature flag due to known compatibility issues on some systems
-- `lru-cache ^11.2.6`: NEW — in-process SVG cache; zero dependencies, TypeScript-native, 350M+ weekly downloads
+- `fs/promises` (Node.js 22 built-in): all `.reef/` directory and file operations — `mkdir({ recursive: true })`, `writeFile`, `readFile`, `access` cover 100% of use cases; no additional package needed
+- `simple-git` v3.28.0 (installed): stage and commit `.reef/` artifacts via `add()`, `commit()`, `checkIgnore()` — all methods verified present in installed TypeScript definitions
+- `zod` v4.3.6 (installed): parse and validate `metadata.json` on read with `.safeParse()` — graceful fallback to regeneration on corrupt or version-mismatched files; already used throughout codebase
+- `chokidar` v4.0.3 (installed): one-line regex change to exclude `.reef/` from the existing file watcher — prevents self-trigger infinite generation loop
+- `better-sqlite3` v11.10.0 (installed): SQLite remains the primary app state store; `.reef/` is a parallel, VCS-friendly export that populates SQLite on import
 
 ### Expected Features
 
-All seven P1 features are bug fixes or activation of existing but unused functionality. None require new user-facing UI design.
+**Must have (table stakes — v1.4 launch):**
+- Define `.reef/` folder structure — per-level files (`context.puml`, `context.svg`, `context.meta.json`) plus optional single `metadata.json`; this is the contract every other feature depends on; must be stable and treated as a public API from day one
+- Read `.reef/` on repo import — check for `.reef/` presence before showing generation prompt; if found, load artifacts into SQLite and display instantly; no AI call triggered; no PlantUML render
+- Write `.reef/` after generation — on generation complete, write all levels to `.reef/`; automatic, not user-triggered; SQLite write succeeds first
+- Manual "Regenerate and Save" — explicit user action to refresh diagrams and update `.reef/`; automatic background sync on every file save is explicitly out of scope per PROJECT.md
+- Graceful fallback when `.reef/` absent — existing first-visit generation prompt flow unchanged; only diverge when `.reef/` is detected
 
-**Must have (table stakes):**
-- Use AI enrichment output in PlantUML generation — eliminates the biggest quality gap; currently a no-op due to `_enrichedData` unused parameter
-- Fix elementId passing for Component diagram — dynamic path mapping replaces hardcoded `getContainerPath()` map; unblocks Component level end-to-end
-- Fix Code diagram class filtering — use elementId hierarchy rather than filename substring; unblocks Code level end-to-end
-- Prompt AI for structured JSON output — enables all downstream quality improvements across all four C4 levels simultaneously
-- Container diagram with actual named tech components and relationship protocols — C4 specification requires this; "Renderer Process (TypeScript)" is not a valid container description
-- Component diagram with individual classes in architectural roles, not directory buckets — C4 spec requires named logical components, not "Services" and "Components"
-- Pre-render SVG on generation and cache in SQLite — eliminates 5+ second render delay for cached diagrams
-
-**Should have (competitive, v1.2.x after validation):**
-- Domain-specific few-shot examples in prompts — further improves AI output quality for specific frameworks
-- Non-TypeScript repo fallback using file structure heuristics — broadens usability beyond TypeScript-only repos
-- Component architectural role classification (API/Business/Data/Infra layers) — richer component diagrams
-- Relationship protocol auto-detection from import patterns — richer container diagrams
+**Should have (competitive — v1.4.x after core validated):**
+- Stale-on-import detection — compare `metadata.json:generated_at` vs last commit date via `simple-git git log`; show warning badge + "Regenerate and Save" CTA if diagrams predate recent code changes
+- Auto-write `.gitattributes` — append `linguist-generated=true` for `.reef/*.svg` and `.reef/*.puml` on first "Save to Repo" to reduce PR noise
+- Import conflict resolution — if local SQLite data is newer than `.reef/`, prompt user instead of silently overwriting
 
 **Defer (v2+):**
-- Multi-language AST parsing (Python, Go, Java) — requires separate parsers per language
-- Diagram version comparison for architecture drift over time
-- Interactive component filtering (hide/show architectural layers)
-- Architecture validation rules for detected patterns
+- `.reef/` chokidar watching for auto-import on git pull (circular trigger risk; adds per-repo watcher overhead)
+- Diagram freshness badge in C4HierarchyTree sidebar
+- CI/CD export hook or CLI path for GitHub Actions integration
+- Per-branch `.reef/` storage (last-writer-wins on current branch is sufficient; branch-aware logic multiplies folder complexity)
+- In-app diagram version history (use `git log -- .reef/context.puml` instead)
 
 ### Architecture Approach
 
-The existing C4 generation pipeline is a linear three-phase chain in the Electron main process: `StaticAnalyzerService` (ts-morph) → `AIEnricherService` (Claude API) → `C4PlantUMLGenerator` (PlantUML syntax). Two new modules must be introduced: `elementIdRegistry.ts` (singleton ID registry shared by generator, change tracker, and SVG click handler) and `enrichedTypes.ts` (typed interfaces for AI enrichment output per C4 level). The storage layer gains an `svgCacheService.ts` concern or equivalent extension to `C4StorageService`. No components are replaced; all are extended. Phases 3 and 4 can be developed in parallel by separate engineers — they touch different files except for additive-only changes to `C4StorageService`.
+The architecture adds a thin new layer between the existing three-phase generation pipeline (Static Analysis → AI Enrichment → PlantUML Generation) and the filesystem. `ReefStorageService` encapsulates all `.reef/` file I/O with atomic write semantics; it is called from the `c4-storage:store-svg` IPC handler in `c4StorageHandlers.ts` — the correct insertion point where both the SVG string and PlantUML source are available in the same handler context. On repo import, `AddRepositoryModal` makes a `reef-storage:check-exists` IPC call before showing the generation prompt; if artifacts exist, `reef-storage:load-into-sqlite` populates `C4StorageService` and the modal closes. No new Zustand stores are needed; the existing `diagramStateStore` state machine handles all resulting state transitions without modification.
 
 **Major components:**
-1. `StaticAnalyzerService` — MODIFY: add `extractDirectoryStructure()`, `extractFunctions()`, decorator/JSDoc extraction; fix `forgetDescendants()` call order to after all extractions per file
-2. `AIEnricherService` — MODIFY: return typed `EnrichedData` union (not `string`); use `output_config.format: json_schema` for schema-constrained output; validate with Zod
-3. `C4PlantUMLGenerator` — MODIFY: consume `EnrichedData` instead of ignoring `_enrichedData`; call `ElementIdRegistry.register()` per emitted element; replace hardcoded container detection heuristics
-4. `elementIdRegistry.ts` — NEW: singleton mapping sanitized IDs to canonical paths; shared across generator, change tracking, and drill-down click handler
-5. `C4StorageService` / `svgCacheService.ts` — MODIFY: add `rendered_svg TEXT` column; schema migration to v3; serve stored SVG on cache hit
-6. `PlantUMLRenderer` — MODIFY: check SVG cache before invoking Java IPC; cache hit returns in <100ms vs 5-8s Java subprocess; post-render SVG patch for click transparency bug
+1. `ReefStorageService` (new) — core read/write/validate logic for `.reef/` folder; atomic writes via temp-file-then-rename; schema validation via `zod.safeParse()`; centralized file path derivation in a single `getFilePaths(level, elementId)` method; no external npm dependencies
+2. `ReefStorageHandlers` (new) — IPC registration for `reef-storage:check-exists`, `reef-storage:load-into-sqlite`, `reef-storage:clear`; follows exact pattern of existing `c4StorageHandlers.ts`; `write-artifacts` is main-process-internal only and not exposed via IPC
+3. `c4StorageHandlers.ts` (modified) — call `ReefStorageService.writeArtifacts()` after `storeSvg()` succeeds; error in `.reef/` write is logged but non-fatal (SQLite already has the data)
+4. `FileWatcherService` (modified) — add `[/\\]\.reef[/\\]` to the chokidar `ignored` predicate; this is a correctness fix, not an optimization; must be done before any `.reef/` write code exists
+5. `AddRepositoryModal.tsx` (modified) — `.reef/` detection branch after repo validation, before generation prompt; `hasArtifacts=true` → call `load-into-sqlite` → close modal; `hasArtifacts=false` → existing generation prompt flow
 
 ### Critical Pitfalls
 
-1. **`forgetDescendants()` destroys analysis data mid-loop** — Called at the top of each extraction loop, it invalidates node references needed by subsequent passes, producing empty import graphs. Fix: call only after all extractions (classes, interfaces, imports, exports) for each source file complete.
-
-2. **AI enrichment output discarded** — The `_enrichedData` underscore prefix is TypeScript's "intentionally unused" convention. AI result is computed, tokens charged, but diagrams are static-analysis-only. Fix: define `C4EnrichedInsights` JSON schema per level; use `output_config` structured output; generator merges AI elements with static structure.
-
-3. **elementId mismatch breaks Component drill-down** — PlantUML generates IDs as sanitized names (`Main_Process`); `getContainerPath()` expects human-readable names (`Main Process`). IDs never match; every Component diagram silently renders empty. Fix: `ElementIdRegistry` maps sanitized IDs to canonical paths at generation time; click handler resolves via registry.
-
-4. **PlantUML SVG click transparency bug (v1.2025.0)** — Invisible `path` elements with `fill="transparent"` absorb mouse events, silently blocking drill-down navigation. Resolved in v1.2025.2 but affects users with older JARs. Fix: post-render SVG patch that resets `fill="transparent"` to `fill="none"` on all path overlays after every SVG injection.
-
-5. **JVM cold start on every diagram render** — Even for cached PlantUML source, the renderer always invokes `plantuml:generate-svg` IPC, spawning a Java process (5-8 seconds). Fix: store pre-rendered SVG in `diagram_storage.rendered_svg`; renderer serves from SQLite on cache hit; Java invoked only on first render or regeneration.
+1. **Chokidar self-trigger infinite loop** — add `[/\\]\.reef[/\\]` to the `ignored` predicate in `FileWatcherService` as the very first change; writing any file to `.reef/` without this exclusion marks diagrams stale immediately after generation, triggering another generation run indefinitely
+2. **Git SVG merge conflicts** — commit a `.gitattributes` file marking `.reef/*.svg binary` alongside the first SVG write; PlantUML SVG output is non-deterministic across machines (embedded timestamps, session IDs), so two developers regenerating concurrently produce conflict markers inside SVG XML that `git merge` cannot resolve meaningfully
+3. **Partial writes from race conditions** — use atomic temp-file-then-rename for all `.reef/` writes; `fs.writeFile` truncates the target before writing, so concurrent writes produce corrupt partial files; on Windows add `EPERM` retry or `fs.rmSync` before rename
+4. **Missing `schemaVersion` in metadata** — embed `schemaVersion: 1` in every `meta.json` from the initial implementation; any future field rename or removal without versioning silently breaks all repos that have `.reef/` committed, triggering unnecessary regeneration
+5. **Path traversal via IPC** — validate that all resolved `.reef/` paths begin with `path.resolve(repoPath)` before reading; never use values from `.reef/metadata.json` to construct subsequent file read paths; display SVGs via `<img src="data:image/svg+xml;base64,...">` not raw `innerHTML`
 
 ---
 
 ## Implications for Roadmap
 
-Based on research, the phase structure is dictated by hard dependencies: static analysis accuracy is a prerequisite for AI enrichment quality; AI enrichment structure is a prerequisite for the generator to produce correct element IDs; correct element IDs are a prerequisite for drill-down navigation; and rendering performance is independent and can be parallelized with Phase 3.
+Based on research, the build order follows a strict dependency chain. The service layer must exist and be tested before IPC wiring; the watcher fix must precede any write code; and the generation pipeline integration must precede the import flow (so `.reef/` artifacts exist to test the read path against).
 
-### Phase 1: Static Analysis Depth
+### Phase 1: ReefStorageService and Folder Foundation
 
-**Rationale:** Every downstream phase consumes `AnalysisResult`. The `forgetDescendants()` bug corrupts multi-pass extraction, producing empty dependency graphs that make AI enrichment data thin and cause container detection to fail for non-Electron repos. This must be the first fix or all subsequent improvements build on a broken foundation.
+**Rationale:** All other phases read from or write to `.reef/`. The folder structure, file naming convention, and metadata schema are a public contract — changing them after teams have committed `.reef/` is a breaking change for every repo. The chokidar fix, atomic write pattern, schema versioning, and path security validation belong here because adding them later requires reworking every write call.
+**Delivers:** Fully tested `ReefStorageService` with `checkExists()`, `readArtifacts()`, `writeArtifacts()`, `writeSvg()`, atomic write helpers, and `zod`-based schema validation. The `FileWatcherService` exclusion. A `metadata.json` / `meta.json` schema with `schemaVersion: 1`. Unit-testable with `fs` mocks alone — no IPC, no UI.
+**Addresses:** Define `.reef/` folder structure (P1 table stakes)
+**Avoids:** Chokidar self-trigger loop (Pitfall 1), SVG merge conflicts (Pitfall 2), atomic write race conditions (Pitfall 4), missing schema version (Pitfall 8), path traversal security (Pitfall 7)
 
-**Delivers:** Accurate, rich `AnalysisResult` with classes, interfaces, imports, exports, functions, decorators, JSDoc, and directory structure for any TypeScript repo. Graceful fallback (no error on missing tsconfig.json) for non-TypeScript repos. Framework detection from `package.json` for improved container inference.
+### Phase 2: IPC Wiring and Generation Pipeline Write
 
-**Addresses:** Container diagram shows real tech stack; non-TypeScript repos produce partial results rather than errors; Component detection uses directory structure as primary signal rather than class-name suffixes alone.
+**Rationale:** `ReefStorageService` (Phase 1) must exist before IPC handlers can reference it. The generation pipeline write is the highest-value integration: it means every new diagram generation automatically produces `.reef/` artifacts that can be committed and shared. This phase also resolves the SVG pipeline gap — confirming that the `c4-storage:store-svg` handler is the correct write point.
+**Delivers:** `ReefStorageHandlers` registered in `main.ts`; `preload.ts` exposing `reefStorage` namespace; `c4StorageHandlers.ts` calling `ReefStorageService.writeArtifacts()` after `storeSvg()` completes. Every successful generation now auto-writes `.reef/`. Error in `.reef/` write is non-fatal; SQLite write is unaffected.
+**Uses:** `simple-git` `checkIgnore()` for gitignore detection; `zod` for metadata validation; "SQLite-first, .reef/-second" dual-write ordering
+**Implements:** Dual-write pattern; non-fatal error handling; auto-write of `.reef/.gitattributes` on first write
 
-**Avoids:**
-- `forgetDescendants()` destroys analysis data mid-loop (Pitfall 1)
-- Container detection fails on non-standard project structures (Pitfall 4)
-- Static analysis skips non-TypeScript repos silently (Pitfall 10)
+### Phase 3: Repo Import — Read from .reef/
 
-### Phase 2: AI Enrichment Pipeline
+**Rationale:** Depends on Phase 2 establishing that `.reef/` artifacts exist and are valid. The import path must handle SQLite sync from the start — never leaving both storages active without a defined precedence rule (`.reef/` wins on import; SQLite is the app's runtime source of truth).
+**Delivers:** `AddRepositoryModal` checks for `.reef/` presence before showing generation prompt. If artifacts found, calls `reef-storage:load-into-sqlite`, populates SQLite + LRU cache, closes modal. Diagrams display instantly — no AI call, no PlantUML render. Graceful fallback to existing generation flow when `.reef/` absent.
+**Addresses:** Read `.reef/` on repo import (P1 table stakes), Instant SVG display (P1 table stakes), Graceful fallback when `.reef/` absent (P1 table stakes)
+**Avoids:** Dual storage divergence (Pitfall 3), stale badge after git pull (Pitfall 6), loading SVGs into LRU only while skipping SQLite (Architecture Anti-Pattern 2 — bypassing SQLite breaks the entire state machine)
 
-**Rationale:** With accurate static data from Phase 1, the AI enrichment call can receive meaningful inputs. This phase restructures the AI-to-generator interface: free-text out, structured JSON in. This is the single highest-leverage change in the milestone — it activates AI enrichment that was always intended but never wired, fixing all four C4 levels simultaneously.
+### Phase 4: Manual Regenerate and Save UI
 
-**Delivers:** `AIEnricherService.enrichArchitecture()` returns typed `EnrichedData` (not `string`). `C4PlantUMLGenerator` consumes structured elements and relationships. Container diagrams show named technology components with protocols. Component diagrams show logical architectural roles, not directory names.
+**Rationale:** Depends on Phase 2 (write path) and Phase 3 (read path) both working. The user needs an explicit "Regenerate and Save" action to share updated diagrams with teammates after code changes. This is the team-sharing workflow completion.
+**Delivers:** Toolbar button with context-sensitive label ("Generate and Save to .reef/" on first use, "Regenerate and Update .reef/" on subsequent use). Triggers existing `c4-generation:enqueue` IPC path; `.reef/` write happens automatically on completion via Phase 2 integration. User can then `git commit .reef/` via Reef's existing git panel.
+**Addresses:** Manual "Regenerate and Save" (P1 table stakes), Consistent diagrams across team (P1 table stakes)
 
-**Uses:** `output_config.format: json_schema` from existing `@anthropic-ai/sdk ^0.78.0`; new `enrichedTypes.ts` module with per-level schemas; Zod validation before AI output reaches the generator; level-aware prompt templates with C4 model quality standards.
+### Phase 5: Polish — Stale Detection and Conflict Resolution
 
-**Avoids:**
-- AI enrichment output discarded (`_enrichedData` unused) (Pitfall 2)
-- Component detection grouped by directory name, not logical architecture (Pitfall 6)
-- AI prompt produces narrative text instead of diagram data (Pitfall 8)
-
-### Phase 3: Drill-Down Navigation Fix
-
-**Rationale:** After Phases 1 and 2 produce accurate diagrams with correct element IDs, the navigation layer needs to consistently translate SVG click targets to generator inputs. The elementId mismatch is the last remaining cause of empty Component and Code diagrams. The PlantUML SVG click transparency bug is co-located with this fix (both involve SVG click handling) and should be addressed in the same phase.
-
-**Delivers:** Component drill-down works end-to-end for any container. Code drill-down works for any component. Amber highlighting correctly identifies changed elements after regeneration (stable IDs across regenerations). All SVG element clicks fire `handleElementClick` regardless of PlantUML JAR version.
-
-**Implements:** `elementIdRegistry.ts` singleton; updated `C4AnalyzerService` to pass `elementId` through the pipeline; post-render SVG patch for `fill="transparent"` overlays; ID stability via canonical path-based keys rather than display-name-derived sanitized IDs.
-
-**Avoids:**
-- elementId mismatch between Container and Component drill-down (Pitfall 3)
-- PlantUML SVG click transparency bug blocks navigation (Pitfall 7)
-- Sanitized IDs not stable across regenerations (Pitfall 9)
-
-### Phase 4: Rendering Performance
-
-**Rationale:** This phase is independent of content quality and can be developed in parallel with Phase 3. It should be validated after content quality is confirmed (Phases 1-3) so that SVG storage captures high-quality diagrams. The JVM cold start fix is a schema migration plus cache-check logic; the LRU in-process cache is a secondary optional layer.
-
-**Delivers:** Cached diagram display in <100ms (vs current 5-8 seconds). Pre-rendered SVG stored in `diagram_storage.rendered_svg`. Optional in-process LRU SVG cache for repeated tab switches within a session. Optional Nailgun mode for JVM warmup on first-time renders.
-
-**Uses:** `lru-cache ^11.2.6` (one new dependency); schema migration via existing `migrationService.ts` pattern (migration to user_version 3); optional `plantuml.useNailgun()` gated behind `REEF_PLANTUML_NAILGUN` environment flag with try/catch fallback.
-
-**Avoids:**
-- JVM cold start on every cached diagram render (Pitfall 5)
-- Re-rendering SVG for every React re-render (performance trap — memoize on content hash)
-- Re-analyzing project on every generation call (performance trap)
+**Rationale:** Core read/write loop is working and tested. These are v1.4.x polish features that improve the team-sharing experience without blocking the core milestone.
+**Delivers:** Stale-on-import detection (compare `meta.json:generatedAt` vs `git log` date via `simple-git`; show "Diagrams may be outdated" badge + "Regenerate and Save" CTA). Auto-write `.gitattributes` with `linguist-generated=true` on first "Save to Repo". Import conflict resolution prompt when local SQLite data is newer than `.reef/`.
+**Addresses:** Stale-on-import detection (P2), Auto-write `.gitattributes` (P2), Import conflict resolution (P2)
 
 ### Phase Ordering Rationale
 
-- **Static analysis first** because `AnalysisResult` is consumed by all three subsequent phases; the `forgetDescendants()` bug makes all downstream data unreliable regardless of AI prompt quality.
-- **AI enrichment second** because the generator interface change (string → typed struct) affects the function signatures consumed by Phase 3's element ID work; doing this after Phase 1 ensures the AI has accurate input data to work with.
-- **Navigation fix third** because it depends on the generator emitting consistent element IDs, which only happens reliably after Phase 2 restructures how elements are named (AI drives naming, not hardcoded heuristics).
-- **Rendering performance last** because it is independent but benefits from storing high-quality SVG once Phases 1-3 content is correct; schema migration is simpler to reason about when diagram content is stable.
-- **Phases 3 and 4 can be parallelized** by separate engineers — they share only `C4StorageService` (additive-only column addition) and `preload.ts`/`main.ts` (additive-only IPC handler additions).
+- `ReefStorageService` must be unit-tested in isolation before IPC wiring — this keeps Phase 1 verifiable with pure `fs` mocks, no Electron required
+- The chokidar fix (Phase 1) must precede all write code (Phase 2) — reversed order causes an infinite generation loop during development that is difficult to diagnose
+- The generation write path (Phase 2) must precede the import read path (Phase 3) — valid `.reef/` artifacts must exist before the import flow can be tested end-to-end
+- The "Regenerate and Save" UI (Phase 4) is the user-facing completion of the feature; polish it once the underlying write/read roundtrip is solid
+- Stale detection and `.gitattributes` automation (Phase 5) are additive; deferring them prevents scope creep on the core milestone while leaving a clear v1.4.x backlog
 
 ### Research Flags
 
-Phases likely needing deeper research during planning:
-- **Phase 2:** Structured AI output prompt engineering — the exact prompt structure and JSON schema for each C4 level needs validation against Claude's actual response quality for diverse repo types. Consider a short spike (1-2 hours) to test JSON schema constraints against a real non-Reef repo before committing to full implementation.
-- **Phase 3:** `ElementIdRegistry` persistence strategy — whether to store the registry in `diagram_storage.diagram_metadata` JSON column or rebuild from stored diagrams on app start. Both approaches are viable; the choice affects implementation complexity and cold-start performance.
+Phases with well-documented patterns (skip `/gsd:research-phase`):
+- **Phase 1:** Pure Node.js `fs/promises` file I/O — all APIs verified against Node.js 22 docs; atomic write pattern is established; `zod.safeParse()` is fully documented; no novel patterns
+- **Phase 2:** IPC wiring follows exact pattern of existing `c4StorageHandlers.ts` in the codebase — no new architectural decisions required
+- **Phase 4:** Toolbar button addition is straightforward React; reuses existing `c4-generation:enqueue` IPC path with no modifications
 
-Phases with standard patterns (skip research-phase):
-- **Phase 1:** ts-morph API usage is well-documented; `forgetDescendants()` fix is a call-order change; directory enumeration uses Node built-ins. All needed APIs verified in ts-morph docs.
-- **Phase 4:** SVG caching is a standard schema migration plus column-check pattern. LRU cache implementation is trivial with `lru-cache`. Nailgun mode is already built into `node-plantuml`.
+Phases that may benefit from targeted source review during planning:
+- **Phase 3:** The "load into SQLite from .reef/" path touches multiple services (`C4StorageService`, LRU cache, state machine). Read `c4StorageService.ts` and `c4StorageHandlers.ts` before implementing the import flow to confirm the `storeDiagram()` + `storeSvg()` call sequence and the state transitions that follow.
+- **Phase 5:** `simple-git` `log` API for getting last commit date — verify the exact call signature in the installed v3.28.0 TypeScript types before implementing stale detection; the `--format="%ai"` option needs to be confirmed against the installed library version.
 
 ---
 
@@ -161,47 +132,44 @@ Phases with standard patterns (skip research-phase):
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Direct code audit confirmed unused API surface; `output_config` GA in SDK 0.78.0 per official Anthropic docs; `lru-cache` v11 is TypeScript-native, widely used; all other changes are to already-installed packages |
-| Features | HIGH | Root causes identified via first-party code audit (underscore prefix convention, hardcoded pathMap, forgetDescendants placement); C4 model official spec used for quality standards |
-| Architecture | HIGH | Architecture research is based entirely on direct codebase analysis; all component boundaries and data flows verified from source files; no inference required |
-| Pitfalls | HIGH | All critical pitfalls identified from actual code, not inference; PlantUML click bug has issue tracker reference (Issue #2071); forgetDescendants issue has ts-morph issue tracker reference (Issue #738) |
+| Stack | HIGH | Verified against installed `node_modules/` TypeScript definitions and existing codebase patterns; zero new dependencies confirmed; all API methods verified present in installed versions |
+| Features | HIGH | Grounded in direct codebase audit of v1.0–v1.3 source and explicit PROJECT.md scope boundaries; features map directly to existing service APIs |
+| Architecture | HIGH | Based on direct analysis of ~40,000 lines of project source code; all integration points identified and verified; SVG pipeline gap is documented with a ranked resolution |
+| Pitfalls | HIGH | All critical pitfalls are grounded in specific codebase patterns (chokidar `ignored` regex, `fs.writeFile` non-atomicity, `contextIsolation` Electron model) with referenced external sources; not inferred from generalities |
 
 **Overall confidence:** HIGH
 
-The unusual strength of confidence for this milestone research is because it is an existing codebase with known bugs, not a greenfield project. All root causes are observable in source code rather than inferred from architectural patterns.
-
 ### Gaps to Address
 
-- **Nailgun compatibility:** `node-plantuml` Nailgun mode has reported zero-length output failures on some systems (GitHub Issue #15). Must be gated behind a feature flag with try/catch fallback. Validate on macOS, Windows, and Linux before enabling by default. Treat as optional optimization, not required fix.
-- **Non-TypeScript repo fallback:** The fallback strategy (ts-morph without tsconfig + directory heuristics + AI-only generation) is designed but not validated against actual JavaScript/Python/Go repos. Flag any non-TypeScript analysis results as lower confidence until validated.
-- **Anthropic `output_config` schema complexity limits:** Complex nested schemas may hit token limits or produce malformed responses for large codebases. Enforce token budget on `AnalysisResult` sent to AI (prioritize imports and classes relevant to the requested level) before finalizing prompt design.
-- **SQLite SVG storage size at scale:** Each C4 SVG is estimated at 50-500KB. For users with 50+ repos × 4 levels, total storage could reach 100MB. Monitor and consider LRU eviction at the storage layer for repos not accessed in 30 days.
+- **`metadata.json` vs per-level `meta.json` schema divergence:** STACK.md proposes a single `metadata.json` per repo; ARCHITECTURE.md proposes per-level `<level>.meta.json` files. Resolve this in Phase 1 before any files are written — per-level `.meta.json` files are recommended because they allow per-level `git log` history and avoid a single-file write contention point during parallel level generation.
+- **SVG pipeline gap — confirm Option A:** The architecture identifies three options for where to call `ReefStorageService.writeArtifacts()`. Option A (inside the `c4-storage:store-svg` IPC handler) is recommended. Confirm during Phase 2 that the PlantUML source can be fetched synchronously from SQLite at that point via one indexed SELECT without measurable latency impact.
+- **Windows atomic rename behavior:** `fs.rename()` on Windows fails with `EPERM` if the destination file already exists (unlike POSIX where rename atomically overwrites). Phase 1 must include a Windows-specific workaround. Validate in CI on Windows before shipping Phase 1.
+- **SVG display security:** Architecture research recommends `<img src="data:image/svg+xml;base64,...">` over `innerHTML`. Confirm the existing `PlantUMLRenderer` component already uses this pattern or plan to update it in Phase 3 when `.reef/` SVGs are first displayed.
 
 ---
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- Direct codebase analysis: `src/main/services/c4/` and `src/renderer/components/` — all root causes verified from first-party source code
-- [Anthropic Structured Outputs docs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) — `output_config.format` GA, no beta header, available in SDK 0.78.0
-- [C4 model official diagrams reference](https://c4model.com/diagrams) — Container, Component, Code level specifications used for quality standards
-- [ts-morph Functions documentation](https://ts-morph.com/details/functions) — `getFunctions()`, decorator/JSDoc APIs verified
-- [ts-morph Decorators documentation](https://ts-morph.com/details/decorators) — `getDecorators()`, `getName()`, `getArguments()` verified
-- [ts-morph JS Docs documentation](https://ts-morph.com/details/documentation) — `getJsDocs()`, `getDescription()`, `getTags()` verified
-- [PlantUML v1.2025.0 SVG click transparency bug - GitHub Issue #2071](https://github.com/plantuml/plantuml/issues/2071) — confirmed bug, resolved in v1.2025.2
+- Node.js v22 `fs/promises` API — https://nodejs.org/api/fs.html — `mkdir`, `writeFile`, `readFile`, `access`, `stat`, `readdir` verified available; `rename` atomic on POSIX
+- `simple-git` v3.28.0 TypeScript definitions — `/node_modules/simple-git/dist/typings/simple-git.d.ts` — `add()`, `commit()`, `checkIgnore()` verified present in installed package
+- `zod` v4.3.6 — https://zod.dev — `z.object()`, `z.literal()`, `z.enum()`, `.safeParse()` verified in installed version
+- Reef v1.0–v1.3 codebase direct analysis — `c4StorageService.ts`, `generationQueueService.ts`, `c4StorageHandlers.ts`, `fileWatcherService.ts`, `AddRepositoryModal.tsx`, `preload.ts`, `main.ts` — HIGH confidence; all integration points read from source
+- Git `.gitattributes` documentation — https://git-scm.com/docs/gitattributes — SVG binary merge strategy and `linguist-generated` attribute
+- Electron security documentation — https://www.electronjs.org/docs/latest/tutorial/security — `contextIsolation`, path traversal patterns in IPC handlers
 
 ### Secondary (MEDIUM confidence)
-- [LLM-Based Architecture Diagram Generation from Source Code](https://arxiv.org/html/2511.05165v1) — peer-reviewed 2025, AI-driven C4 generation patterns
-- [C4-PlantUML Component Diagrams - DeepWiki](https://deepwiki.com/plantuml-stdlib/C4-PlantUML/3.3-component-diagrams) — comprehensive C4-PlantUML reference
-- [lru-cache GitHub](https://github.com/isaacs/node-lru-cache) — v11.2.6, TypeScript-native, 350M+ weekly downloads
-- [Auto-Generate Architecture Diagrams from Code - BSWEN](https://docs.bswen.com/blog/2026-02-25-auto-generate-architecture-diagrams/) — current practice patterns 2026
-- [Generating C4 Diagrams with LLMs - IcePanel comparison](https://icepanel.io/blog/2025-08-18-comparison-llms-for-creating-software-architecture-diagrams) — 2025 empirical LLM comparison
+- Structurizr DSL repository patterns — https://docs.structurizr.com/dsl — per-repo workspace file pattern informed `.reef/` folder design approach
+- Version Control Your Diagrams (community) — establishes `.puml` + `.svg` file pair convention used in CI workflows
+- chokidar npm package — https://www.npmjs.com/package/chokidar — `ignored` function predicate pattern and `awaitWriteFinish` stability threshold
+- JSON Schema versioning strategies — https://yokota.blog/2021/03/29/understanding-json-schema-compatibility/ — additive-only schema change guidance; `schemaVersion` field pattern
 
-### Tertiary (requires validation)
-- [node-plantuml Nailgun compatibility issue #15](https://github.com/markushedvall/node-plantuml/issues/15) — known failures on some installs; gate Nailgun behind feature flag
-- [forgetDescendants side effects - ts-morph Issue #738](https://github.com/dsherret/ts-morph/issues/738) — documents the invalidation behavior
+### Tertiary (context only)
+- Swark VS Code extension — https://github.com/swark-io/swark — on-demand-only approach studied as alternative pattern to rule out; no persistence
+- GitDiagram — on-demand-only approach; no persistence; confirms Reef's differentiated value of local repo storage
+- Managing Large Git Repositories (GitHub Well-Architected) — SVG file bloat prevention in version-controlled repos
 
 ---
 
-*Research completed: 2026-03-02*
+*Research completed: 2026-03-26*
 *Ready for roadmap: yes*
