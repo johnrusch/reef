@@ -58,7 +58,7 @@ See: `.planning/milestones/v1.3-ROADMAP.md` for full details.
 
 </details>
 
-### 🚧 v1.4 Repo-Stored Diagrams (In Progress)
+### v1.4 Repo-Stored Diagrams (In Progress)
 
 **Milestone Goal:** Store C4 diagram artifacts in a `.reef/` folder within each repository so diagrams are shared, version-controlled, and render instantly.
 
@@ -81,7 +81,7 @@ See: `.planning/milestones/v1.3-ROADMAP.md` for full details.
 **Plans**: 2 plans
 Plans:
 - [x] 17-01-PLAN.md — ReefStorageService types, service, and tests (STOR-01, STOR-02, STOR-04)
-- [ ] 17-02-PLAN.md — Chokidar .reef/ exclusion patch and tests (STOR-03)
+- [x] 17-02-PLAN.md — Chokidar .reef/ exclusion patch and tests (STOR-03)
 
 ### Phase 18: Write Path
 **Goal**: Every successful C4 diagram generation automatically writes PlantUML source, rendered SVG, and source-code hash to `.reef/` — no user action required
@@ -93,8 +93,8 @@ Plans:
   3. A failure writing to `.reef/` does not prevent diagram display or corrupt the SQLite state (write is non-fatal; SQLite remains source of truth)
 **Plans**: 2 plans
 Plans:
-- [ ] 17-01-PLAN.md — ReefStorageService types, service, and tests (STOR-01, STOR-02, STOR-04)
-- [ ] 17-02-PLAN.md — Chokidar .reef/ exclusion patch and tests (STOR-03)
+- [ ] 18-01-PLAN.md — Source hash utility and ReefMetaJson schema extension (WRITE-02)
+- [ ] 18-02-PLAN.md — Wire store-svg handler to write .reef/ artifacts (WRITE-01, WRITE-02)
 
 ### Phase 19: Read Path
 **Goal**: Users who add a repository that already has a `.reef/` folder see diagrams immediately — no AI call, no PlantUML render, no wait
@@ -104,10 +104,7 @@ Plans:
   1. When a user adds a repository with a complete `.reef/` folder, the generation prompt is skipped and diagrams appear instantly from stored SVGs
   2. SVGs from `.reef/` display in the diagram viewer at the same visual quality as freshly rendered diagrams — no additional PlantUML rendering step occurs
   3. When a user adds a repository with a partial `.reef/` folder (e.g., only the context level present), the available levels display immediately and the missing levels are automatically queued for generation
-**Plans**: 2 plans
-Plans:
-- [ ] 17-01-PLAN.md — ReefStorageService types, service, and tests (STOR-01, STOR-02, STOR-04)
-- [ ] 17-02-PLAN.md — Chokidar .reef/ exclusion patch and tests (STOR-03)
+**Plans**: [To be planned]
 **UI hint**: yes
 
 ### Phase 20: Regeneration and Stale Detection
@@ -117,10 +114,7 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. A user can trigger regeneration from the toolbar and, on completion, find the updated `.puml`, `.svg`, and `.meta.json` artifacts written to `.reef/` — ready to commit and share with teammates
   2. When `.reef/` diagram data predates recent code changes (detected by comparing stored hash or generation timestamp against current file state), the user sees a stale indicator without having to trigger regeneration to find out
-**Plans**: 2 plans
-Plans:
-- [ ] 17-01-PLAN.md — ReefStorageService types, service, and tests (STOR-01, STOR-02, STOR-04)
-- [ ] 17-02-PLAN.md — Chokidar .reef/ exclusion patch and tests (STOR-03)
+**Plans**: [To be planned]
 **UI hint**: yes
 
 ## Progress
@@ -143,10 +137,10 @@ Plans:
 | 14. Rendering Performance | v1.2 | 2/2 | Complete | 2026-03-03 |
 | 15. UI Cleanup | v1.3 | 2/2 | Complete | 2026-03-04 |
 | 16. Explorer UI | v1.3 | 2/2 | Complete | 2026-03-06 |
-| 17. Storage Foundation | v1.4 | 1/2 | Complete    | 2026-03-27 |
-| 18. Write Path | v1.4 | 0/? | Not started | - |
+| 17. Storage Foundation | v1.4 | 2/2 | Complete | 2026-03-27 |
+| 18. Write Path | v1.4 | 0/2 | Not started | - |
 | 19. Read Path | v1.4 | 0/? | Not started | - |
 | 20. Regeneration and Stale Detection | v1.4 | 0/? | Not started | - |
 
 ---
-*Last updated: 2026-03-26 — v1.4 roadmap created*
+*Last updated: 2026-03-27 — Phase 18 planned*
