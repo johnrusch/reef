@@ -116,8 +116,10 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. A user can trigger regeneration from the toolbar and, on completion, find the updated `.puml`, `.svg`, and `.meta.json` artifacts written to `.reef/` — ready to commit and share with teammates
   2. When `.reef/` diagram data predates recent code changes (detected by comparing stored hash or generation timestamp against current file state), the user sees a stale indicator without having to trigger regeneration to find out
-**Plans**: [To be planned]
-**UI hint**: yes
+**Plans**: 2 plans
+Plans:
+- [ ] 20-01-PLAN.md — ReefStalenessService: hash-based stale detection with debounced file change handling (REGEN-02)
+- [ ] 20-02-PLAN.md — Stale-aware regeneration flow with UI feedback (REGEN-01)
 
 ## Progress
 
@@ -142,7 +144,7 @@ Plans:
 | 17. Storage Foundation | v1.4 | 2/2 | Complete | 2026-03-27 |
 | 18. Write Path | v1.4 | 1/2 | Complete    | 2026-03-27 |
 | 19. Read Path | v1.4 | 2/2 | Complete    | 2026-03-27 |
-| 20. Regeneration and Stale Detection | v1.4 | 0/? | Not started | - |
+| 20. Regeneration and Stale Detection | v1.4 | 0/2 | Planning complete | - |
 
 ---
-*Last updated: 2026-03-27 — Phase 18 planned*
+*Last updated: 2026-03-27 — Phase 20 planned*
