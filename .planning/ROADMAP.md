@@ -64,7 +64,7 @@ See: `.planning/milestones/v1.3-ROADMAP.md` for full details.
 
 - [x] **Phase 17: Storage Foundation** - Define `.reef/` folder contract, chokidar exclusion, and ReefStorageService core (completed 2026-03-27)
 - [x] **Phase 18: Write Path** - Hook generation pipeline to auto-write artifacts to `.reef/` after every successful generation (completed 2026-03-27)
-- [ ] **Phase 19: Read Path** - Load existing `.reef/` artifacts on repo import for instant display without AI regeneration
+- [x] **Phase 19: Read Path** - Load existing `.reef/` artifacts on repo import for instant display without AI regeneration (completed 2026-03-27)
 - [ ] **Phase 20: Regeneration and Stale Detection** - Manual regenerate-and-save UI and stale indicator when stored diagrams predate code changes
 
 ## Phase Details
@@ -104,8 +104,10 @@ Plans:
   1. When a user adds a repository with a complete `.reef/` folder, the generation prompt is skipped and diagrams appear instantly from stored SVGs
   2. SVGs from `.reef/` display in the diagram viewer at the same visual quality as freshly rendered diagrams — no additional PlantUML rendering step occurs
   3. When a user adds a repository with a partial `.reef/` folder (e.g., only the context level present), the available levels display immediately and the missing levels are automatically queued for generation
-**Plans**: [To be planned]
-**UI hint**: yes
+**Plans**: 2 plans
+Plans:
+- [x] 19-01-PLAN.md — Reef import service: importReefArtifacts, IPC handler, preload bridge (READ-01, READ-02, READ-03)
+- [x] 19-02-PLAN.md — AddRepositoryModal reef-import wiring with toast notifications (READ-01, READ-02, READ-03)
 
 ### Phase 20: Regeneration and Stale Detection
 **Goal**: Users can explicitly refresh stored diagrams after code changes and see a clear indicator when their `.reef/` data is older than recent commits
@@ -139,7 +141,7 @@ Plans:
 | 16. Explorer UI | v1.3 | 2/2 | Complete | 2026-03-06 |
 | 17. Storage Foundation | v1.4 | 2/2 | Complete | 2026-03-27 |
 | 18. Write Path | v1.4 | 1/2 | Complete    | 2026-03-27 |
-| 19. Read Path | v1.4 | 0/? | Not started | - |
+| 19. Read Path | v1.4 | 2/2 | Complete | 2026-03-27 |
 | 20. Regeneration and Stale Detection | v1.4 | 0/? | Not started | - |
 
 ---
