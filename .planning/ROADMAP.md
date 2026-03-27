@@ -62,7 +62,7 @@ See: `.planning/milestones/v1.3-ROADMAP.md` for full details.
 
 **Milestone Goal:** Store C4 diagram artifacts in a `.reef/` folder within each repository so diagrams are shared, version-controlled, and render instantly.
 
-- [ ] **Phase 17: Storage Foundation** - Define `.reef/` folder contract, chokidar exclusion, and ReefStorageService core
+- [x] **Phase 17: Storage Foundation** - Define `.reef/` folder contract, chokidar exclusion, and ReefStorageService core (completed 2026-03-27)
 - [ ] **Phase 18: Write Path** - Hook generation pipeline to auto-write artifacts to `.reef/` after every successful generation
 - [ ] **Phase 19: Read Path** - Load existing `.reef/` artifacts on repo import for instant display without AI regeneration
 - [ ] **Phase 20: Regeneration and Stale Detection** - Manual regenerate-and-save UI and stale indicator when stored diagrams predate code changes
@@ -143,7 +143,7 @@ Plans:
 | 14. Rendering Performance | v1.2 | 2/2 | Complete | 2026-03-03 |
 | 15. UI Cleanup | v1.3 | 2/2 | Complete | 2026-03-04 |
 | 16. Explorer UI | v1.3 | 2/2 | Complete | 2026-03-06 |
-| 17. Storage Foundation | v1.4 | 1/2 | In Progress|  |
+| 17. Storage Foundation | v1.4 | 1/2 | Complete    | 2026-03-27 |
 | 18. Write Path | v1.4 | 0/? | Not started | - |
 | 19. Read Path | v1.4 | 0/? | Not started | - |
 | 20. Regeneration and Stale Detection | v1.4 | 0/? | Not started | - |
