@@ -59,10 +59,11 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 - ✓ Sidebar auto-highlight on drill-down navigation — v1.3
 - ✓ Single-button "Generate All Diagrams" flow for first-visit — v1.3
 - ✓ Minimal 2-button toolbar (Regenerate + Show/Hide Changes) — v1.3
+- ✓ `.reef/` folder structure with ReefStorageService (atomic writes, schema validation, .gitattributes) — v1.4
+- ✓ Chokidar `.reef/` exclusion preventing false file-change events — v1.4
 
 ### Active
 
-- [ ] `.reef/` folder structure storing PlantUML source, AI analysis metadata, and pre-rendered SVGs per repository
 - [ ] On repo import, read existing `.reef/` data instead of regenerating diagrams from scratch
 - [ ] If no `.reef/` exists, generate diagrams and write results to `.reef/`
 - [ ] Manual "regenerate and save" to refresh stored diagrams after code changes
@@ -99,7 +100,7 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 
 ## Context
 
-**Current State (v1.3 shipped):**
+**Current State (Phase 17 complete — v1.4 in progress):**
 - ~40,000 lines of TypeScript
 - Tech stack: Electron, React, Vite, Tailwind, Zustand, simple-git, Octokit
 - C4 stack: ts-morph, @anthropic-ai/sdk v0.78.0, better-sqlite3, chokidar, zod
