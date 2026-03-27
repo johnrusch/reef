@@ -80,7 +80,7 @@ See: `.planning/milestones/v1.3-ROADMAP.md` for full details.
   4. A `.gitattributes` file marking `.reef/*.svg` and `.reef/*.puml` as binary is created alongside the first write, preventing SVG merge conflicts
 **Plans**: 2 plans
 Plans:
-- [ ] 17-01-PLAN.md — ReefStorageService types, service, and tests (STOR-01, STOR-02, STOR-04)
+- [x] 17-01-PLAN.md — ReefStorageService types, service, and tests (STOR-01, STOR-02, STOR-04)
 - [ ] 17-02-PLAN.md — Chokidar .reef/ exclusion patch and tests (STOR-03)
 
 ### Phase 18: Write Path
@@ -143,7 +143,7 @@ Plans:
 | 14. Rendering Performance | v1.2 | 2/2 | Complete | 2026-03-03 |
 | 15. UI Cleanup | v1.3 | 2/2 | Complete | 2026-03-04 |
 | 16. Explorer UI | v1.3 | 2/2 | Complete | 2026-03-06 |
-| 17. Storage Foundation | v1.4 | 0/2 | Planning complete | - |
+| 17. Storage Foundation | v1.4 | 1/2 | In Progress|  |
 | 18. Write Path | v1.4 | 0/? | Not started | - |
 | 19. Read Path | v1.4 | 0/? | Not started | - |
 | 20. Regeneration and Stale Detection | v1.4 | 0/? | Not started | - |

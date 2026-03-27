@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Repo-Stored Diagrams
-status: planning
-stopped_at: Phase 17 context gathered
-last_updated: "2026-03-27T01:34:15.690Z"
-last_activity: 2026-03-26 — v1.4 roadmap created, phases 17-20 defined
+status: executing
+stopped_at: Completed 17-01-PLAN.md
+last_updated: "2026-03-27T02:57:21.568Z"
+last_activity: 2026-03-27
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Users can quickly grasp unfamiliar codebase architecture through AI-generated C4 diagrams that update as code changes
-**Current focus:** Phase 17 — Storage Foundation (v1.4 start)
+**Current focus:** Phase 17 — storage-foundation
 
 ## Current Position
 
-Phase: 17 of 20 (Storage Foundation)
-Plan: 0 of ? in current phase
-Status: Ready to plan
-Last activity: 2026-03-26 — v1.4 roadmap created, phases 17-20 defined
+Phase: 17 (storage-foundation) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-03-27
 
 Progress: [░░░░░░░░░░] 0% (0/4 v1.4 phases complete)
 
@@ -53,6 +53,8 @@ Recent decisions affecting v1.4 work:
 - [v1.4 research]: Chokidar exclusion must land in Phase 17 before any write code in Phase 18 — reversed order causes infinite generation loop
 - [v1.4 research]: Write insertion point is `c4-storage:store-svg` IPC handler in `c4StorageHandlers.ts`
 - [v1.3]: GEN-01 partial — component/code generation requires elementId from drill-down; revisit in future milestone
+- [Phase 17]: Atomic write uses temp-then-rename with Windows EPERM unlink-first pattern (D-08)
+- [Phase 17]: ESM vi.spyOn limitation on fs/promises — test .tmp cleanup via post-write verification
 
 ### Blockers/Concerns
 
@@ -62,9 +64,9 @@ Recent decisions affecting v1.4 work:
 
 ## Session Continuity
 
-Last session: 2026-03-27T01:34:15.687Z
-Stopped at: Phase 17 context gathered
-Resume file: .planning/phases/17-storage-foundation/17-CONTEXT.md
+Last session: 2026-03-27T02:57:21.566Z
+Stopped at: Completed 17-01-PLAN.md
+Resume file: None
 
 ---
 *v1.4 Repo-Stored Diagrams — roadmap created 2026-03-26*

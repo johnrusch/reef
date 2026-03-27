@@ -9,10 +9,10 @@ Requirements for milestone v1.4 Repo-Stored Diagrams. Each maps to roadmap phase
 
 ### Storage Foundation
 
-- [ ] **STOR-01**: User can see a `.reef/` folder created in their repository with a defined structure (per-level `.puml`, `.svg`, `metadata.json`)
-- [ ] **STOR-02**: `.reef/metadata.json` includes a `schemaVersion` field for forward compatibility
+- [x] **STOR-01**: User can see a `.reef/` folder created in their repository with a defined structure (per-level `.puml`, `.svg`, `metadata.json`)
+- [x] **STOR-02**: `.reef/metadata.json` includes a `schemaVersion` field for forward compatibility
 - [ ] **STOR-03**: File writes to `.reef/` do not trigger false stale-diagram events in the app (chokidar exclusion)
-- [ ] **STOR-04**: `.reef/` folder includes auto-generated `.gitattributes` marking SVGs as binary to prevent merge conflicts
+- [x] **STOR-04**: `.reef/` folder includes auto-generated `.gitattributes` marking SVGs as binary to prevent merge conflicts
 
 ### Write Path
 
@@ -59,10 +59,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| STOR-01 | Phase 17 | Pending |
-| STOR-02 | Phase 17 | Pending |
+| STOR-01 | Phase 17 | Complete |
+| STOR-02 | Phase 17 | Complete |
 | STOR-03 | Phase 17 | Pending |
-| STOR-04 | Phase 17 | Pending |
+| STOR-04 | Phase 17 | Complete |
 | WRITE-01 | Phase 18 | Pending |
 | WRITE-02 | Phase 18 | Pending |
 | READ-01 | Phase 19 | Pending |
