@@ -4,6 +4,7 @@ import * as Tabs from '@radix-ui/react-tabs';
 import { useRepositoryStore } from '../stores/repositoryStore';
 import GenerationPromptModal from './GenerationPromptModal';
 import { useGenerationQueueStore } from '../stores/generationQueueStore';
+import { useToastStore } from '../stores/toastStore';
 
 interface AddRepositoryModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ const AddRepositoryModal: React.FC<AddRepositoryModalProps> = ({ isOpen, onClose
   const [addedRepoName, setAddedRepoName] = useState<string | null>(null);
   const { addRepository, repositories } = useRepositoryStore();
   const { addJob } = useGenerationQueueStore();
+  const { addToast } = useToastStore();
 
   const handleSelectDirectory = async () => {
     setError(null);
@@ -82,6 +84,51 @@ const AddRepositoryModal: React.FC<AddRepositoryModalProps> = ({ isOpen, onClose
         currentBranch: repoDetails.branch,
         status: repoDetails.status,
       });
+
+      // Check for .reef/ folder before the generation prompt decision
+      let reefHandled = false;
+      try {
+        const importResult = await window.reef.reefImport.scanAndImport(selectedPath);
+        const { importedLevels, missingLevels } = importResult;
+
+        if (importedLevels.length > 0) {
+          reefHandled = true;
+          if (missingLevels.length === 0) {
+            // Complete .reef/ — skip generation prompt entirely, show toast
+            const diagramCount = importedLevels.length;
+            const diagramWord = diagramCount === 1 ? 'diagram' : 'diagrams';
+            addToast({
+              type: 'info',
+              message: `Loaded ${diagramWord} from .reef/`,
+              duration: 4000,
+            });
+          } else {
+            // Partial .reef/ — import available, enqueue missing levels
+            const importedCount = importedLevels.length;
+            const missingCount = missingLevels.length;
+            const diagramWord = importedCount === 1 ? 'diagram' : 'diagrams';
+            const levelWord = missingCount === 1 ? 'level' : 'levels';
+            addToast({
+              type: 'info',
+              message: `Loaded ${importedCount} ${diagramWord} from .reef/ — generating ${missingCount} missing ${levelWord}...`,
+              duration: 6000,
+            });
+            // Enqueue generation for the missing levels (uses full queue for simplicity)
+            addJob(selectedPath, repoDetails.name);
+            void window.reef.c4Generation.enqueue(selectedPath, repoDetails.name);
+          }
+          setSelectedPath(null);
+          setRepoDetails(null);
+          setError(null);
+          onClose();
+        }
+        // If importedLevels is empty, fall through to normal generation prompt flow
+      } catch (reefErr) {
+        // Non-fatal: log and fall through to normal generation prompt flow (D-11)
+        console.warn('[AddRepositoryModal] .reef/ import failed, falling through:', reefErr);
+      }
+
+      if (reefHandled) return;
 
       // Check auto-generate preference before closing
       const settings = await window.reef.diagramSettings.get();
