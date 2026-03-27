@@ -414,4 +414,64 @@ describe('FileWatcherService', () => {
       expect(ignoredFn('/test/repo/package.json')).toBe(false);
     });
   });
+
+  // ====== Test 8: .reef/ exclusion (STOR-03) ======
+
+  describe('.reef/ exclusion (STOR-03)', () => {
+    it('ignores .reef/context.puml path', () => {
+      service.startWatching(REPO_PATH, 'component');
+
+      const ignoredFn = currentMockWatcher._capturedOptions!['ignored'] as (p: string) => boolean;
+
+      expect(ignoredFn('/Users/dev/myrepo/.reef/context.puml')).toBe(true);
+    });
+
+    it('ignores .reef/component/api-server/diagram.svg path', () => {
+      service.startWatching(REPO_PATH, 'component');
+
+      const ignoredFn = currentMockWatcher._capturedOptions!['ignored'] as (p: string) => boolean;
+
+      expect(ignoredFn('/Users/dev/myrepo/.reef/component/api-server/diagram.svg')).toBe(true);
+    });
+
+    it('ignores bare .reef directory path', () => {
+      service.startWatching(REPO_PATH, 'component');
+
+      const ignoredFn = currentMockWatcher._capturedOptions!['ignored'] as (p: string) => boolean;
+
+      expect(ignoredFn('/Users/dev/myrepo/.reef')).toBe(true);
+    });
+
+    it('ignores .reef with backslash separator (Windows)', () => {
+      service.startWatching(REPO_PATH, 'component');
+
+      const ignoredFn = currentMockWatcher._capturedOptions!['ignored'] as (p: string) => boolean;
+
+      expect(ignoredFn('C:\\Users\\dev\\myrepo\\.reef\\context.puml')).toBe(true);
+    });
+
+    it('does NOT ignore path containing just "reef" without dot', () => {
+      service.startWatching(REPO_PATH, 'component');
+
+      const ignoredFn = currentMockWatcher._capturedOptions!['ignored'] as (p: string) => boolean;
+
+      expect(ignoredFn('/Users/dev/reef/src/app.ts')).toBe(false);
+    });
+
+    it('still ignores node_modules (regression check)', () => {
+      service.startWatching(REPO_PATH, 'component');
+
+      const ignoredFn = currentMockWatcher._capturedOptions!['ignored'] as (p: string) => boolean;
+
+      expect(ignoredFn('/Users/dev/myrepo/node_modules/express/index.js')).toBe(true);
+    });
+
+    it('still ignores .git (regression check)', () => {
+      service.startWatching(REPO_PATH, 'component');
+
+      const ignoredFn = currentMockWatcher._capturedOptions!['ignored'] as (p: string) => boolean;
+
+      expect(ignoredFn('/Users/dev/myrepo/.git/HEAD')).toBe(true);
+    });
+  });
 });
