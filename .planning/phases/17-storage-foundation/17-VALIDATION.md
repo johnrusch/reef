@@ -18,7 +18,7 @@ created: 2026-03-26
 | Property | Value |
 |----------|-------|
 | **Framework** | vitest |
-| **Config file** | `vitest.config.ts` |
+| **Config file** | `vitest.config.main.ts` |
 | **Quick run command** | `npm run test:unit` |
 | **Full suite command** | `npm test` |
 | **Estimated runtime** | ~30 seconds |
@@ -38,10 +38,10 @@ created: 2026-03-26
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 17-01-01 | 01 | 1 | STOR-01 | unit | `npm run test:unit` | ❌ W0 | ⬜ pending |
-| 17-01-02 | 01 | 1 | STOR-02 | unit | `npm run test:unit` | ❌ W0 | ⬜ pending |
-| 17-01-03 | 01 | 1 | STOR-03 | unit | `npm run test:unit` | ❌ W0 | ⬜ pending |
-| 17-01-04 | 01 | 1 | STOR-04 | unit | `npm run test:unit` | ❌ W0 | ⬜ pending |
+| 17-01-01 | 01 | 1 | STOR-01 | unit | `npx vitest run --config vitest.config.main.ts tests/unit/main/services/reefStorageService.test.ts` | ❌ W0 | ⬜ pending |
+| 17-01-01 | 01 | 1 | STOR-02 | unit | `npx vitest run --config vitest.config.main.ts tests/unit/main/services/reefStorageService.test.ts` | ❌ W0 | ⬜ pending |
+| 17-01-01 | 01 | 1 | STOR-04 | unit | `npx vitest run --config vitest.config.main.ts tests/unit/main/services/reefStorageService.test.ts` | ❌ W0 | ⬜ pending |
+| 17-02-01 | 02 | 1 | STOR-03 | unit | `npx vitest run --config vitest.config.main.ts tests/unit/main/services/fileWatcherService.test.ts` | ✅ (extend existing) | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -49,9 +49,8 @@ created: 2026-03-26
 
 ## Wave 0 Requirements
 
-- [ ] `tests/unit/main/services/reefStorageService.test.ts` — stubs for STOR-01, STOR-02
-- [ ] `tests/unit/main/services/fileWatcherService.test.ts` — stubs for STOR-03
-- [ ] `tests/unit/main/services/gitattributesWriter.test.ts` — stubs for STOR-04
+- [ ] `tests/unit/main/services/reefStorageService.test.ts` — stubs for STOR-01, STOR-02, STOR-04
+- [ ] `tests/unit/main/services/fileWatcherService.test.ts` — extend existing with STOR-03 test cases (file exists, add cases)
 
 *Existing vitest infrastructure covers framework needs — no new installs required.*
 
