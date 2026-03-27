@@ -99,7 +99,7 @@ const AddRepositoryModal: React.FC<AddRepositoryModalProps> = ({ isOpen, onClose
             const diagramWord = diagramCount === 1 ? 'diagram' : 'diagrams';
             addToast({
               type: 'info',
-              message: `Loaded ${diagramWord} from .reef/`,
+              message: `Loaded ${diagramCount} ${diagramWord} from .reef/`,
               duration: 4000,
             });
           } else {
