@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Repo-Stored Diagrams
 status: completed
-stopped_at: Completed 19-02-PLAN.md
-last_updated: "2026-03-27T22:26:46.549Z"
+stopped_at: Phase 20 context gathered
+last_updated: "2026-03-27T23:23:34.085Z"
 last_activity: 2026-03-27
 progress:
   total_phases: 4
@@ -70,9 +70,9 @@ Recent decisions affecting v1.4 work:
 
 ## Session Continuity
 
-Last session: 2026-03-27T22:23:03.290Z
-Stopped at: Completed 19-02-PLAN.md
-Resume file: None
+Last session: 2026-03-27T23:23:34.082Z
+Stopped at: Phase 20 context gathered
+Resume file: .planning/phases/20-regeneration-and-stale-detection/20-CONTEXT.md
 
 ---
 *v1.4 Repo-Stored Diagrams — roadmap created 2026-03-26*
