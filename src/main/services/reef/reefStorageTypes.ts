@@ -10,6 +10,7 @@ export const ReefMetaSchema = z.object({
   modelUsed: z.string().optional(),
   promptVersion: z.string().optional(),
   tokensUsed: z.number().optional(),
+  sourceHash: z.string().optional(),
 });
 
 export type ReefMetaJson = z.infer<typeof ReefMetaSchema>;
