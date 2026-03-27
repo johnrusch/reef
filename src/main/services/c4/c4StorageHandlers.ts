@@ -6,6 +6,7 @@ import { ReefStorageService } from '../reef/reefStorageService';
 import { computeSourceHash } from '../reef/sourceHashService';
 import { getAnalyzedFilePaths, clearAnalyzedFilePaths } from './c4AnalyzerService';
 import { REEF_SCHEMA_VERSION, FLAT_LEVELS } from '../reef/reefStorageTypes';
+import { importReefArtifacts } from '../reef/reefImportService';
 import type { ReefMetaJson, FlatLevel, NestedLevel } from '../reef/reefStorageTypes';
 import type { DiagramState, StoredDiagram } from '../../../shared/types/diagramState';
 import type { C4Level } from './types/c4Types';
@@ -209,6 +210,11 @@ export function registerC4StorageHandlers(): void {
     await writeReefArtifacts(repoPath, level, svg, elementId);
 
     return { success: true };
+  });
+
+  // Import .reef/ artifacts into SQLite + LRU cache (READ-01, READ-02)
+  ipcMain.handle('reef-import:scan-and-import', async (_, repoPath: string) => {
+    return importReefArtifacts(repoPath, getStorageService(), svgLruCache);
   });
 }
 
