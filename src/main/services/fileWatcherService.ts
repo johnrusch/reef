@@ -54,7 +54,7 @@ export class FileWatcherService {
         // Chokidar v4 bundles anymatch which uses exact string equality for string matchers,
         // NOT glob expansion. Glob strings like '**/node_modules/**' silently match nothing.
         ignored: (filePath: string) =>
-          /node_modules|\.git[/\\]|[/\\]dist[/\\]|dist-electron|\.cache|[/\\]build[/\\]|[/\\]coverage[/\\]/.test(filePath),
+          /node_modules|\.git[/\\]|[/\\]dist[/\\]|dist-electron|\.cache|[/\\]build[/\\]|[/\\]coverage[/\\]|\.reef($|[/\\])/.test(filePath),
         awaitWriteFinish: {
           stabilityThreshold: 100, // 100ms debounce
           pollInterval: 50,

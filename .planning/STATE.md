@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Repo-Stored Diagrams
 status: executing
-stopped_at: Completed 17-01-PLAN.md
+stopped_at: Completed 17-01 and 17-02
 last_updated: "2026-03-27T02:57:21.568Z"
 last_activity: 2026-03-27
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-03-26)
 ## Current Position
 
 Phase: 17 (storage-foundation) — EXECUTING
-Plan: 2 of 2
-Status: Ready to execute
+Plan: 2 of 2 — COMPLETE
+Status: All plans complete — ready for verification
 Last activity: 2026-03-27
 
 Progress: [░░░░░░░░░░] 0% (0/4 v1.4 phases complete)
@@ -55,6 +55,7 @@ Recent decisions affecting v1.4 work:
 - [v1.3]: GEN-01 partial — component/code generation requires elementId from drill-down; revisit in future milestone
 - [Phase 17]: Atomic write uses temp-then-rename with Windows EPERM unlink-first pattern (D-08)
 - [Phase 17]: ESM vi.spyOn limitation on fs/promises — test .tmp cleanup via post-write verification
+- [Phase 17]: Used ($|[/\\]) variant for .reef regex to cover bare dir path emitted by chokidar on directory creation
 
 ### Blockers/Concerns
 
@@ -65,7 +66,7 @@ Recent decisions affecting v1.4 work:
 ## Session Continuity
 
 Last session: 2026-03-27T02:57:21.566Z
-Stopped at: Completed 17-01-PLAN.md
+Stopped at: Completed 17-01 and 17-02
 Resume file: None
 
 ---
