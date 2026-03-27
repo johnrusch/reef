@@ -21,6 +21,20 @@ import type { AnalysisResult } from './types/analysisTypes';
 import type { StoredDiagram } from '../../../shared/types/diagramState';
 import type { EnrichedArchitecture } from './types/enrichmentTypes';
 
+// Module-level cache of analyzed file paths per generation run.
+// Keyed by "repoPath:level:elementId" — consumed by store-svg handler for source hash.
+const analyzedFilePathsCache = new Map<string, string[]>();
+
+export function getAnalyzedFilePaths(repoPath: string, level: string, elementId?: string): string[] | undefined {
+  const key = [repoPath, level, elementId ?? ''].join(':');
+  return analyzedFilePathsCache.get(key);
+}
+
+export function clearAnalyzedFilePaths(repoPath: string, level: string, elementId?: string): void {
+  const key = [repoPath, level, elementId ?? ''].join(':');
+  analyzedFilePathsCache.delete(key);
+}
+
 export class C4AnalyzerService {
   private staticAnalyzer: StaticAnalyzerService;
   private aiEnricher: AIEnricherService;
@@ -85,6 +99,15 @@ export class C4AnalyzerService {
           error: `Static analysis failed: ${staticData.error}`,
         };
       }
+
+      // Extract unique file paths from static analysis for source hash computation (D-03, D-04)
+      const filePathSet = new Set<string>();
+      for (const cls of staticData.structure.classes) { filePathSet.add(cls.file); }
+      for (const iface of staticData.structure.interfaces) { filePathSet.add(iface.file); }
+      for (const fn of staticData.structure.functions) { filePathSet.add(fn.file); }
+
+      const cacheKey = [repoPath, level, elementId ?? ''].join(':');
+      analyzedFilePathsCache.set(cacheKey, Array.from(filePathSet));
 
       // Phase 2: AI Enrichment
       console.log(`[C4 Analyzer] Phase 2: AI enrichment`);
