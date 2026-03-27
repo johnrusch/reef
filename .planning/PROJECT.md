@@ -61,12 +61,13 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 - ✓ Minimal 2-button toolbar (Regenerate + Show/Hide Changes) — v1.3
 - ✓ `.reef/` folder structure with ReefStorageService (atomic writes, schema validation, .gitattributes) — v1.4
 - ✓ Chokidar `.reef/` exclusion preventing false file-change events — v1.4
+- ✓ Automatic `.reef/` write-through on diagram generation (store-svg handler writes .puml, .svg, .meta.json) — v1.4
+- ✓ Source hash computation (SHA-256 of analyzed files) in `.meta.json` for staleness detection — v1.4
 
 ### Active
 
 - [ ] On repo import, read existing `.reef/` data instead of regenerating diagrams from scratch
-- [ ] If no `.reef/` exists, generate diagrams and write results to `.reef/`
-- [ ] Manual "regenerate and save" to refresh stored diagrams after code changes
+- [ ] Instant diagram display from stored SVGs (bypass PlantUML rendering)
 - [ ] Instant diagram display from stored SVGs (bypass PlantUML rendering)
 - [ ] Consistent diagrams across team members sharing the same repository
 
@@ -100,7 +101,7 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 
 ## Context
 
-**Current State (Phase 17 complete — v1.4 in progress):**
+**Current State (Phase 18 complete — v1.4 in progress):**
 - ~40,000 lines of TypeScript
 - Tech stack: Electron, React, Vite, Tailwind, Zustand, simple-git, Octokit
 - C4 stack: ts-morph, @anthropic-ai/sdk v0.78.0, better-sqlite3, chokidar, zod
@@ -180,4 +181,4 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 | GEN-01 partial (component/code require elementId) | v1.3: Architectural constraint — deferred rather than blocking ship | ⚠️ Revisit |
 
 ---
-*Last updated: 2026-03-26 after v1.4 milestone start*
+*Last updated: 2026-03-27 after Phase 18 write-path completion*
