@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Repo-Stored Diagrams
-status: planned
-stopped_at: Phase 18 planned — ready for execution
-last_updated: "2026-03-27T12:00:00.000Z"
+status: in_progress
+stopped_at: Completed 18-01-PLAN.md
+last_updated: "2026-03-27T13:40:00.000Z"
 last_activity: 2026-03-27
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 2
   completed_plans: 2
-  percent: 0
+  percent: 25
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-03-26)
 
 ## Current Position
 
-Phase: 18
-Plan: 2 plans in 2 waves
-Status: Planned — ready for execution
-Last activity: 2026-03-27
+Phase: 18 (write-path)
+Plan: 01 of 02 — COMPLETE
+Status: Plan 18-01 complete — sourceHash schema extension and hash utility shipped
+Last activity: 2026-03-27 — Plan 18-01 completed, all tests pass
 
-Progress: [░░░░░░░░░░] 0% (0/4 v1.4 phases complete)
+Progress: [██░░░░░░░░] 25% (1/4 v1.4 phases in progress)
 
 ## Performance Metrics
 
@@ -48,6 +48,11 @@ Progress: [░░░░░░░░░░] 0% (0/4 v1.4 phases complete)
 
 Recent decisions affecting v1.4 work:
 
+- [Phase 18-01]: sourceHash is optional in ReefMetaSchema for backward compatibility with pre-18 .meta.json files
+- [Phase 18-01]: computeSourceHash sorts file paths before hashing so input order does not affect the digest
+- [Phase 18-01]: File path included in hash update so renaming a file changes the hash even if content is identical
+- [Phase 18-01]: ENOENT files silently skipped; other errors re-thrown
+
 - [v1.4 research]: Per-level `.meta.json` files preferred over single `metadata.json` — avoids write contention during parallel level generation
 - [v1.4 research]: SQLite-first, `.reef/`-second dual-write ordering — `.reef/` write failure is non-fatal
 - [v1.4 research]: Chokidar exclusion must land in Phase 17 before any write code in Phase 18 — reversed order causes infinite generation loop
@@ -63,10 +68,16 @@ Recent decisions affecting v1.4 work:
 - [v1.3 carryover]: DiagramViewer.uicl.test.tsx Zustand mock regression (selector-aware mock needed)
 - [v1.4 Phase 17]: Windows atomic rename — `fs.rename()` with EPERM if destination exists; needs platform branch
 
+## Performance Metrics — Phase 18
+
+| Phase | Plan | Duration | Tasks | Files |
+|-------|------|----------|-------|-------|
+| 18-write-path | 01 | 2min | 2 | 4 |
+
 ## Session Continuity
 
-Last session: 2026-03-27T02:57:21.566Z
-Stopped at: Phase 18 context gathered
+Last session: 2026-03-27T13:40:00.000Z
+Stopped at: Completed 18-01-PLAN.md
 Resume file: None
 
 ---

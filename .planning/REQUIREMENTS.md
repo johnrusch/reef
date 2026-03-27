@@ -17,7 +17,7 @@ Requirements for milestone v1.4 Repo-Stored Diagrams. Each maps to roadmap phase
 ### Write Path
 
 - [ ] **WRITE-01**: User can generate diagrams and have `.puml` source, rendered `.svg`, and metadata automatically written to `.reef/`
-- [ ] **WRITE-02**: `metadata.json` includes a hash of the analyzed source code for precise staleness detection
+- [x] **WRITE-02**: `metadata.json` includes a hash of the analyzed source code for precise staleness detection
 
 ### Read Path
 
@@ -64,7 +64,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | STOR-03 | Phase 17 | Pending |
 | STOR-04 | Phase 17 | Complete |
 | WRITE-01 | Phase 18 | Pending |
-| WRITE-02 | Phase 18 | Pending |
+| WRITE-02 | Phase 18 | Complete |
 | READ-01 | Phase 19 | Pending |
 | READ-02 | Phase 19 | Pending |
 | READ-03 | Phase 19 | Pending |

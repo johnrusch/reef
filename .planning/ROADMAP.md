@@ -93,7 +93,7 @@ Plans:
   3. A failure writing to `.reef/` does not prevent diagram display or corrupt the SQLite state (write is non-fatal; SQLite remains source of truth)
 **Plans**: 2 plans
 Plans:
-- [ ] 18-01-PLAN.md — Source hash utility and ReefMetaJson schema extension (WRITE-02)
+- [x] 18-01-PLAN.md — Source hash utility and ReefMetaJson schema extension (WRITE-02)
 - [ ] 18-02-PLAN.md — Wire store-svg handler to write .reef/ artifacts (WRITE-01, WRITE-02)
 
 ### Phase 19: Read Path
