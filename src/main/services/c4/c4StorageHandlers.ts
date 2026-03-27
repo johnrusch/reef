@@ -2,6 +2,11 @@ import { ipcMain, BrowserWindow } from 'electron';
 import { C4StorageService } from './c4StorageService';
 import { MigrationService } from './migrationService';
 import { svgLruCache } from '../plantUmlService';
+import { ReefStorageService } from '../reef/reefStorageService';
+import { computeSourceHash } from '../reef/sourceHashService';
+import { getAnalyzedFilePaths, clearAnalyzedFilePaths } from './c4AnalyzerService';
+import { REEF_SCHEMA_VERSION, FLAT_LEVELS } from '../reef/reefStorageTypes';
+import type { ReefMetaJson, FlatLevel, NestedLevel } from '../reef/reefStorageTypes';
 import type { DiagramState, StoredDiagram } from '../../../shared/types/diagramState';
 import type { C4Level } from './types/c4Types';
 
@@ -14,6 +19,69 @@ export const getStorageService = (): C4StorageService => {
   }
   return storageService;
 };
+
+// ReefStorageService singleton (for .reef/ file writes)
+let reefStorage: ReefStorageService | null = null;
+const getReefStorage = (): ReefStorageService => {
+  if (!reefStorage) { reefStorage = new ReefStorageService(); }
+  return reefStorage;
+};
+
+/**
+ * Write .reef/ artifacts (.puml, .svg, .meta.json) for a given diagram level.
+ *
+ * Retrieves puml from SQLite, computes sourceHash from analyzed file paths,
+ * and writes files atomically via ReefStorageService.
+ *
+ * Non-fatal: errors are caught internally and do not propagate to callers (D-10).
+ * Callers should use the returned promise only to detect completion, not errors.
+ */
+export async function writeReefArtifacts(
+  repoPath: string,
+  level: string,
+  svg: string,
+  elementId?: string
+): Promise<void> {
+  try {
+    // Retrieve puml from SQLite (stored earlier by store-diagram handler)
+    const diagram = getStorageService().getDiagram(repoPath, level as C4Level, elementId);
+    if (!diagram?.diagramContent) {
+      // No puml available — skip .reef/ write (edge case: SVG stored without prior diagram)
+      return;
+    }
+
+    const puml = diagram.diagramContent;
+
+    // Compute source hash from analyzed file paths (D-03, D-04)
+    const filePaths = getAnalyzedFilePaths(repoPath, level, elementId);
+    const sourceHash = filePaths ? await computeSourceHash(filePaths) : undefined;
+
+    // Clean up cached file paths after consumption
+    clearAnalyzedFilePaths(repoPath, level, elementId);
+
+    // Build metadata
+    const meta: ReefMetaJson = {
+      schemaVersion: REEF_SCHEMA_VERSION,
+      level: level as ReefMetaJson['level'],
+      generatedAt: new Date().toISOString(),
+      modelUsed: diagram.modelUsed,
+      promptVersion: diagram.promptVersion,
+      sourceHash,
+    };
+
+    // Write to .reef/ — per-level incremental (D-01)
+    const isFlatLevel = (FLAT_LEVELS as readonly string[]).includes(level);
+    if (isFlatLevel) {
+      await getReefStorage().writeLevelFiles(repoPath, level as FlatLevel, puml, svg, meta);
+    } else if (elementId) {
+      await getReefStorage().writeSubDiagramFiles(repoPath, level as NestedLevel, elementId, puml, svg, meta);
+    }
+    // If nested level but no elementId, skip — cannot determine subdirectory
+  } catch (err) {
+    // D-10: .reef/ write failure is non-fatal — log and continue
+    console.warn(`[c4StorageHandlers] .reef/ write failed for ${level} (non-fatal):`, err);
+  }
+}
 
 /**
  * Register all C4 storage IPC handlers
@@ -133,8 +201,13 @@ export function registerC4StorageHandlers(): void {
   ipcMain.handle('c4-storage:store-svg', async (_, repoPath: string, level: string, svg: string, elementId?: string) => {
     const cacheKey = [repoPath, level, elementId ?? ''].join(':');
 
+    // SQLite-first (D-10): always write to SQLite + LRU
     getStorageService().storeSvg(repoPath, level as C4Level, svg, elementId);
     svgLruCache.set(cacheKey, svg);
+
+    // .reef/-second (D-10): non-fatal write-through
+    await writeReefArtifacts(repoPath, level, svg, elementId);
+
     return { success: true };
   });
 }
