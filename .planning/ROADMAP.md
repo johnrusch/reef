@@ -141,7 +141,7 @@ Plans:
 | 16. Explorer UI | v1.3 | 2/2 | Complete | 2026-03-06 |
 | 17. Storage Foundation | v1.4 | 2/2 | Complete | 2026-03-27 |
 | 18. Write Path | v1.4 | 1/2 | Complete    | 2026-03-27 |
-| 19. Read Path | v1.4 | 2/2 | Complete | 2026-03-27 |
+| 19. Read Path | v1.4 | 2/2 | Complete    | 2026-03-27 |
 | 20. Regeneration and Stale Detection | v1.4 | 0/? | Not started | - |
 
 ---
