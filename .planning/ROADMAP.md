@@ -6,6 +6,7 @@
 - ✅ **v1.1 Persistent Diagrams with Change Visualization** — Phases 5-10 (shipped 2026-02-28)
 - ✅ **v1.2 Diagrams That Deliver** — Phases 11-14 (shipped 2026-03-03)
 - ✅ **v1.3 Diagram Explorer** — Phases 15-16 (shipped 2026-03-06)
+- 🚧 **v1.4 Repo-Stored Diagrams** — Phases 17-20 (in progress)
 
 ## Phases
 
@@ -57,6 +58,59 @@ See: `.planning/milestones/v1.3-ROADMAP.md` for full details.
 
 </details>
 
+### 🚧 v1.4 Repo-Stored Diagrams (In Progress)
+
+**Milestone Goal:** Store C4 diagram artifacts in a `.reef/` folder within each repository so diagrams are shared, version-controlled, and render instantly.
+
+- [ ] **Phase 17: Storage Foundation** - Define `.reef/` folder contract, chokidar exclusion, and ReefStorageService core
+- [ ] **Phase 18: Write Path** - Hook generation pipeline to auto-write artifacts to `.reef/` after every successful generation
+- [ ] **Phase 19: Read Path** - Load existing `.reef/` artifacts on repo import for instant display without AI regeneration
+- [ ] **Phase 20: Regeneration and Stale Detection** - Manual regenerate-and-save UI and stale indicator when stored diagrams predate code changes
+
+## Phase Details
+
+### Phase 17: Storage Foundation
+**Goal**: The `.reef/` folder contract is stable, safe, and self-contained — ReefStorageService handles all file I/O with atomic writes, schema validation, and chokidar exclusion before any files are ever written
+**Depends on**: Phase 16 (v1.3 complete)
+**Requirements**: STOR-01, STOR-02, STOR-03, STOR-04
+**Success Criteria** (what must be TRUE):
+  1. A `.reef/` folder with per-level `.puml`, `.svg`, and `.meta.json` files appears in a managed repository after the service writes artifacts
+  2. Every `metadata.json` file contains a `schemaVersion: 1` field and is rejected gracefully (fallback to regeneration) when the field is absent or mismatched
+  3. Writing files to `.reef/` does not trigger the stale-diagram state or any file-change event in the app (chokidar exclusion active)
+  4. A `.gitattributes` file marking `.reef/*.svg` and `.reef/*.puml` as binary is created alongside the first write, preventing SVG merge conflicts
+**Plans**: TBD
+
+### Phase 18: Write Path
+**Goal**: Every successful C4 diagram generation automatically writes PlantUML source, rendered SVG, and source-code hash to `.reef/` — no user action required
+**Depends on**: Phase 17
+**Requirements**: WRITE-01, WRITE-02
+**Success Criteria** (what must be TRUE):
+  1. After generating diagrams for a repository, a user can open `.reef/` in their file explorer and find `.puml`, `.svg`, and `.meta.json` files for each generated C4 level
+  2. The `.meta.json` for each level contains a hash of the analyzed source files, enabling downstream staleness comparison
+  3. A failure writing to `.reef/` does not prevent diagram display or corrupt the SQLite state (write is non-fatal; SQLite remains source of truth)
+**Plans**: TBD
+
+### Phase 19: Read Path
+**Goal**: Users who add a repository that already has a `.reef/` folder see diagrams immediately — no AI call, no PlantUML render, no wait
+**Depends on**: Phase 18
+**Requirements**: READ-01, READ-02, READ-03
+**Success Criteria** (what must be TRUE):
+  1. When a user adds a repository with a complete `.reef/` folder, the generation prompt is skipped and diagrams appear instantly from stored SVGs
+  2. SVGs from `.reef/` display in the diagram viewer at the same visual quality as freshly rendered diagrams — no additional PlantUML rendering step occurs
+  3. When a user adds a repository with a partial `.reef/` folder (e.g., only the context level present), the available levels display immediately and the missing levels are automatically queued for generation
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 20: Regeneration and Stale Detection
+**Goal**: Users can explicitly refresh stored diagrams after code changes and see a clear indicator when their `.reef/` data is older than recent commits
+**Depends on**: Phase 19
+**Requirements**: REGEN-01, REGEN-02
+**Success Criteria** (what must be TRUE):
+  1. A user can trigger regeneration from the toolbar and, on completion, find the updated `.puml`, `.svg`, and `.meta.json` artifacts written to `.reef/` — ready to commit and share with teammates
+  2. When `.reef/` diagram data predates recent code changes (detected by comparing stored hash or generation timestamp against current file state), the user sees a stale indicator without having to trigger regeneration to find out
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -77,6 +131,10 @@ See: `.planning/milestones/v1.3-ROADMAP.md` for full details.
 | 14. Rendering Performance | v1.2 | 2/2 | Complete | 2026-03-03 |
 | 15. UI Cleanup | v1.3 | 2/2 | Complete | 2026-03-04 |
 | 16. Explorer UI | v1.3 | 2/2 | Complete | 2026-03-06 |
+| 17. Storage Foundation | v1.4 | 0/? | Not started | - |
+| 18. Write Path | v1.4 | 0/? | Not started | - |
+| 19. Read Path | v1.4 | 0/? | Not started | - |
+| 20. Regeneration and Stale Detection | v1.4 | 0/? | Not started | - |
 
 ---
-*Last updated: 2026-03-26 — v1.3 archived*
+*Last updated: 2026-03-26 — v1.4 roadmap created*

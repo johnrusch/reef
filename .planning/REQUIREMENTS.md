@@ -59,23 +59,23 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| STOR-01 | — | Pending |
-| STOR-02 | — | Pending |
-| STOR-03 | — | Pending |
-| STOR-04 | — | Pending |
-| WRITE-01 | — | Pending |
-| WRITE-02 | — | Pending |
-| READ-01 | — | Pending |
-| READ-02 | — | Pending |
-| READ-03 | — | Pending |
-| REGEN-01 | — | Pending |
-| REGEN-02 | — | Pending |
+| STOR-01 | Phase 17 | Pending |
+| STOR-02 | Phase 17 | Pending |
+| STOR-03 | Phase 17 | Pending |
+| STOR-04 | Phase 17 | Pending |
+| WRITE-01 | Phase 18 | Pending |
+| WRITE-02 | Phase 18 | Pending |
+| READ-01 | Phase 19 | Pending |
+| READ-02 | Phase 19 | Pending |
+| READ-03 | Phase 19 | Pending |
+| REGEN-01 | Phase 20 | Pending |
+| REGEN-02 | Phase 20 | Pending |
 
 **Coverage:**
 - v1.4 requirements: 11 total
-- Mapped to phases: 0
-- Unmapped: 11
+- Mapped to phases: 11
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-26*
-*Last updated: 2026-03-26 after initial definition*
+*Last updated: 2026-03-26 — traceability completed after roadmap creation*
