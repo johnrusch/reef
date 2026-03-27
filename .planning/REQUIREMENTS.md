@@ -21,9 +21,9 @@ Requirements for milestone v1.4 Repo-Stored Diagrams. Each maps to roadmap phase
 
 ### Read Path
 
-- [ ] **READ-01**: User can add a repository that has an existing `.reef/` folder and see diagrams immediately without AI generation
-- [ ] **READ-02**: User sees stored SVGs displayed instantly from `.reef/` (no PlantUML rendering step)
-- [ ] **READ-03**: User can import a partial `.reef/` folder (e.g., only context level) and have missing levels queued for generation
+- [x] **READ-01**: User can add a repository that has an existing `.reef/` folder and see diagrams immediately without AI generation
+- [x] **READ-02**: User sees stored SVGs displayed instantly from `.reef/` (no PlantUML rendering step)
+- [x] **READ-03**: User can import a partial `.reef/` folder (e.g., only context level) and have missing levels queued for generation
 
 ### Regeneration
 
@@ -65,9 +65,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | STOR-04 | Phase 17 | Complete |
 | WRITE-01 | Phase 18 | Complete |
 | WRITE-02 | Phase 18 | Complete |
-| READ-01 | Phase 19 | Pending |
-| READ-02 | Phase 19 | Pending |
-| READ-03 | Phase 19 | Pending |
+| READ-01 | Phase 19 | Complete |
+| READ-02 | Phase 19 | Complete |
+| READ-03 | Phase 19 | Complete |
 | REGEN-01 | Phase 20 | Pending |
 | REGEN-02 | Phase 20 | Pending |
 
