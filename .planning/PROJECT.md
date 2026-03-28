@@ -71,7 +71,16 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 
 ### Active
 
-(none — v1.4 shipped, next milestone TBD)
+## Current Milestone: v1.5 Bug Fixes & Navigation Overhaul
+
+**Goal:** Fix broken diagram navigation to load from cache instead of regenerating, and overhaul the sidebar/breadcrumb UX.
+
+**Target features:**
+- Cache-first navigation — all navigation checks .reef/ → LRU → SQLite before generating
+- Full Generate All — upfront generation of all 4 C4 levels
+- Sidebar overhaul — highlight tracking, resizability, drillable element tree
+- Breadcrumb fix — remove redundant segments, clear level context
+- Code-level diagram quality — fix empty static analysis output
 
 ### Out of Scope
 
@@ -194,4 +203,22 @@ See `.planning/MILESTONES.md` for full details.
 | Additive staleness (hash alongside mtime) | v1.4: Hash for .reef/, mtime for SQLite — both paths preserved | ✓ Good |
 
 ---
-*Last updated: 2026-03-28 after v1.4 milestone*
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd:transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd:complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
+---
+*Last updated: 2026-03-28 after v1.5 milestone start*
