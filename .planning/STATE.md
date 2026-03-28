@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Repo-Stored Diagrams
-status: executing
-stopped_at: "Checkpoint: 20-02 Task 2 awaiting human verification"
-last_updated: "2026-03-28T00:37:23.378Z"
-last_activity: 2026-03-28 -- Phase 20 execution started
+status: completed
+stopped_at: Completed 20-01-PLAN.md
+last_updated: "2026-03-28T00:40:41.269Z"
+last_activity: 2026-03-28
 progress:
   total_phases: 4
   completed_phases: 2
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Users can quickly grasp unfamiliar codebase architecture through AI-generated C4 diagrams that update as code changes
-**Current focus:** Phase 20 — regeneration-and-stale-detection
+**Current focus:** Phase 18 — write-path
 
 ## Current Position
 
-Phase: 20 (regeneration-and-stale-detection) — EXECUTING
-Plan: 1 of 2
-Status: Executing Phase 20
-Last activity: 2026-03-28 -- Phase 20 execution started
+Phase: 20
+Plan: 01 of 2 — COMPLETE
+Status: Phase 20 plan 01 complete — ReefStalenessService implemented and wired
+Last activity: 2026-03-28
 
 Progress: [██████████] 100% (6/4 v1.4 plans complete)
 
@@ -41,6 +41,10 @@ Progress: [██████████] 100% (6/4 v1.4 plans complete)
 - v1.2: 4 phases, 9 plans (2 days)
 - v1.3: 2 phases, 4 plans (3 days)
 - Total shipped: 16 phases, 43 plans
+
+| Phase | Plan | Duration | Tasks | Files |
+|-------|------|----------|-------|-------|
+| 20-regeneration-and-stale-detection | 01 | 13min | 2 | 4 |
 
 ## Accumulated Context
 
@@ -61,8 +65,9 @@ Recent decisions affecting v1.4 work:
 - [Phase 19-read-path]: Dependency injection over singleton creation in importReefArtifacts — passes storageService and lruCache as params, IPC handler provides singletons
 - [Phase 19]: Non-fatal error handling (D-11): reef import errors caught with console.warn, fall through to generation prompt
 - [Phase 19]: Plural-aware toast copy: '1 diagram' vs '2 diagrams', '1 level' vs '2 levels'
-- [Phase 20]: isStale in DiagramViewer derived from useDiagramStateStore().getState() === 'stale' — staleness driven by Plan 01 ReefStalenessService via IPC, not local useState
-- [Phase 20]: regenerateStaleLevels added as dedicated function; generateAllDiagrams delegates to it when staleLevels exist — skips fresh levels (D-08)
+- [Phase 20-01]: 2500ms debounce chosen (within D-04 2-3s range) for balance between responsiveness and hash-thrashing prevention
+- [Phase 20-01]: ReefStalenessService wired additively into FileWatcherService — mtime-based SQLite staleness continues alongside hash-based .reef/ staleness
+- [Phase 20-01]: onStale callback in main.ts emits c4-storage:state-changed IPC event, reusing the existing stale state pipeline
 
 ### Blockers/Concerns
 
@@ -72,8 +77,8 @@ Recent decisions affecting v1.4 work:
 
 ## Session Continuity
 
-Last session: 2026-03-28T00:37:15.601Z
-Stopped at: Checkpoint: 20-02 Task 2 awaiting human verification
+Last session: 2026-03-28T00:40:41.266Z
+Stopped at: Completed 20-01-PLAN.md
 Resume file: None
 
 ---

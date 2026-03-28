@@ -118,8 +118,8 @@ Plans:
   2. When `.reef/` diagram data predates recent code changes (detected by comparing stored hash or generation timestamp against current file state), the user sees a stale indicator without having to trigger regeneration to find out
 **Plans**: 2 plans
 Plans:
-- [ ] 20-01-PLAN.md — ReefStalenessService: hash-based stale detection with debounced file change handling (REGEN-02)
-- [x] 20-02-PLAN.md — Stale-aware regeneration flow with UI feedback (REGEN-01)
+- [x] 20-01-PLAN.md — ReefStalenessService: hash-based stale detection with debounced file change handling (REGEN-02)
+- [ ] 20-02-PLAN.md — Stale-aware regeneration flow with UI feedback (REGEN-01)
 
 ## Progress
 
