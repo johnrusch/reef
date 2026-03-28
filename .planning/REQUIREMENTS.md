@@ -1,0 +1,77 @@
+# Requirements: Reef
+
+**Defined:** 2026-03-28
+**Core Value:** Users can quickly grasp unfamiliar codebase architecture through AI-generated C4 diagrams that update as code changes
+
+## v1.5 Requirements
+
+Requirements for v1.5 Bug Fixes & Navigation Overhaul. Each maps to roadmap phases.
+
+### Navigation
+
+- [ ] **NAV-01**: User can navigate between diagram levels (sidebar, breadcrumb, element click) and see cached diagrams instantly without triggering regeneration
+- [ ] **NAV-02**: User's .reef/ diagrams are preserved during navigation — .reef/ only updated on explicit Regenerate action
+- [ ] **NAV-03**: User can click "Generate All" and all 4 C4 levels (context, container, component, code) are generated upfront
+
+### Sidebar
+
+- [ ] **SIDE-01**: User sees the active diagram level highlighted in the sidebar after any navigation action
+- [ ] **SIDE-02**: User can resize the sidebar by dragging its edge to see full level names and element context
+- [ ] **SIDE-03**: User sees a nested tree of drillable elements under each C4 level in the sidebar, mirroring what's clickable in the diagram
+
+### Breadcrumb
+
+- [ ] **BRCR-01**: User sees a breadcrumb trail without redundant segments, showing clear level context
+
+### Diagram Quality
+
+- [ ] **QUAL-01**: User sees meaningful content in code-level diagrams (classes, public methods, key properties) from static analysis even when AI enrichment is unavailable
+
+## Future Requirements
+
+Deferred to future release. Tracked but not in current roadmap.
+
+### Navigation Enhancements
+
+- **NAV-F01**: Progressive SVG loading for diagrams >2MB
+- **NAV-F02**: Commit-linked diagram snapshots for history comparison
+
+### Multi-Language Support
+
+- **LANG-F01**: Python AST parsing for static analysis
+- **LANG-F02**: Go AST parsing for static analysis
+- **LANG-F03**: Java AST parsing for static analysis
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Manual diagram editing | Generated diagrams only — editing would conflict with regeneration |
+| Automatic background regeneration | Silent API costs, no user control over spending |
+| Inline diff overlay on diagram | Mixes architecture/code concerns, becomes unreadable |
+| Multi-repository combined diagrams | Single repository at a time for clarity |
+| Sequence diagrams | Not part of C4 model, separate feature area |
+
+## Traceability
+
+Which phases cover which requirements. Updated during roadmap creation.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| NAV-01 | TBD | Pending |
+| NAV-02 | TBD | Pending |
+| NAV-03 | TBD | Pending |
+| SIDE-01 | TBD | Pending |
+| SIDE-02 | TBD | Pending |
+| SIDE-03 | TBD | Pending |
+| BRCR-01 | TBD | Pending |
+| QUAL-01 | TBD | Pending |
+
+**Coverage:**
+- v1.5 requirements: 8 total
+- Mapped to phases: 0
+- Unmapped: 8
+
+---
+*Requirements defined: 2026-03-28*
+*Last updated: 2026-03-28 after initial definition*
