@@ -65,7 +65,7 @@ See: `.planning/milestones/v1.3-ROADMAP.md` for full details.
 - [x] **Phase 17: Storage Foundation** - Define `.reef/` folder contract, chokidar exclusion, and ReefStorageService core (completed 2026-03-27)
 - [x] **Phase 18: Write Path** - Hook generation pipeline to auto-write artifacts to `.reef/` after every successful generation (completed 2026-03-27)
 - [x] **Phase 19: Read Path** - Load existing `.reef/` artifacts on repo import for instant display without AI regeneration (completed 2026-03-27)
-- [ ] **Phase 20: Regeneration and Stale Detection** - Manual regenerate-and-save UI and stale indicator when stored diagrams predate code changes
+- [x] **Phase 20: Regeneration and Stale Detection** - Manual regenerate-and-save UI and stale indicator when stored diagrams predate code changes (completed 2026-03-28)
 
 ## Phase Details
 
@@ -144,7 +144,7 @@ Plans:
 | 17. Storage Foundation | v1.4 | 2/2 | Complete | 2026-03-27 |
 | 18. Write Path | v1.4 | 1/2 | Complete    | 2026-03-27 |
 | 19. Read Path | v1.4 | 2/2 | Complete    | 2026-03-27 |
-| 20. Regeneration and Stale Detection | v1.4 | 1/2 | In Progress|  |
+| 20. Regeneration and Stale Detection | v1.4 | 1/2 | Complete    | 2026-03-28 |
 
 ---
 *Last updated: 2026-03-27 — Phase 20 planned*
