@@ -66,10 +66,12 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 - ✓ On repo import, read existing `.reef/` data instead of regenerating diagrams from scratch — v1.4
 - ✓ Instant diagram display from stored SVGs (bypass PlantUML rendering via LRU cache population) — v1.4
 - ✓ Consistent diagrams across team members sharing the same repository — v1.4
+- ✓ Hash-based staleness detection comparing sourceHash against .meta.json — v1.4
+- ✓ Stale-aware regeneration (skip fresh levels, confirmation dialog with stale count) — v1.4
 
 ### Active
 
-- [ ] Manual regenerate-and-save UI and stale indicator when stored diagrams predate code changes
+(none — v1.4 milestone features complete)
 
 ### Out of Scope
 
@@ -101,7 +103,7 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 
 ## Context
 
-**Current State (Phase 19 complete — v1.4 in progress):**
+**Current State (Phase 20 complete — v1.4 milestone complete):**
 - ~40,000 lines of TypeScript
 - Tech stack: Electron, React, Vite, Tailwind, Zustand, simple-git, Octokit
 - C4 stack: ts-morph, @anthropic-ai/sdk v0.78.0, better-sqlite3, chokidar, zod
@@ -181,4 +183,4 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 | GEN-01 partial (component/code require elementId) | v1.3: Architectural constraint — deferred rather than blocking ship | ⚠️ Revisit |
 
 ---
-*Last updated: 2026-03-27 after Phase 19 read-path completion*
+*Last updated: 2026-03-28 after Phase 20 regeneration and stale detection completion*
