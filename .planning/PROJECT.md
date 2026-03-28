@@ -71,7 +71,7 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 
 ### Active
 
-(none — v1.4 milestone features complete)
+(none — v1.4 shipped, next milestone TBD)
 
 ### Out of Scope
 
@@ -89,21 +89,19 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 - Show all classes as components — 50+ nodes unreadable; C4 Component level is for logical groupings
 - Full class diagrams with all methods — Code level shows public API only (max 8-10 methods)
 
-## Current Milestone: v1.4 Repo-Stored Diagrams
+## Shipped Milestones
 
-**Goal:** Store C4 diagram artifacts in a `.reef/` folder within each repository so diagrams are shared, version-controlled, and render instantly.
+- v1.0 C4 Diagram Feature Release (2026-02-24)
+- v1.1 Persistent Diagrams with Change Visualization (2026-02-28)
+- v1.2 Diagrams That Deliver (2026-03-03)
+- v1.3 Diagram Explorer (2026-03-06)
+- v1.4 Repo-Stored Diagrams (2026-03-28)
 
-**Target features:**
-- `.reef/` folder structure with PlantUML source, AI metadata, and rendered SVGs
-- Read existing `.reef/` data on repo import instead of regenerating
-- Generate and write to `.reef/` when no stored diagrams exist
-- Manual regenerate-and-save for refreshing after code changes
-- Instant SVG display from stored files
-- Consistent diagrams across all team members
+See `.planning/MILESTONES.md` for full details.
 
 ## Context
 
-**Current State (Phase 20 complete — v1.4 milestone complete):**
+**Current State (v1.4 shipped):**
 - ~40,000 lines of TypeScript
 - Tech stack: Electron, React, Vite, Tailwind, Zustand, simple-git, Octokit
 - C4 stack: ts-morph, @anthropic-ai/sdk v0.78.0, better-sqlite3, chokidar, zod
@@ -137,10 +135,18 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 - Breadcrumb trail with WAI-ARIA accessibility
 - Command palette for fuzzy search across diagram levels
 
+**Repo-Stored Diagrams (.reef/):**
+- ReefStorageService: atomic writes, schema validation, lazy directory creation
+- Write-through: store-svg handler auto-writes .puml, .svg, .meta.json after generation
+- Import: .reef/ artifacts loaded into LRU + SQLite on repo add, bypassing PlantUML
+- Staleness: Hash-based detection (SHA-256 sourceHash vs .meta.json), 2.5s debounce
+- Regeneration: Stale-aware UI skips fresh levels, confirmation with stale count
+
 **Known Tech Debt (accumulated):**
 - v1.1: 20 human verification tests pending, handleRegenerateFromBadge missing IPC state transitions, static cost estimate not wired, debug console.log statements, CHNG-01/CHNG-04 deferred
 - v1.2: modelUsed hardcoded as 'haiku', Anthropic SDK type cast workaround, better-sqlite3 native module mismatch, SUMMARY frontmatter bookkeeping gaps
 - v1.3: GEN-01 partial (component/code generation needs elementId from drill-down), DiagramViewer.uicl.test.tsx Zustand mock regression, VisualMapTab.gen01.test.tsx timeout, DiagramInfo.tsx dead code not deleted
+- v1.4: STOR-03 hasNewerFiles startup walk omits .reef, REGEN-01 async write-back timing (toast fires before .reef/ updated), drill-down clicks trigger generation instead of loading cached diagrams
 
 ## Constraints
 
@@ -181,6 +187,11 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 | Zustand field-level selectors over full store subscription | v1.3: Reactive highlight updates on drill-down navigation | ✓ Good |
 | generateAllDiagrams bypasses component state | v1.3: Avoids React re-render churn during multi-level async generation | ✓ Good |
 | GEN-01 partial (component/code require elementId) | v1.3: Architectural constraint — deferred rather than blocking ship | ⚠️ Revisit |
+| .reef/ folder for diagram sharing | v1.4: Team diagrams via git, instant import, no regeneration | ✓ Good |
+| Atomic temp-then-rename writes | v1.4: Prevents corrupted .reef/ files on crash/interrupt | ✓ Good |
+| SHA-256 sourceHash for staleness | v1.4: Precise hash comparison vs unreliable mtime | ✓ Good |
+| Dependency injection for ReefStorageService | v1.4: Testable without filesystem; constructor params not singletons | ✓ Good |
+| Additive staleness (hash alongside mtime) | v1.4: Hash for .reef/, mtime for SQLite — both paths preserved | ✓ Good |
 
 ---
-*Last updated: 2026-03-28 after Phase 20 regeneration and stale detection completion*
+*Last updated: 2026-03-28 after v1.4 milestone*

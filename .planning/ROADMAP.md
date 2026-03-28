@@ -6,7 +6,7 @@
 - ✅ **v1.1 Persistent Diagrams with Change Visualization** — Phases 5-10 (shipped 2026-02-28)
 - ✅ **v1.2 Diagrams That Deliver** — Phases 11-14 (shipped 2026-03-03)
 - ✅ **v1.3 Diagram Explorer** — Phases 15-16 (shipped 2026-03-06)
-- 🚧 **v1.4 Repo-Stored Diagrams** — Phases 17-20 (in progress)
+- ✅ **v1.4 Repo-Stored Diagrams** — Phases 17-20 (shipped 2026-03-28)
 
 ## Phases
 
@@ -58,68 +58,17 @@ See: `.planning/milestones/v1.3-ROADMAP.md` for full details.
 
 </details>
 
-### v1.4 Repo-Stored Diagrams (In Progress)
+<details>
+<summary>✅ v1.4 Repo-Stored Diagrams (Phases 17-20) — SHIPPED 2026-03-28</summary>
 
-**Milestone Goal:** Store C4 diagram artifacts in a `.reef/` folder within each repository so diagrams are shared, version-controlled, and render instantly.
+- [x] Phase 17: Storage Foundation (2/2 plans) — completed 2026-03-27
+- [x] Phase 18: Write Path (2/2 plans) — completed 2026-03-27
+- [x] Phase 19: Read Path (2/2 plans) — completed 2026-03-27
+- [x] Phase 20: Regeneration and Stale Detection (2/2 plans) — completed 2026-03-28
 
-- [x] **Phase 17: Storage Foundation** - Define `.reef/` folder contract, chokidar exclusion, and ReefStorageService core (completed 2026-03-27)
-- [x] **Phase 18: Write Path** - Hook generation pipeline to auto-write artifacts to `.reef/` after every successful generation (completed 2026-03-27)
-- [x] **Phase 19: Read Path** - Load existing `.reef/` artifacts on repo import for instant display without AI regeneration (completed 2026-03-27)
-- [x] **Phase 20: Regeneration and Stale Detection** - Manual regenerate-and-save UI and stale indicator when stored diagrams predate code changes (completed 2026-03-28)
+See: `.planning/milestones/v1.4-ROADMAP.md` for full details.
 
-## Phase Details
-
-### Phase 17: Storage Foundation
-**Goal**: The `.reef/` folder contract is stable, safe, and self-contained — ReefStorageService handles all file I/O with atomic writes, schema validation, and chokidar exclusion before any files are ever written
-**Depends on**: Phase 16 (v1.3 complete)
-**Requirements**: STOR-01, STOR-02, STOR-03, STOR-04
-**Success Criteria** (what must be TRUE):
-  1. A `.reef/` folder with per-level `.puml`, `.svg`, and `.meta.json` files appears in a managed repository after the service writes artifacts
-  2. Every `metadata.json` file contains a `schemaVersion: 1` field and is rejected gracefully (fallback to regeneration) when the field is absent or mismatched
-  3. Writing files to `.reef/` does not trigger the stale-diagram state or any file-change event in the app (chokidar exclusion active)
-  4. A `.gitattributes` file marking `.reef/*.svg` and `.reef/*.puml` as binary is created alongside the first write, preventing SVG merge conflicts
-**Plans**: 2 plans
-Plans:
-- [x] 17-01-PLAN.md — ReefStorageService types, service, and tests (STOR-01, STOR-02, STOR-04)
-- [x] 17-02-PLAN.md — Chokidar .reef/ exclusion patch and tests (STOR-03)
-
-### Phase 18: Write Path
-**Goal**: Every successful C4 diagram generation automatically writes PlantUML source, rendered SVG, and source-code hash to `.reef/` — no user action required
-**Depends on**: Phase 17
-**Requirements**: WRITE-01, WRITE-02
-**Success Criteria** (what must be TRUE):
-  1. After generating diagrams for a repository, a user can open `.reef/` in their file explorer and find `.puml`, `.svg`, and `.meta.json` files for each generated C4 level
-  2. The `.meta.json` for each level contains a hash of the analyzed source files, enabling downstream staleness comparison
-  3. A failure writing to `.reef/` does not prevent diagram display or corrupt the SQLite state (write is non-fatal; SQLite remains source of truth)
-**Plans**: 2 plans
-Plans:
-- [x] 18-01-PLAN.md — Source hash utility and ReefMetaJson schema extension (WRITE-02)
-- [ ] 18-02-PLAN.md — Wire store-svg handler to write .reef/ artifacts (WRITE-01, WRITE-02)
-
-### Phase 19: Read Path
-**Goal**: Users who add a repository that already has a `.reef/` folder see diagrams immediately — no AI call, no PlantUML render, no wait
-**Depends on**: Phase 18
-**Requirements**: READ-01, READ-02, READ-03
-**Success Criteria** (what must be TRUE):
-  1. When a user adds a repository with a complete `.reef/` folder, the generation prompt is skipped and diagrams appear instantly from stored SVGs
-  2. SVGs from `.reef/` display in the diagram viewer at the same visual quality as freshly rendered diagrams — no additional PlantUML rendering step occurs
-  3. When a user adds a repository with a partial `.reef/` folder (e.g., only the context level present), the available levels display immediately and the missing levels are automatically queued for generation
-**Plans**: 2 plans
-Plans:
-- [x] 19-01-PLAN.md — Reef import service: importReefArtifacts, IPC handler, preload bridge (READ-01, READ-02, READ-03)
-- [x] 19-02-PLAN.md — AddRepositoryModal reef-import wiring with toast notifications (READ-01, READ-02, READ-03)
-
-### Phase 20: Regeneration and Stale Detection
-**Goal**: Users can explicitly refresh stored diagrams after code changes and see a clear indicator when their `.reef/` data is older than recent commits
-**Depends on**: Phase 19
-**Requirements**: REGEN-01, REGEN-02
-**Success Criteria** (what must be TRUE):
-  1. A user can trigger regeneration from the toolbar and, on completion, find the updated `.puml`, `.svg`, and `.meta.json` artifacts written to `.reef/` — ready to commit and share with teammates
-  2. When `.reef/` diagram data predates recent code changes (detected by comparing stored hash or generation timestamp against current file state), the user sees a stale indicator without having to trigger regeneration to find out
-**Plans**: 2 plans
-Plans:
-- [x] 20-01-PLAN.md — ReefStalenessService: hash-based stale detection with debounced file change handling (REGEN-02)
-- [ ] 20-02-PLAN.md — Stale-aware regeneration flow with UI feedback (REGEN-01)
+</details>
 
 ## Progress
 
@@ -142,9 +91,9 @@ Plans:
 | 15. UI Cleanup | v1.3 | 2/2 | Complete | 2026-03-04 |
 | 16. Explorer UI | v1.3 | 2/2 | Complete | 2026-03-06 |
 | 17. Storage Foundation | v1.4 | 2/2 | Complete | 2026-03-27 |
-| 18. Write Path | v1.4 | 1/2 | Complete    | 2026-03-27 |
-| 19. Read Path | v1.4 | 2/2 | Complete    | 2026-03-27 |
-| 20. Regeneration and Stale Detection | v1.4 | 1/2 | Complete    | 2026-03-28 |
+| 18. Write Path | v1.4 | 2/2 | Complete | 2026-03-27 |
+| 19. Read Path | v1.4 | 2/2 | Complete | 2026-03-27 |
+| 20. Regeneration and Stale Detection | v1.4 | 2/2 | Complete | 2026-03-28 |
 
 ---
-*Last updated: 2026-03-27 — Phase 20 planned*
+*Last updated: 2026-03-28 — v1.4 milestone shipped*

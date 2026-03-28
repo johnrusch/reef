@@ -1,5 +1,33 @@
 # Milestones
 
+## v1.4 Repo-Stored Diagrams (Shipped: 2026-03-28)
+
+**Delivered:** Store C4 diagram artifacts (`.puml`, `.svg`, `.meta.json`) in a `.reef/` folder within each repository — diagrams are shared via git, version-controlled, and render instantly on import.
+
+**Phases completed:** 4 phases (17-20), 8 plans
+**Timeline:** 2 days (2026-03-27 → 2026-03-28)
+**Commits:** 47
+**Files modified:** 78 (+8,824 insertions, -1,299 deletions)
+**Requirements:** 9/11 satisfied (STOR-03 partial, REGEN-01 partial)
+
+**Key accomplishments:**
+
+1. ReefStorageService with atomic temp-then-rename writes, Zod schema validation, lazy `.reef/` directory creation, and auto-generated `.gitattributes` marking SVGs as binary
+2. Chokidar `.reef/` exclusion preventing false stale-diagram events during file writes
+3. Automatic `.reef/` write-through on every diagram generation — PlantUML source, rendered SVG, and SHA-256 source hash written to `.meta.json`
+4. Instant `.reef/` import on repo add — stored SVGs loaded into LRU cache + SQLite, bypassing PlantUML rendering entirely
+5. Hash-based staleness detection with 2.5s debounced file change handling, comparing recomputed source hash against stored `.meta.json`
+6. Stale-aware regeneration UI — confirmation dialog shows stale level count, only stale levels regenerated, toast feedback on completion
+
+**Known Gaps (from audit):**
+
+- STOR-03 partial: Runtime chokidar exclusion works, but `hasNewerFiles` startup walk omits `.reef` from `IGNORED_DIRS`
+- REGEN-01 partial: `.reef/` write-back is indirect through async PlantUML render; success toast fires before `.reef/` is actually updated
+- Phase 20 missing VERIFICATION.md (human verification deferred due to pre-existing drill-down generation issue)
+- Pre-existing: Drill-down navigation triggers generation instead of loading cached/stored diagrams
+
+---
+
 ## v1.3 Diagram Explorer (Shipped: 2026-03-26)
 
 **Delivered:** Overhauled the diagram UI from a configure-and-generate interface to a clean browse-and-navigate experience with sidebar tree hierarchy navigation.
