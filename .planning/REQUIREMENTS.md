@@ -27,7 +27,7 @@ Requirements for milestone v1.4 Repo-Stored Diagrams. Each maps to roadmap phase
 
 ### Regeneration
 
-- [ ] **REGEN-01**: User can manually regenerate diagrams and have the updated results saved back to `.reef/`
+- [x] **REGEN-01**: User can manually regenerate diagrams and have the updated results saved back to `.reef/`
 - [ ] **REGEN-02**: User sees a stale indicator when `.reef/` diagram data is older than recent code changes
 
 ## Future Requirements
@@ -68,7 +68,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | READ-01 | Phase 19 | Complete |
 | READ-02 | Phase 19 | Complete |
 | READ-03 | Phase 19 | Complete |
-| REGEN-01 | Phase 20 | Pending |
+| REGEN-01 | Phase 20 | Complete |
 | REGEN-02 | Phase 20 | Pending |
 
 **Coverage:**

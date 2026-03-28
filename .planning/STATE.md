@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Repo-Stored Diagrams
-status: completed
-stopped_at: Phase 20 context gathered
-last_updated: "2026-03-27T23:23:34.085Z"
-last_activity: 2026-03-27
+status: executing
+stopped_at: "Checkpoint: 20-02 Task 2 awaiting human verification"
+last_updated: "2026-03-28T00:37:23.378Z"
+last_activity: 2026-03-28 -- Phase 20 execution started
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 6
+  total_plans: 6
+  completed_plans: 7
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Users can quickly grasp unfamiliar codebase architecture through AI-generated C4 diagrams that update as code changes
-**Current focus:** Phase 18 — write-path
+**Current focus:** Phase 20 — regeneration-and-stale-detection
 
 ## Current Position
 
-Phase: 20
-Plan: Not started
-Status: Phase 19 complete — ready for Phase 20
-Last activity: 2026-03-27
+Phase: 20 (regeneration-and-stale-detection) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 20
+Last activity: 2026-03-28 -- Phase 20 execution started
 
 Progress: [██████████] 100% (6/4 v1.4 plans complete)
 
@@ -61,6 +61,8 @@ Recent decisions affecting v1.4 work:
 - [Phase 19-read-path]: Dependency injection over singleton creation in importReefArtifacts — passes storageService and lruCache as params, IPC handler provides singletons
 - [Phase 19]: Non-fatal error handling (D-11): reef import errors caught with console.warn, fall through to generation prompt
 - [Phase 19]: Plural-aware toast copy: '1 diagram' vs '2 diagrams', '1 level' vs '2 levels'
+- [Phase 20]: isStale in DiagramViewer derived from useDiagramStateStore().getState() === 'stale' — staleness driven by Plan 01 ReefStalenessService via IPC, not local useState
+- [Phase 20]: regenerateStaleLevels added as dedicated function; generateAllDiagrams delegates to it when staleLevels exist — skips fresh levels (D-08)
 
 ### Blockers/Concerns
 
@@ -70,9 +72,9 @@ Recent decisions affecting v1.4 work:
 
 ## Session Continuity
 
-Last session: 2026-03-27T23:23:34.082Z
-Stopped at: Phase 20 context gathered
-Resume file: .planning/phases/20-regeneration-and-stale-detection/20-CONTEXT.md
+Last session: 2026-03-28T00:37:15.601Z
+Stopped at: Checkpoint: 20-02 Task 2 awaiting human verification
+Resume file: None
 
 ---
 *v1.4 Repo-Stored Diagrams — roadmap created 2026-03-26*
