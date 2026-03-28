@@ -18,10 +18,14 @@ vi.mock('../../../src/main/services/c4/c4AnalyzerService', () => ({
 }));
 
 // Mock fs/promises for getWatchPathFiles
-vi.mock('fs/promises', () => ({
-  readdir: vi.fn().mockResolvedValue([]),
-  stat: vi.fn().mockResolvedValue({ isFile: () => false, isDirectory: () => false }),
-}));
+vi.mock('fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fs/promises')>();
+  return {
+    ...actual,
+    readdir: vi.fn().mockResolvedValue([]),
+    stat: vi.fn().mockResolvedValue({ isFile: () => false, isDirectory: () => false, mtimeMs: 0 }),
+  };
+});
 
 import { computeSourceHash } from '../../../src/main/services/reef/sourceHashService';
 import { getAnalyzedFilePaths } from '../../../src/main/services/c4/c4AnalyzerService';
