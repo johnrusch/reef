@@ -6,6 +6,7 @@ interface DiagramControlsProps {
   onRegenerate: () => void;
   showChanges: boolean;
   onToggleChanges: () => void;
+  staleLevelCount?: number;
 }
 
 export const DiagramControls: React.FC<DiagramControlsProps> = ({
@@ -13,6 +14,7 @@ export const DiagramControls: React.FC<DiagramControlsProps> = ({
   onRegenerate,
   showChanges,
   onToggleChanges,
+  staleLevelCount,
 }) => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
@@ -64,7 +66,9 @@ export const DiagramControls: React.FC<DiagramControlsProps> = ({
               <div>
                 <h3 className="text-lg font-semibold text-gray-200">Regenerate Diagram?</h3>
                 <p className="text-sm text-gray-400 mt-1">
-                  This will create a new diagram with your current settings. The process may take a few moments.
+                  {staleLevelCount && staleLevelCount > 0
+                    ? `${staleLevelCount} diagram${staleLevelCount === 1 ? '' : 's'} outdated. Regeneration uses the AI API and may take a few moments.`
+                    : 'This will regenerate the diagram. The process uses the AI API and may take a few moments.'}
                 </p>
               </div>
             </div>

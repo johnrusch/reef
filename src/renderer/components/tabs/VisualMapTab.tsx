@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AlertCircle, Key } from 'lucide-react';
+import { useToastStore } from '../../stores/toastStore';
 import plantumlEncoder from 'plantuml-encoder';
 import { DiagramViewer, DiagramMetadata, DiagramType, DetailLevel, FocusArea, ModelType } from '../DiagramViewer/DiagramViewer';
 import { useDiagramStateStore } from '../../stores/diagramStateStore';
@@ -30,6 +31,13 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
   const [svgContent, setSvgContent] = useState<string>('');
 
   const { getState, setState, loadStatesFromBackend } = useDiagramStateStore();
+  const { addToast } = useToastStore();
+
+  const staleLevels = useMemo(() => {
+    if (!repository?.path) return [];
+    const levels = ['context', 'container'] as const;
+    return levels.filter(level => getState(repository.path, level as any) === 'stale');
+  }, [repository?.path, getState]);
 
   useEffect(() => {
     checkConfiguration();
@@ -432,6 +440,11 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
       return;
     }
 
+    // When stale levels exist, delegate to the stale-aware regeneration flow (D-08)
+    if (staleLevels.length > 0) {
+      return regenerateStaleLevels();
+    }
+
     setIsGenerating(true);
     setError(null);
 
@@ -504,6 +517,64 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
     } catch (err) {
       console.error('Failed to load context diagram after generate-all:', err);
     }
+  };
+
+  const regenerateStaleLevels = async () => {
+    if (!repository) return;
+    const levelsToRegenerate = staleLevels.length > 0 ? staleLevels : ['context', 'container'] as const;
+
+    setIsGenerating(true);
+    setError(null);
+    const completedLevels: string[] = [];
+    const failedLevels: string[] = [];
+
+    for (const level of levelsToRegenerate) {
+      try {
+        await window.reef.c4Storage.updateState(repository.path, level, 'generating');
+        await window.reef.diagram.generate(repository.path, {
+          type: `c4-${level}` as DiagramType,
+          detailLevel: 'overview',
+        });
+        await window.reef.c4Storage.updateState(repository.path, level, 'fresh');
+        completedLevels.push(level);
+      } catch (err) {
+        console.error(`Failed to regenerate ${level}:`, err);
+        failedLevels.push(level);
+        try {
+          await window.reef.c4Storage.updateState(
+            repository.path, level, 'error', undefined,
+            'Could not regenerate diagram. Please try again.'
+          );
+        } catch (_) { /* ignore */ }
+      }
+    }
+
+    // Load updated states
+    try {
+      const states = await window.reef.c4Storage.getRepoStates(repository.path);
+      loadStatesFromBackend(states);
+    } catch (_) { /* ignore */ }
+
+    // Per D-12: Toast on completion
+    if (completedLevels.length > 0 && failedLevels.length === 0) {
+      addToast({
+        type: 'success',
+        message: `Regenerated ${completedLevels.length} level${completedLevels.length === 1 ? '' : 's'} — .reef/ updated`,
+        duration: 4000,
+      });
+    }
+    // Per D-14: Partial failure
+    if (failedLevels.length > 0) {
+      addToast({
+        type: 'error',
+        message: `Failed to regenerate: ${failedLevels.join(', ')}`,
+        duration: 6000,
+      });
+    }
+
+    // Reload current diagram display
+    setDiagramType(diagramType); // trigger re-fetch via useEffect
+    setIsGenerating(false);
   };
 
   const calculateEstimatedCost = (
@@ -613,6 +684,7 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
         showChanges={showChanges}
         preRenderedSvg={svgContent || undefined}
         onSvgGenerated={handleSvgGenerated}
+        staleLevelCount={staleLevels.length}
       />
     );
   }

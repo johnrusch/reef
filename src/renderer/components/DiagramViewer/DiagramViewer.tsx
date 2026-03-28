@@ -55,6 +55,7 @@ interface DiagramViewerProps {
   showChanges?: boolean;
   preRenderedSvg?: string;
   onSvgGenerated?: (svg: string) => void;
+  staleLevelCount?: number;
 }
 
 export const DiagramViewer: React.FC<DiagramViewerProps> = ({
@@ -69,6 +70,7 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
   showChanges: _showChangesProp = false,
   preRenderedSvg,
   onSvgGenerated,
+  staleLevelCount,
 }) => {
   const [showChanges, setShowChanges] = useState<boolean>(_showChangesProp);
   const [currentOptions, setCurrentOptions] = useState({
@@ -79,7 +81,6 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
   });
 
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isStale, setIsStale] = useState(false);
   const [isRegeneratingFromBadge, setIsRegeneratingFromBadge] = useState(false);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
@@ -95,6 +96,12 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
   const currentElementId = navigationStore.currentLevel().elementId;
   const currentState = getState(_repository?.path || '', currentLevel, currentElementId);
   const stateEntry = useDiagramStateStore(s => s.getEntry(_repository?.path || '', currentLevel, currentElementId));
+
+  // Derive isStale from diagramStateStore (hash-based staleness from ReefStalenessService)
+  const isStale = useMemo(() => {
+    if (!_repository?.path || !currentLevel) return false;
+    return getState(_repository.path, currentLevel) === 'stale';
+  }, [_repository?.path, currentLevel, getState]);
 
   // Compute highlight element IDs for SVG change visualization
   const affectedElements = useDiagramStateStore(
@@ -158,13 +165,12 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
 
   const handleRegenerateFromBadge = useCallback(async () => {
     setIsRegeneratingFromBadge(true);
-    setIsStale(false); // Optimistic UI update
 
     try {
       await onRegenerateDiagram({ ...currentOptions, skipCache: true });
     } catch (error) {
-      // Restore stale state on error
-      setIsStale(true);
+      // Staleness state is driven by the store, which updates automatically
+      // when the IPC c4-storage:state-changed event fires
       console.error('Regeneration failed:', error);
     } finally {
       setIsRegeneratingFromBadge(false);
@@ -388,22 +394,10 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
     // Start watching
     window.reef.fileWatcher.start(repoPath, level);
 
-    // Check staleness on mount
-    window.reef.fileWatcher.checkStaleness(repoPath, level).then(stale => {
-      if (stale) setIsStale(true);
-    });
-
     return () => {
       window.reef.fileWatcher.stop(repoPath, level);
     };
   }, [currentOptions.type, _repository?.path]);
-
-  // Clear staleness when diagram is regenerated
-  useEffect(() => {
-    if (metadata.generatedAt) {
-      setIsStale(false);
-    }
-  }, [metadata.generatedAt]);
 
   // Reset navigation when repository changes
   useEffect(() => {
@@ -569,6 +563,7 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
         onRegenerate={handleRegenerate}
         showChanges={showChanges}
         onToggleChanges={() => setShowChanges(prev => !prev)}
+        staleLevelCount={staleLevelCount}
       />
 
       {currentOptions.type.startsWith('c4-') && (
