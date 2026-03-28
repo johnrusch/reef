@@ -21,15 +21,22 @@ import type { C4Level } from './c4/types/c4Types';
 import { C4StorageService } from './c4/c4StorageService';
 import type { DiagramState } from '../../shared/types/diagramState';
 import { ChangeTrackingService } from './changeTrackingService';
+import type { ReefStalenessService } from './reef/reefStalenessService';
 
 export class FileWatcherService {
   private watchers: Map<string, FSWatcher> = new Map();
   private storageService: C4StorageService;
   private changeTrackingService: ChangeTrackingService | null;
+  private reefStalenessService: ReefStalenessService | null;
 
-  constructor(storageService: C4StorageService, changeTrackingService?: ChangeTrackingService) {
+  constructor(
+    storageService: C4StorageService,
+    changeTrackingService?: ChangeTrackingService,
+    reefStalenessService?: ReefStalenessService
+  ) {
     this.storageService = storageService;
     this.changeTrackingService = changeTrackingService || null;
+    this.reefStalenessService = reefStalenessService || null;
   }
 
   /**
@@ -114,6 +121,7 @@ export class FileWatcherService {
     }
 
     this.watchers.clear();
+    this.reefStalenessService?.dispose();
   }
 
   /**
@@ -266,6 +274,11 @@ export class FileWatcherService {
           this.emitStateChangedEvent(repoPath, level, 'stale');
         }
       }
+
+      // Hash-based .reef/ staleness check (D-01, D-03) — additive alongside mtime check
+      if (this.reefStalenessService) {
+        this.reefStalenessService.scheduleCheck(repoPath, level);
+      }
     } catch (error) {
       // File might have been deleted or inaccessible
       console.error(`Error handling file change for ${changedPath}:`, error);
@@ -381,10 +394,11 @@ let fileWatcherServiceInstance: FileWatcherService | null = null;
 
 export function initializeFileWatcherService(
   storageService: C4StorageService,
-  changeTrackingService?: ChangeTrackingService
+  changeTrackingService?: ChangeTrackingService,
+  reefStalenessService?: ReefStalenessService
 ): FileWatcherService {
   if (!fileWatcherServiceInstance) {
-    fileWatcherServiceInstance = new FileWatcherService(storageService, changeTrackingService);
+    fileWatcherServiceInstance = new FileWatcherService(storageService, changeTrackingService, reefStalenessService);
   }
   return fileWatcherServiceInstance;
 }

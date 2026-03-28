@@ -20,6 +20,8 @@ import { C4CacheService } from './services/c4/c4CacheService';
 import type { C4Level } from './services/c4/types/c4Types';
 import { registerC4StorageHandlers, cleanupC4Storage, getStorageService } from './services/c4/c4StorageHandlers';
 import { registerGenerationQueueHandlers } from './services/c4/generationQueueService';
+import { ReefStalenessService } from './services/reef/reefStalenessService';
+import { ReefStorageService } from './services/reef/reefStorageService';
 
 const appPath = app.getAppPath();
 const isDev = process.env.NODE_ENV === 'development';
@@ -252,8 +254,31 @@ app.whenReady().then(async () => {
   // Initialize change tracking service for enriched file-to-element mapping
   changeTrackingServiceInstance = new ChangeTrackingService(getStorageService());
 
-  // Initialize file watcher with change tracking service
-  initializeFileWatcherService(getStorageService(), changeTrackingServiceInstance);
+  // Initialize reef staleness service for hash-based .reef/ staleness detection (D-01/D-03)
+  const reefStalenessService = new ReefStalenessService(
+    new ReefStorageService(),
+    (repoPath: string, level: string) => {
+      // Emit stale state to renderer via existing IPC pipeline
+      try {
+        const windows = BrowserWindow.getAllWindows();
+        for (const win of windows) {
+          win.webContents.send('c4-storage:state-changed', {
+            repoPath,
+            level,
+            state: 'stale',
+            elementId: undefined,
+            errorMessage: undefined,
+          });
+        }
+        console.log(`[ReefStaleness] Emitted stale for ${repoPath}:${level}`);
+      } catch (err) {
+        console.error('[ReefStaleness] Error emitting stale event:', err);
+      }
+    }
+  );
+
+  // Initialize file watcher with change tracking service and reef staleness service
+  initializeFileWatcherService(getStorageService(), changeTrackingServiceInstance, reefStalenessService);
 
   createWindow();
 });
