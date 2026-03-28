@@ -7,6 +7,7 @@
 - ✅ **v1.2 Diagrams That Deliver** — Phases 11-14 (shipped 2026-03-03)
 - ✅ **v1.3 Diagram Explorer** — Phases 15-16 (shipped 2026-03-06)
 - ✅ **v1.4 Repo-Stored Diagrams** — Phases 17-20 (shipped 2026-03-28)
+- 🚧 **v1.5 Bug Fixes & Navigation Overhaul** — Phases 21-23 (in progress)
 
 ## Phases
 
@@ -70,6 +71,45 @@ See: `.planning/milestones/v1.4-ROADMAP.md` for full details.
 
 </details>
 
+### 🚧 v1.5 Bug Fixes & Navigation Overhaul (In Progress)
+
+**Milestone Goal:** Fix broken diagram navigation to load from cache instead of regenerating, overhaul the sidebar and breadcrumb UX, and improve code-level diagram quality.
+
+## Phase Details
+
+### Phase 21: Cache-First Navigation
+**Goal**: Users can navigate between diagram levels and trigger full generation without silently overwriting .reef/ data
+**Depends on**: Phase 20
+**Requirements**: NAV-01, NAV-02, NAV-03
+**Success Criteria** (what must be TRUE):
+  1. User can click a diagram element to drill down and see the cached diagram instantly — no generation is triggered
+  2. User can switch between C4 levels via sidebar or breadcrumb and see cached diagrams instantly — no generation is triggered
+  3. User's .reef/ diagram files are unchanged after any navigation action — only an explicit Regenerate action can modify .reef/
+  4. User can click "Generate All" and all 4 C4 levels are generated and stored, including component and code levels
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 22: Sidebar & Breadcrumb Overhaul
+**Goal**: Users can navigate the C4 hierarchy through a reliable sidebar that reflects current position and a breadcrumb trail without redundant segments
+**Depends on**: Phase 21
+**Requirements**: SIDE-01, SIDE-02, SIDE-03, BRCR-01
+**Success Criteria** (what must be TRUE):
+  1. User sees the currently active C4 level highlighted in the sidebar immediately after any navigation (drill-down, level switch, breadcrumb click)
+  2. User can drag the sidebar edge to resize it, and the new width persists across navigation actions
+  3. User sees a nested tree of clickable elements under each C4 level in the sidebar that matches what is clickable in the diagram canvas
+  4. User sees a breadcrumb trail where each segment appears exactly once with no duplicate level names, and the current level is clearly indicated
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 23: Code-Level Diagram Quality
+**Goal**: Users see meaningful class structure in code-level diagrams from static analysis alone, not empty or near-empty diagrams
+**Depends on**: Phase 21
+**Requirements**: QUAL-01
+**Success Criteria** (what must be TRUE):
+  1. User sees classes, public methods, and key properties in code-level diagrams generated from a TypeScript repository without AI enrichment
+  2. User sees a non-empty code-level diagram for any repository that contains TypeScript source files with at least one class or exported function
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -94,6 +134,9 @@ See: `.planning/milestones/v1.4-ROADMAP.md` for full details.
 | 18. Write Path | v1.4 | 2/2 | Complete | 2026-03-27 |
 | 19. Read Path | v1.4 | 2/2 | Complete | 2026-03-27 |
 | 20. Regeneration and Stale Detection | v1.4 | 2/2 | Complete | 2026-03-28 |
+| 21. Cache-First Navigation | v1.5 | 0/TBD | Not started | - |
+| 22. Sidebar & Breadcrumb Overhaul | v1.5 | 0/TBD | Not started | - |
+| 23. Code-Level Diagram Quality | v1.5 | 0/TBD | Not started | - |
 
 ---
-*Last updated: 2026-03-28 — v1.4 milestone shipped*
+*Last updated: 2026-03-28 — v1.5 roadmap created*

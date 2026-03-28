@@ -7,7 +7,7 @@ stopped_at: null
 last_updated: "2026-03-28"
 last_activity: 2026-03-28
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,14 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-28)
 
 **Core value:** Users can quickly grasp unfamiliar codebase architecture through AI-generated C4 diagrams that update as code changes
-**Current focus:** Defining requirements for v1.5
+**Current focus:** Phase 21 — Cache-First Navigation
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-28 — Milestone v1.5 started
+Phase: 21 of 23 (Cache-First Navigation)
+Plan: — of — in current phase
+Status: Ready to plan
+Last activity: 2026-03-28 — v1.5 roadmap created (3 phases, 8 requirements mapped)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -47,21 +49,20 @@ Last activity: 2026-03-28 — Milestone v1.5 started
 
 Recent decisions affecting v1.5 work:
 
-- [v1.5 design]: .reef/ is the source of truth for diagrams. SQLite and LRU cache are local performance optimizations only. Navigation must never silently regenerate and overwrite .reef/ data.
-- [v1.4 carryover]: Drill-down clicks trigger generation instead of loading cached diagrams — primary v1.5 fix target
-- [v1.4 carryover]: STOR-03 partial — hasNewerFiles startup walk omits .reef from IGNORED_DIRS
-- [v1.4 carryover]: REGEN-01 partial — .reef/ write-back is indirect through async PlantUML render
-- [v1.3 carryover]: GEN-01 partial — component/code generation requires elementId from drill-down
+- [v1.5 design]: .reef/ is the source of truth. SQLite and LRU cache are local performance optimizations only. Navigation must never silently regenerate or overwrite .reef/ data.
+- [v1.4 carryover]: Drill-down clicks trigger generation instead of loading cached diagrams — primary fix target in Phase 21
+- [v1.4 carryover]: STOR-03 partial — hasNewerFiles startup walk omits .reef from IGNORED_DIRS (address in Phase 21)
+- [v1.4 carryover]: REGEN-01 partial — .reef/ write-back async timing; success toast fires before .reef/ updated
 
 ### Blockers/Concerns
 
-- [v1.2 carryover]: better-sqlite3 native module version mismatch blocks integration tests — pre-existing environment issue
-- [v1.3 carryover]: DiagramViewer.uicl.test.tsx Zustand mock regression (selector-aware mock needed)
+- [v1.3 carryover]: DiagramViewer.uicl.test.tsx Zustand mock regression — selector-aware mock needed
+- [v1.2 carryover]: better-sqlite3 native module version mismatch blocks integration tests (pre-existing environment issue)
 
 ## Session Continuity
 
 Last session: 2026-03-28
-Stopped at: Milestone v1.5 initialized
+Stopped at: v1.5 roadmap created — ready to plan Phase 21
 Resume file: None
 
 ---
