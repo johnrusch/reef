@@ -57,6 +57,8 @@ interface DiagramViewerProps {
   preRenderedSvg?: string;
   onSvgGenerated?: (svg: string) => void;
   staleLevelCount?: number;
+  showGenerateAll?: boolean;
+  onGenerateAll?: () => void;
 }
 
 export const DiagramViewer: React.FC<DiagramViewerProps> = ({
@@ -73,6 +75,8 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
   preRenderedSvg,
   onSvgGenerated,
   staleLevelCount,
+  showGenerateAll,
+  onGenerateAll,
 }) => {
   const [showChanges, setShowChanges] = useState<boolean>(_showChangesProp);
   const [currentOptions, setCurrentOptions] = useState({
@@ -580,6 +584,8 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
         showChanges={showChanges}
         onToggleChanges={() => setShowChanges(prev => !prev)}
         staleLevelCount={staleLevelCount}
+        showGenerateAll={showGenerateAll}
+        onGenerateAll={onGenerateAll}
       />
 
       {currentOptions.type.startsWith('c4-') && (

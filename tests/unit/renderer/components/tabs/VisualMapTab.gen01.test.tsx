@@ -1,8 +1,11 @@
 /**
  * VisualMapTab.gen01.test.tsx
  *
- * GEN-01: GeneratePromptCard's onGenerate should trigger generation for all 4 C4 levels.
- * Tests that generateAllDiagrams calls the diagram API for all 4 levels.
+ * GEN-01: GeneratePromptCard's onGenerate should trigger generation for all 4 C4 levels
+ * via the generationQueueService (c4Generation.enqueue).
+ *
+ * Updated in Plan 21-02: generateAllDiagrams now delegates to c4Generation.enqueue
+ * instead of calling diagram.generate directly.
  */
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
@@ -12,7 +15,7 @@ import { VisualMapTab } from '../../../../../src/renderer/components/tabs/Visual
 // ---------------------------------------------------------------------------
 // Mock window.reef API
 // ---------------------------------------------------------------------------
-const mockGenerate = vi.fn(() => Promise.resolve({ success: false, error: 'not called' }));
+const mockEnqueue = vi.fn(() => Promise.resolve({ queued: true }));
 
 const mockReefAPI = {
   diagram: {
@@ -20,7 +23,7 @@ const mockReefAPI = {
     setApiKey: vi.fn(() => Promise.resolve({ success: true })),
     getAvailableContainers: vi.fn(() => Promise.resolve({ success: false, containers: [] })),
     getAvailableComponents: vi.fn(() => Promise.resolve({ success: false, components: [] })),
-    generate: mockGenerate,
+    generate: vi.fn(() => Promise.resolve({ success: false, error: 'not called' })),
   },
   c4Storage: {
     initialize: vi.fn(() => Promise.resolve()),
@@ -30,6 +33,14 @@ const mockReefAPI = {
     onStateChanged: vi.fn(() => () => {}),
     updateState: vi.fn(() => Promise.resolve()),
     storeSvg: vi.fn(() => Promise.resolve()),
+  },
+  c4Generation: {
+    enqueue: mockEnqueue,
+    cancel: vi.fn(() => Promise.resolve({ cancelled: true })),
+    getCostEstimate: vi.fn(() => Promise.resolve({ totalTokens: 0, estimatedCost: 0, levels: 4, summary: '' })),
+    onProgress: vi.fn(() => () => {}),
+    onComplete: vi.fn(() => () => {}),
+    onCancelled: vi.fn(() => () => {}),
   },
   git: {
     getRepositoryStatus: vi.fn(() => Promise.resolve({ files: [] })),
@@ -98,7 +109,7 @@ vi.mock('../../../../../src/renderer/components/DiagramViewer/GeneratePromptCard
     <div data-testid="generate-prompt-card">
       <span>Generate for {repoName}</span>
       <button onClick={onGenerate} data-testid="generate-button">
-        Generate All Diagrams
+        Generate All
       </button>
     </div>
   ),
@@ -120,17 +131,20 @@ describe('VisualMapTab (GEN-01)', () => {
     mockReefAPI.c4Storage.getSvg.mockResolvedValue(null);
     mockReefAPI.c4Storage.getRepoStates.mockResolvedValue([]);
     mockReefAPI.c4Storage.onStateChanged.mockReturnValue(() => {});
+    mockReefAPI.c4Generation.onProgress.mockReturnValue(() => {});
+    mockReefAPI.c4Generation.onComplete.mockReturnValue(() => {});
+    mockReefAPI.c4Generation.enqueue.mockResolvedValue({ queued: true });
   });
 
-  test('GeneratePromptCard button text says "Generate All Diagrams"', async () => {
+  test('GeneratePromptCard button is rendered', async () => {
     render(<VisualMapTab repository={mockRepository} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Generate All Diagrams')).toBeInTheDocument();
+      expect(screen.getByTestId('generate-button')).toBeInTheDocument();
     });
   });
 
-  test('clicking generate button triggers diagram.generate for all 4 C4 levels', async () => {
+  test('clicking generate button calls c4Generation.enqueue (GEN-01: all 4 levels via queue)', async () => {
     render(<VisualMapTab repository={mockRepository} />);
 
     await waitFor(() => {
@@ -140,16 +154,26 @@ describe('VisualMapTab (GEN-01)', () => {
     fireEvent.click(screen.getByTestId('generate-button'));
 
     await waitFor(() => {
-      // Should have called generate at least 4 times for the 4 C4 levels
-      expect(mockGenerate).toHaveBeenCalledTimes(4);
-    }, { timeout: 5000 });
+      // Should have enqueued generation — the queue service generates all 4 levels
+      expect(mockEnqueue).toHaveBeenCalledTimes(1);
+      expect(mockEnqueue).toHaveBeenCalledWith('/test/repo', 'test-repo');
+    });
+  });
 
-    // Verify the 4 C4 types were requested
-    // The generate API is called as generate(repoPath, { type, ... }) so type is in second argument
-    const callTypes = mockGenerate.mock.calls.map(call => call[1]?.type);
-    expect(callTypes).toContain('c4-context');
-    expect(callTypes).toContain('c4-container');
-    expect(callTypes).toContain('c4-component');
-    expect(callTypes).toContain('c4-code');
+  test('generate button does NOT call diagram.generate directly (delegates to queue)', async () => {
+    render(<VisualMapTab repository={mockRepository} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('generate-button')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('generate-button'));
+
+    await waitFor(() => {
+      expect(mockEnqueue).toHaveBeenCalled();
+    });
+
+    // The new implementation delegates to queue, not direct generate
+    expect(mockReefAPI.diagram.generate).not.toHaveBeenCalled();
   });
 });

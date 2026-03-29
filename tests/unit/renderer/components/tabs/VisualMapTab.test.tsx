@@ -33,6 +33,14 @@ const mockReefAPI = {
     updateState: vi.fn(() => Promise.resolve()),
     storeSvg: vi.fn(() => Promise.resolve()),
   },
+  c4Generation: {
+    enqueue: vi.fn(() => Promise.resolve({ queued: true })),
+    cancel: vi.fn(() => Promise.resolve({ cancelled: true })),
+    getCostEstimate: vi.fn(() => Promise.resolve({ totalTokens: 0, estimatedCost: 0, levels: 4, summary: '' })),
+    onProgress: vi.fn(() => () => {}),
+    onComplete: vi.fn(() => () => {}),
+    onCancelled: vi.fn(() => () => {}),
+  },
   git: {
     getRepositoryStatus: vi.fn(() => Promise.resolve({ files: [] })),
   },

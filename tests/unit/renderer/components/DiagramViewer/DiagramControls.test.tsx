@@ -140,4 +140,97 @@ describe('DiagramControls', () => {
     // Confirm dialog should appear
     expect(screen.getByText('Regenerate Diagram?')).toBeInTheDocument();
   });
+
+  test('confirm dialog shows "Keep Current Diagram" cancel button', () => {
+    render(
+      <DiagramControls
+        isGenerating={false}
+        onRegenerate={mockOnRegenerate}
+        showChanges={false}
+        onToggleChanges={mockOnToggleChanges}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Regenerate'));
+    expect(screen.getByText('Keep Current Diagram')).toBeInTheDocument();
+  });
+
+  test('confirm dialog shows "Regenerate Diagram" confirm button', () => {
+    render(
+      <DiagramControls
+        isGenerating={false}
+        onRegenerate={mockOnRegenerate}
+        showChanges={false}
+        onToggleChanges={mockOnToggleChanges}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Regenerate'));
+    expect(screen.getByText('Regenerate Diagram')).toBeInTheDocument();
+  });
+
+  test('does NOT render Generate All button when showGenerateAll is false', () => {
+    render(
+      <DiagramControls
+        isGenerating={false}
+        onRegenerate={mockOnRegenerate}
+        showChanges={false}
+        onToggleChanges={mockOnToggleChanges}
+        showGenerateAll={false}
+        onGenerateAll={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByText('Generate All')).not.toBeInTheDocument();
+  });
+
+  test('renders Generate All button when showGenerateAll is true', () => {
+    const mockOnGenerateAll = vi.fn();
+    render(
+      <DiagramControls
+        isGenerating={false}
+        onRegenerate={mockOnRegenerate}
+        showChanges={false}
+        onToggleChanges={mockOnToggleChanges}
+        showGenerateAll={true}
+        onGenerateAll={mockOnGenerateAll}
+      />
+    );
+
+    expect(screen.getByText('Generate All')).toBeInTheDocument();
+  });
+
+  test('clicking Generate All calls onGenerateAll', () => {
+    const mockOnGenerateAll = vi.fn();
+    render(
+      <DiagramControls
+        isGenerating={false}
+        onRegenerate={mockOnRegenerate}
+        showChanges={false}
+        onToggleChanges={mockOnToggleChanges}
+        showGenerateAll={true}
+        onGenerateAll={mockOnGenerateAll}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Generate All'));
+    expect(mockOnGenerateAll).toHaveBeenCalledTimes(1);
+  });
+
+  test('Generate All button shows Generating... when isGenerating is true', () => {
+    render(
+      <DiagramControls
+        isGenerating={true}
+        onRegenerate={mockOnRegenerate}
+        showChanges={false}
+        onToggleChanges={mockOnToggleChanges}
+        showGenerateAll={true}
+        onGenerateAll={vi.fn()}
+      />
+    );
+
+    // When generating, shows "Generating..." in button
+    const generatingTexts = screen.getAllByText('Generating...');
+    expect(generatingTexts.length).toBeGreaterThan(0);
+  });
 });

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RefreshCw, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { RefreshCw, AlertCircle, Eye, EyeOff, Sparkles } from 'lucide-react';
 
 interface DiagramControlsProps {
   isGenerating: boolean;
@@ -7,6 +7,8 @@ interface DiagramControlsProps {
   showChanges: boolean;
   onToggleChanges: () => void;
   staleLevelCount?: number;
+  showGenerateAll?: boolean;
+  onGenerateAll?: () => void;
 }
 
 export const DiagramControls: React.FC<DiagramControlsProps> = ({
@@ -15,6 +17,8 @@ export const DiagramControls: React.FC<DiagramControlsProps> = ({
   showChanges,
   onToggleChanges,
   staleLevelCount,
+  showGenerateAll,
+  onGenerateAll,
 }) => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
@@ -30,6 +34,27 @@ export const DiagramControls: React.FC<DiagramControlsProps> = ({
   return (
     <div className="bg-gray-800 border-b border-gray-700 p-4">
       <div className="flex items-center gap-3">
+        {showGenerateAll && onGenerateAll && (
+          <button
+            onClick={onGenerateAll}
+            disabled={isGenerating}
+            className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 rounded text-sm font-medium transition-colors"
+            title="Generate all 4 C4 diagram levels"
+          >
+            {isGenerating ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                Generate All
+              </>
+            )}
+          </button>
+        )}
+
         <button
           onClick={handleRegenerateClick}
           disabled={isGenerating}
@@ -68,7 +93,7 @@ export const DiagramControls: React.FC<DiagramControlsProps> = ({
                 <p className="text-sm text-gray-400 mt-1">
                   {staleLevelCount && staleLevelCount > 0
                     ? `${staleLevelCount} diagram${staleLevelCount === 1 ? '' : 's'} outdated. Regeneration uses the AI API and may take a few moments.`
-                    : 'This will regenerate the diagram. The process uses the AI API and may take a few moments.'}
+                    : 'This will regenerate the diagram using the AI API, overwriting the stored version. This may take a few moments.'}
                 </p>
               </div>
             </div>
@@ -78,13 +103,13 @@ export const DiagramControls: React.FC<DiagramControlsProps> = ({
                 onClick={() => setShowConfirmDialog(false)}
                 className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-colors"
               >
-                Cancel
+                Keep Current Diagram
               </button>
               <button
                 onClick={confirmRegenerate}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm font-medium transition-colors"
               >
-                Regenerate
+                Regenerate Diagram
               </button>
             </div>
           </div>

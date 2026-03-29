@@ -42,6 +42,13 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
     return levels.filter(level => getState(repository.path, level as any) === 'stale');
   }, [repository?.path, getState]);
 
+  // Show "Generate All" in toolbar when context or container has never been generated
+  const showGenerateAll = useMemo(() => {
+    if (!repository?.path) return false;
+    const levels = ['context', 'container'] as const;
+    return levels.some(level => getState(repository.path, level as any) === 'never_generated');
+  }, [repository?.path, getState]);
+
   useEffect(() => {
     checkConfiguration();
   }, []);
@@ -285,6 +292,53 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
     // 3. Cache miss — caller decides whether to generate
     return false;
   }, [repository, detailLevel, focusArea, modelType]);
+
+  // Subscribe to generation queue events for Generate All progress and completion
+  // Must be declared AFTER loadDiagram (used in the completion handler)
+  useEffect(() => {
+    if (!repository) return;
+
+    const unsubProgress = window.reef.c4Generation.onProgress((_, data) => {
+      if (data.repoPath === repository.path) {
+        // Keep isGenerating true while progress events arrive
+        setIsGenerating(true);
+      }
+    });
+
+    const unsubComplete = window.reef.c4Generation.onComplete((_, data) => {
+      if (data.repoPath === repository.path) {
+        setIsGenerating(false);
+
+        if (data.success) {
+          addToast({
+            type: 'success',
+            message: `Generated ${data.completedLevels.length} diagram level${data.completedLevels.length === 1 ? '' : 's'}`,
+            duration: 4000,
+          });
+        } else {
+          setError(data.errorMessage || 'Generation failed');
+          addToast({
+            type: 'error',
+            message: data.errorMessage || 'Diagram generation failed',
+            duration: 6000,
+          });
+        }
+
+        // Reload states and display context diagram
+        window.reef.c4Storage.getRepoStates(repository.path)
+          .then(states => loadStatesFromBackend(states))
+          .catch(console.error);
+
+        // Load context diagram into view using the loadDiagram function from Plan 01
+        loadDiagram({ type: 'c4-context', elementId: undefined }).catch(console.error);
+      }
+    });
+
+    return () => {
+      unsubProgress();
+      unsubComplete();
+    };
+  }, [repository, loadStatesFromBackend, loadDiagram, addToast]);
 
   const handleSvgGenerated = useCallback(async (svg: string) => {
     if (!repository) return;
@@ -533,74 +587,13 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
     setIsGenerating(true);
     setError(null);
 
-    // Only context and container can be generated without an elementId.
-    // Component requires a container elementId, code requires a component
-    // elementId — those are generated on drill-down when the user clicks
-    // a specific element in the diagram.
-    const levels: Array<{ type: DiagramType; level: string }> = [
-      { type: 'c4-context', level: 'context' },
-      { type: 'c4-container', level: 'container' },
-    ];
-
-    // Generate top-level diagrams via backend API directly (bypasses component
-    // state management to avoid re-render/effect interference between levels).
-    // The backend storeDiagram() persists each level's PlantUML automatically.
-    for (const { type, level } of levels) {
-      try {
-        await window.reef.c4Storage.updateState(repository.path, level, 'generating');
-        await window.reef.diagram.generate(repository.path, {
-          type,
-          detailLevel: 'overview',
-        });
-        await window.reef.c4Storage.updateState(repository.path, level, 'fresh');
-      } catch (err) {
-        console.error(`Failed to generate ${type}:`, err);
-        try {
-          await window.reef.c4Storage.updateState(
-            repository.path, level, 'error', undefined,
-            'Could not generate diagram. Please try again.'
-          );
-        } catch (_) { /* ignore */ }
-      }
-    }
-
-    // Load all states so the sidebar shows correct icons
+    // Delegate to generationQueueService — handles all 4 levels with elementId discovery
     try {
-      const states = await window.reef.c4Storage.getRepoStates(repository.path);
-      loadStatesFromBackend(states);
-    } catch (_) { /* ignore */ }
-
-    // Now load the context level diagram for display
-    setDiagramType('c4-context');
-    setIsGenerating(false);
-
-    // Load the stored context diagram into component state
-    try {
-      const storedDiagram = await window.reef.c4Storage.getDiagram(
-        repository.path, 'context'
-      );
-      if (storedDiagram) {
-        setSvgContent('');
-        setDiagram(storedDiagram.diagramContent);
-        setMetadata({
-          tokensUsed: storedDiagram.tokensUsed
-            ? { input: storedDiagram.tokensUsed, output: 0 }
-            : undefined,
-          generatedAt: storedDiagram.createdAt || new Date().toISOString(),
-          diagramType: 'c4-context',
-          detailLevel: detailLevel,
-          focusArea: focusArea,
-          repository: repository.name,
-          model: (storedDiagram.modelUsed || 'haiku') as ModelType,
-          generationTime: 0,
-          estimatedCost: storedDiagram.generationCost || 0,
-          cached: true,
-          lastUpdated: storedDiagram.updatedAt || new Date().toISOString(),
-        });
-        setViewMode('diagram');
-      }
+      await window.reef.c4Generation.enqueue(repository.path, repository.name);
     } catch (err) {
-      console.error('Failed to load context diagram after generate-all:', err);
+      console.error('Failed to enqueue generation:', err);
+      setError('Failed to start diagram generation');
+      setIsGenerating(false);
     }
   };
 
@@ -771,6 +764,8 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
         preRenderedSvg={svgContent || undefined}
         onSvgGenerated={handleSvgGenerated}
         staleLevelCount={staleLevels.length}
+        showGenerateAll={showGenerateAll}
+        onGenerateAll={generateAllDiagrams}
       />
     );
   }

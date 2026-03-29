@@ -39,7 +39,7 @@ export const GeneratePromptCard: React.FC<GeneratePromptCardProps> = ({
         <p className="text-gray-400">
           Generate C4 architecture diagrams to visualize the structure of{' '}
           <span className="text-gray-200 font-medium">{repoName}</span>.
-          Deeper levels (Components, Code) are generated when you drill into specific elements.
+          All 4 levels will be generated so drill-down navigation is instant.
         </p>
 
         {/* Action button */}
@@ -56,14 +56,14 @@ export const GeneratePromptCard: React.FC<GeneratePromptCardProps> = ({
           ) : (
             <>
               <Sparkles className="w-5 h-5" />
-              Generate Diagrams
+              Generate All
             </>
           )}
         </button>
 
-        {/* Optional: subtle note about generation */}
+        {/* Footnote about generation cost */}
         <p className="text-xs text-gray-500">
-          Creates System Context and Container diagrams via AI analysis.
+          Requires an Anthropic API key. Generation may take 30-60 seconds.
         </p>
       </div>
     </div>
