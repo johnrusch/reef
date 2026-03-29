@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Bug Fixes & Navigation Overhaul
-status: active
-stopped_at: null
-last_updated: "2026-03-28"
-last_activity: 2026-03-28
+status: executing
+stopped_at: Completed 21-01-PLAN.md
+last_updated: "2026-03-29T01:54:54.984Z"
+last_activity: 2026-03-29
 progress:
   total_phases: 3
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-28)
 
 **Core value:** Users can quickly grasp unfamiliar codebase architecture through AI-generated C4 diagrams that update as code changes
-**Current focus:** Phase 21 — Cache-First Navigation
+**Current focus:** Phase 21 — cache-first-navigation
 
 ## Current Position
 
-Phase: 21 of 23 (Cache-First Navigation)
-Plan: — of — in current phase
-Status: Ready to plan
-Last activity: 2026-03-28 — v1.5 roadmap created (3 phases, 8 requirements mapped)
+Phase: 21 (cache-first-navigation) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-03-29
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -53,6 +53,8 @@ Recent decisions affecting v1.5 work:
 - [v1.4 carryover]: Drill-down clicks trigger generation instead of loading cached diagrams — primary fix target in Phase 21
 - [v1.4 carryover]: STOR-03 partial — hasNewerFiles startup walk omits .reef from IGNORED_DIRS (address in Phase 21)
 - [v1.4 carryover]: REGEN-01 partial — .reef/ write-back async timing; success toast fires before .reef/ updated
+- [Phase 21-cache-first-navigation]: loadDiagram is purely read-only (never calls generate/updateState/storeSvg); breadcrumb/sidebar never fall back to generate; element click/command palette fall back only on cache miss
+- [Phase 21-cache-first-navigation]: skipLoadEffect ref prevents Pitfall 5 double-load race condition in loadPersistedDiagram useEffect
 
 ### Blockers/Concerns
 
@@ -61,8 +63,8 @@ Recent decisions affecting v1.5 work:
 
 ## Session Continuity
 
-Last session: 2026-03-28
-Stopped at: v1.5 roadmap created — ready to plan Phase 21
+Last session: 2026-03-29T01:54:54.981Z
+Stopped at: Completed 21-01-PLAN.md
 Resume file: None
 
 ---

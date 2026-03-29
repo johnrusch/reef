@@ -9,8 +9,8 @@ Requirements for v1.5 Bug Fixes & Navigation Overhaul. Each maps to roadmap phas
 
 ### Navigation
 
-- [ ] **NAV-01**: User can navigate between diagram levels (sidebar, breadcrumb, element click) and see cached diagrams instantly without triggering regeneration
-- [ ] **NAV-02**: User's .reef/ diagrams are preserved during navigation — .reef/ only updated on explicit Regenerate action
+- [x] **NAV-01**: User can navigate between diagram levels (sidebar, breadcrumb, element click) and see cached diagrams instantly without triggering regeneration
+- [x] **NAV-02**: User's .reef/ diagrams are preserved during navigation — .reef/ only updated on explicit Regenerate action
 - [ ] **NAV-03**: User can click "Generate All" and all 4 C4 levels (context, container, component, code) are generated upfront
 
 ### Sidebar
@@ -58,8 +58,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| NAV-01 | Phase 21 | Pending |
-| NAV-02 | Phase 21 | Pending |
+| NAV-01 | Phase 21 | Complete |
+| NAV-02 | Phase 21 | Complete |
 | NAV-03 | Phase 21 | Pending |
 | SIDE-01 | Phase 22 | Pending |
 | SIDE-02 | Phase 22 | Pending |
