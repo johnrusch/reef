@@ -68,6 +68,9 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 - ✓ Consistent diagrams across team members sharing the same repository — v1.4
 - ✓ Hash-based staleness detection comparing sourceHash against .meta.json — v1.4
 - ✓ Stale-aware regeneration (skip fresh levels, confirmation dialog with stale count) — v1.4
+- ✓ Cache-first navigation — all navigation checks SVG cache → PlantUML source before generating — Validated in Phase 21
+- ✓ Full Generate All — upfront generation of all 4 C4 levels with auto-discovered elementIds — Validated in Phase 21
+- ✓ .reef/ preservation during navigation — loadDiagram is read-only, never writes — Validated in Phase 21
 
 ### Active
 
@@ -155,7 +158,7 @@ See `.planning/MILESTONES.md` for full details.
 - v1.1: 20 human verification tests pending, handleRegenerateFromBadge missing IPC state transitions, static cost estimate not wired, debug console.log statements, CHNG-01/CHNG-04 deferred
 - v1.2: modelUsed hardcoded as 'haiku', Anthropic SDK type cast workaround, better-sqlite3 native module mismatch, SUMMARY frontmatter bookkeeping gaps
 - v1.3: GEN-01 partial (component/code generation needs elementId from drill-down), DiagramViewer.uicl.test.tsx Zustand mock regression, VisualMapTab.gen01.test.tsx timeout, DiagramInfo.tsx dead code not deleted
-- v1.4: STOR-03 hasNewerFiles startup walk omits .reef, REGEN-01 async write-back timing (toast fires before .reef/ updated), drill-down clicks trigger generation instead of loading cached diagrams
+- v1.4: STOR-03 hasNewerFiles startup walk omits .reef, REGEN-01 async write-back timing (toast fires before .reef/ updated)
 
 ## Constraints
 
@@ -195,7 +198,8 @@ See `.planning/MILESTONES.md` for full details.
 | C4HierarchyTree with local useState for collapse | v1.3: Minimizes shared state, sidebar is self-contained | ✓ Good |
 | Zustand field-level selectors over full store subscription | v1.3: Reactive highlight updates on drill-down navigation | ✓ Good |
 | generateAllDiagrams bypasses component state | v1.3: Avoids React re-render churn during multi-level async generation | ✓ Good |
-| GEN-01 partial (component/code require elementId) | v1.3: Architectural constraint — deferred rather than blocking ship | ⚠️ Revisit |
+| GEN-01 partial (component/code require elementId) | v1.3: Deferred; resolved in Phase 21 via extractElementIds auto-discovery | ✓ Good |
+| Cache-first loadDiagram + skipLoadEffect ref | v1.5: Read-only cache path prevents double-load race and .reef/ corruption | ✓ Good |
 | .reef/ folder for diagram sharing | v1.4: Team diagrams via git, instant import, no regeneration | ✓ Good |
 | Atomic temp-then-rename writes | v1.4: Prevents corrupted .reef/ files on crash/interrupt | ✓ Good |
 | SHA-256 sourceHash for staleness | v1.4: Precise hash comparison vs unreliable mtime | ✓ Good |
@@ -221,4 +225,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-28 after v1.5 milestone start*
+*Last updated: 2026-03-29 after Phase 21 completion*
