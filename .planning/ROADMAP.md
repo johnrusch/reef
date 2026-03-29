@@ -86,10 +86,10 @@ See: `.planning/milestones/v1.4-ROADMAP.md` for full details.
   2. User can switch between C4 levels via sidebar or breadcrumb and see cached diagrams instantly — no generation is triggered
   3. User's .reef/ diagram files are unchanged after any navigation action — only an explicit Regenerate action can modify .reef/
   4. User can click "Generate All" and all 4 C4 levels are generated and stored, including component and code levels
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 21-01-PLAN.md — Cache-first loadDiagram function and navigation handler refactor
-- [ ] 21-02-PLAN.md — Generate All 4 levels via queue service and UI copy updates
+- [x] 21-02-PLAN.md — Generate All 4 levels via queue service and UI copy updates
 **UI hint**: yes
 
 ### Phase 22: Sidebar & Breadcrumb Overhaul
@@ -137,7 +137,7 @@ Plans:
 | 18. Write Path | v1.4 | 2/2 | Complete | 2026-03-27 |
 | 19. Read Path | v1.4 | 2/2 | Complete | 2026-03-27 |
 | 20. Regeneration and Stale Detection | v1.4 | 2/2 | Complete | 2026-03-28 |
-| 21. Cache-First Navigation | v1.5 | 1/2 | In Progress|  |
+| 21. Cache-First Navigation | v1.5 | 2/2 | Complete   | 2026-03-29 |
 | 22. Sidebar & Breadcrumb Overhaul | v1.5 | 0/TBD | Not started | - |
 | 23. Code-Level Diagram Quality | v1.5 | 0/TBD | Not started | - |
 
