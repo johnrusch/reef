@@ -6,6 +6,36 @@ import type { C4Level } from './types/c4Types';
 
 const C4_LEVELS: C4Level[] = ['context', 'container', 'component', 'code'];
 
+/**
+ * Extract element IDs from a C4 PlantUML diagram's source.
+ *
+ * Used to discover container IDs (for component generation) and component IDs
+ * (for code generation) from previously generated diagrams.
+ *
+ * @param diagramContent - PlantUML source text
+ * @param level - The level to extract IDs for ('container' or 'component')
+ * @returns Array of element ID strings (unique, order-preserved)
+ */
+export function extractElementIds(diagramContent: string, level: C4Level): string[] {
+  const patterns: Partial<Record<C4Level, RegExp>> = {
+    container: /(?:Container|ContainerDb|ContainerQueue|Container_Ext|Container_Boundary)\((\w+)/g,
+    component: /(?:Component|ComponentDb|ComponentQueue|Component_Ext)\((\w+)/g,
+  };
+  const regex = patterns[level];
+  if (!regex) return [];
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(diagramContent)) !== null) {
+    const id = match[1];
+    if (!seen.has(id)) {
+      seen.add(id);
+      ids.push(id);
+    }
+  }
+  return ids;
+}
+
 const cancellationFlags = new Map<string, boolean>();
 
 let store: Store | null = null;
@@ -69,11 +99,11 @@ export function registerGenerationQueueHandlers(): void {
         percent: 0,
       });
 
-      for (let i = 0; i < C4_LEVELS.length; i++) {
+      // --- Phase 1: Generate context and container (no elementId required) ---
+      for (const level of ['context', 'container'] as C4Level[]) {
         // Check cancellation before each level
         if (cancellationFlags.get(repoPath)) {
           cancellationFlags.delete(repoPath);
-          // Clean up any partial results
           try {
             getStorageService().deleteDiagramsForRepo(repoPath);
           } catch (cleanupErr) {
@@ -82,9 +112,6 @@ export function registerGenerationQueueHandlers(): void {
           broadcastToAll('c4-generation:cancelled', { repoPath, repoName });
           return;
         }
-
-        const level = C4_LEVELS[i];
-        const percent = Math.round(((i + 1) / C4_LEVELS.length) * 100);
 
         try {
           // Emit 'generating' state before starting each level.
@@ -108,7 +135,7 @@ export function registerGenerationQueueHandlers(): void {
             repoPath,
             repoName,
             currentLevel: level,
-            percent,
+            percent: level === 'context' ? 25 : 50,
           });
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : String(err);
@@ -125,6 +152,75 @@ export function registerGenerationQueueHandlers(): void {
           return;
         }
       }
+
+      // --- Phase 2: Discover container elements and generate component + code ---
+      const containerDiagram = getStorageService().getDiagram(repoPath, 'container');
+      const containerElementIds = containerDiagram
+        ? extractElementIds(containerDiagram.diagramContent, 'container')
+        : [];
+
+      let componentStep = 0;
+      const totalComponentSteps = containerElementIds.length;
+
+      for (const containerId of containerElementIds) {
+        if (cancellationFlags.get(repoPath)) {
+          cancellationFlags.delete(repoPath);
+          broadcastToAll('c4-generation:cancelled', { repoPath, repoName });
+          return;
+        }
+
+        try {
+          getStorageService().updateState(repoPath, 'component', 'generating', containerId);
+          broadcastToAll('c4-storage:state-changed', { repoPath, level: 'component', state: 'generating', elementId: containerId });
+
+          await analyzer.generateC4Diagram(repoPath, 'component', containerId);
+
+          getStorageService().updateState(repoPath, 'component', 'fresh', containerId);
+          broadcastToAll('c4-storage:state-changed', { repoPath, level: 'component', state: 'fresh', elementId: containerId });
+          completedLevels.push(`component:${containerId}`);
+
+          componentStep++;
+          broadcastToAll('c4-generation:progress', {
+            repoPath,
+            repoName,
+            currentLevel: 'component',
+            percent: Math.round(50 + (componentStep / Math.max(totalComponentSteps, 1)) * 25),
+          });
+
+          // Discover component elements for code generation
+          const componentDiagram = getStorageService().getDiagram(repoPath, 'component', containerId);
+          const componentElementIds = componentDiagram
+            ? extractElementIds(componentDiagram.diagramContent, 'component')
+            : [];
+
+          for (const componentId of componentElementIds) {
+            if (cancellationFlags.get(repoPath)) break;
+            try {
+              getStorageService().updateState(repoPath, 'code', 'generating', componentId);
+              broadcastToAll('c4-storage:state-changed', { repoPath, level: 'code', state: 'generating', elementId: componentId });
+
+              await analyzer.generateC4Diagram(repoPath, 'code', componentId);
+
+              getStorageService().updateState(repoPath, 'code', 'fresh', componentId);
+              broadcastToAll('c4-storage:state-changed', { repoPath, level: 'code', state: 'fresh', elementId: componentId });
+              completedLevels.push(`code:${componentId}`);
+            } catch (err) {
+              console.error(`[GenerationQueue] Failed to generate code for ${componentId}:`, err);
+              // Non-fatal: continue with other components
+            }
+          }
+        } catch (err) {
+          console.error(`[GenerationQueue] Failed to generate component for ${containerId}:`, err);
+          // Non-fatal: continue with other containers
+        }
+      }
+
+      broadcastToAll('c4-generation:progress', {
+        repoPath,
+        repoName,
+        currentLevel: 'code',
+        percent: 100,
+      });
 
       // All levels completed successfully
       broadcastToAll('c4-generation:complete', {
