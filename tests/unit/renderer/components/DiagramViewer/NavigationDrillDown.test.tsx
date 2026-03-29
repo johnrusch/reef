@@ -4,9 +4,15 @@
  * Tests for SVG click handler traversal logic and CSS interception patch.
  * Covers NAV-04: extractElementIdFromClick handles transparent overlay elements
  * and PlantUML link wrappers (<a> elements) without elem_ prefix.
+ *
+ * Also covers NAV-01: DiagramViewer navigation handlers call onLoadDiagram
+ * instead of onRegenerateDiagram (breadcrumb, tree, element click, command palette).
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, act } from '@testing-library/react';
+import React from 'react';
+import { DiagramViewer } from '../../../../../src/renderer/components/DiagramViewer/DiagramViewer';
 import { extractElementIdFromClick, patchSvgClickInterception } from '../../../../../src/renderer/components/PlantUMLRenderer';
 
 // Helper: create an SVG namespace element
@@ -156,5 +162,263 @@ describe('patchSvgClickInterception', () => {
     patchSvgClickInterception(svg);
 
     expect((overlay as HTMLElement).style.pointerEvents).toBe('none');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// NAV-01: DiagramViewer navigation handlers use onLoadDiagram
+// ---------------------------------------------------------------------------
+
+// Mock setup for DiagramViewer component tests
+const mockNavigationStore = {
+  stack: [{ level: 'context', elementId: undefined, elementName: 'Context' }],
+  repositoryPath: '/test/repo',
+  currentLevel: vi.fn(() => ({ level: 'context', elementId: undefined, elementName: 'Context' })),
+  canDrillUp: vi.fn(() => false),
+  push: vi.fn(),
+  pop: vi.fn(),
+  navigateTo: vi.fn(),
+  reset: vi.fn(),
+  setRepository: vi.fn(),
+};
+
+vi.mock('../../../../../src/renderer/stores/navigationStore', () => ({
+  useNavigationStore: vi.fn(() => mockNavigationStore),
+  getNextLevel: vi.fn((level: string) => {
+    const levelMap: Record<string, string | null> = {
+      context: 'container',
+      container: 'component',
+      component: 'code',
+      code: null,
+    };
+    return levelMap[level] ?? null;
+  }),
+}));
+
+vi.mock('../../../../../src/renderer/stores/diagramStateStore', () => ({
+  useDiagramStateStore: vi.fn((selector?: any) => {
+    const store = {
+      getState: vi.fn(() => 'fresh'),
+      setState: vi.fn(),
+      loadStatesFromBackend: vi.fn(),
+      getEntry: vi.fn(() => null),
+      getAffectedElements: vi.fn(() => []),
+      getChangedFiles: vi.fn(() => []),
+      setAffectedElements: vi.fn(),
+      setChangedFiles: vi.fn(),
+    };
+    if (selector) return selector(store);
+    return store;
+  }),
+}));
+
+vi.mock('../../../../../src/renderer/stores/diagramNavigationStore', () => ({
+  useDiagramNavigationStore: Object.assign(vi.fn(() => ({})), {
+    getState: vi.fn(() => ({ setIntent: vi.fn() })),
+  }),
+}));
+
+vi.mock('../../../../../src/renderer/stores/repositoryStore', () => ({
+  useRepositoryStore: Object.assign(vi.fn(() => ({})), {
+    getState: vi.fn(() => ({ setActiveTab: vi.fn() })),
+  }),
+}));
+
+vi.mock('react-hotkeys-hook', () => ({
+  useHotkeys: vi.fn(),
+}));
+
+vi.mock('../../../../../src/renderer/components/DiagramViewer/DiagramPanel', () => ({
+  DiagramPanel: () => <div data-testid="diagram-panel">DiagramPanel</div>,
+}));
+
+vi.mock('../../../../../src/renderer/components/DiagramViewer/DiagramBreadcrumbs', () => ({
+  DiagramBreadcrumbs: ({ onNavigate }: { onNavigate: (index: number) => void }) => (
+    <div data-testid="diagram-breadcrumbs">
+      <button data-testid="breadcrumb-nav-0" onClick={() => onNavigate(0)}>Context</button>
+    </div>
+  ),
+}));
+
+vi.mock('../../../../../src/renderer/components/DiagramViewer/StalenessBadge', () => ({
+  StalenessBadge: () => null,
+}));
+
+vi.mock('../../../../../src/renderer/components/DiagramViewer/KeyboardShortcutsHelp', () => ({
+  KeyboardShortcutsHelp: () => null,
+}));
+
+vi.mock('../../../../../src/renderer/components/DiagramViewer/CommandPalette', () => ({
+  CommandPalette: ({ onNavigate }: { onNavigate: (item: any) => void }) => (
+    <div data-testid="command-palette">
+      <button
+        data-testid="palette-navigate"
+        onClick={() => onNavigate({ level: 'context', elementId: undefined, name: 'Context' })}
+      >
+        Navigate
+      </button>
+    </div>
+  ),
+}));
+
+vi.mock('../../../../../src/renderer/components/DiagramViewer/GeneratePromptCard', () => ({
+  GeneratePromptCard: () => <div data-testid="generate-prompt-card">GeneratePromptCard</div>,
+}));
+
+vi.mock('../../../../../src/renderer/components/DiagramViewer/C4HierarchyTree', () => ({
+  C4HierarchyTree: ({ onNavigate }: { onNavigate: (level: string) => void }) => (
+    React.createElement('div', { 'data-testid': 'c4-hierarchy-tree' },
+      React.createElement('button', { 'data-testid': 'tree-nav-context', onClick: () => onNavigate('context') }, 'Context')
+    )
+  ),
+}));
+
+const mockReefAPINav = {
+  c4Storage: {
+    initialize: vi.fn(() => Promise.resolve()),
+    getRepoStates: vi.fn(() => Promise.resolve([])),
+    onStateChanged: vi.fn(() => () => {}),
+    getChangeTracking: vi.fn(() => Promise.resolve(null)),
+    updateState: vi.fn(() => Promise.resolve()),
+    getSvg: vi.fn(() => Promise.resolve(null)),
+  },
+  fileWatcher: {
+    start: vi.fn(),
+    stop: vi.fn(),
+    checkStaleness: vi.fn(() => Promise.resolve(false)),
+  },
+};
+
+Object.defineProperty(window, 'reef', {
+  value: mockReefAPINav,
+  writable: true,
+});
+
+const mockMetadata = {
+  generatedAt: '2024-01-01T00:00:00Z',
+  diagramType: 'c4-context' as const,
+  detailLevel: 'architectural' as const,
+  repository: 'test-repo',
+  model: 'haiku' as const,
+  generationTime: 0,
+  estimatedCost: 0,
+  cached: true,
+  lastUpdated: '2024-01-01T00:00:00Z',
+};
+
+describe('DiagramViewer navigation handlers (NAV-01)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockNavigationStore.stack = [{ level: 'context', elementId: undefined, elementName: 'Context' }];
+    mockNavigationStore.currentLevel.mockReturnValue({ level: 'context', elementId: undefined, elementName: 'Context' });
+    mockReefAPINav.c4Storage.getRepoStates.mockResolvedValue([]);
+    mockReefAPINav.c4Storage.onStateChanged.mockReturnValue(() => {});
+    mockReefAPINav.c4Storage.getChangeTracking.mockResolvedValue(null);
+  });
+
+  it('handleBreadcrumbNavigate calls onLoadDiagram, NOT onRegenerateDiagram on cache hit', async () => {
+    const onLoadDiagram = vi.fn(() => Promise.resolve(true));
+    const onRegenerateDiagram = vi.fn(() => Promise.resolve());
+
+    // Set up navigation store with a container level in stack
+    mockNavigationStore.stack = [
+      { level: 'context', elementId: undefined, elementName: 'Context' },
+      { level: 'container', elementId: 'frontend', elementName: 'Frontend' },
+    ];
+
+    const { getByTestId } = render(
+      <DiagramViewer
+        repository={{ path: '/test/repo', name: 'test-repo' }}
+        diagram="@startuml\ntest\n@enduml"
+        metadata={mockMetadata}
+        isGenerating={false}
+        error={null}
+        onRegenerateDiagram={onRegenerateDiagram}
+        onLoadDiagram={onLoadDiagram}
+        onExport={vi.fn()}
+      />
+    );
+
+    await act(async () => {
+      getByTestId('breadcrumb-nav-0').click();
+    });
+
+    expect(onLoadDiagram).toHaveBeenCalled();
+    expect(onRegenerateDiagram).not.toHaveBeenCalled();
+  });
+
+  it('handleTreeNavigate calls onLoadDiagram, NOT onRegenerateDiagram', async () => {
+    const onLoadDiagram = vi.fn(() => Promise.resolve(true));
+    const onRegenerateDiagram = vi.fn(() => Promise.resolve());
+
+    const { getByTestId } = render(
+      <DiagramViewer
+        repository={{ path: '/test/repo', name: 'test-repo' }}
+        diagram="@startuml\ntest\n@enduml"
+        metadata={mockMetadata}
+        isGenerating={false}
+        error={null}
+        onRegenerateDiagram={onRegenerateDiagram}
+        onLoadDiagram={onLoadDiagram}
+        onExport={vi.fn()}
+      />
+    );
+
+    await act(async () => {
+      getByTestId('tree-nav-context').click();
+    });
+
+    expect(onLoadDiagram).toHaveBeenCalled();
+    expect(onRegenerateDiagram).not.toHaveBeenCalled();
+  });
+
+  it('handleCommandPaletteNavigate calls onLoadDiagram before onRegenerateDiagram (cache hit — no generate)', async () => {
+    const onLoadDiagram = vi.fn(() => Promise.resolve(true));
+    const onRegenerateDiagram = vi.fn(() => Promise.resolve());
+
+    const { getByTestId } = render(
+      <DiagramViewer
+        repository={{ path: '/test/repo', name: 'test-repo' }}
+        diagram="@startuml\ntest\n@enduml"
+        metadata={mockMetadata}
+        isGenerating={false}
+        error={null}
+        onRegenerateDiagram={onRegenerateDiagram}
+        onLoadDiagram={onLoadDiagram}
+        onExport={vi.fn()}
+      />
+    );
+
+    await act(async () => {
+      getByTestId('palette-navigate').click();
+    });
+
+    expect(onLoadDiagram).toHaveBeenCalled();
+    expect(onRegenerateDiagram).not.toHaveBeenCalled();
+  });
+
+  it('handleCommandPaletteNavigate falls back to onRegenerateDiagram when onLoadDiagram returns false (cache miss)', async () => {
+    const onLoadDiagram = vi.fn(() => Promise.resolve(false));
+    const onRegenerateDiagram = vi.fn(() => Promise.resolve());
+
+    const { getByTestId } = render(
+      <DiagramViewer
+        repository={{ path: '/test/repo', name: 'test-repo' }}
+        diagram="@startuml\ntest\n@enduml"
+        metadata={mockMetadata}
+        isGenerating={false}
+        error={null}
+        onRegenerateDiagram={onRegenerateDiagram}
+        onLoadDiagram={onLoadDiagram}
+        onExport={vi.fn()}
+      />
+    );
+
+    await act(async () => {
+      getByTestId('palette-navigate').click();
+    });
+
+    expect(onLoadDiagram).toHaveBeenCalled();
+    expect(onRegenerateDiagram).toHaveBeenCalled();
   });
 });

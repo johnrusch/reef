@@ -204,35 +204,32 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
     const newType = `c4-${targetLevel.level}` as DiagramType;
     handleControlChange({ type: newType });
 
-    // Trigger regeneration with the target elementId
-    await onRegenerateDiagram({
-      ...currentOptions,
-      type: newType,
-      elementId: targetLevel.elementId,
-    });
-  }, [navigationStore, currentOptions, onRegenerateDiagram]);
+    // NAV-01: always cache-first, never regenerate on breadcrumb
+    // Breadcrumb can only navigate to already-visited levels — they must be cached
+    if (onLoadDiagram) {
+      await onLoadDiagram({ type: newType, elementId: targetLevel.elementId });
+    }
+  }, [navigationStore, onLoadDiagram]);
 
   const handleTreeNavigate = useCallback(async (level: 'context' | 'container' | 'component' | 'code') => {
     const targetIndex = navigationStore.stack.findIndex(l => l.level === level);
     if (targetIndex >= 0) {
-      // Level exists in stack — navigate breadcrumb-style
+      // Level exists in stack — navigate breadcrumb-style (cache-first via handleBreadcrumbNavigate)
       await handleBreadcrumbNavigate(targetIndex);
     } else if (level === 'component' || level === 'code') {
       // Component/code levels require an elementId from drill-down.
       // Can't navigate directly without having drilled into a container/component first.
       return;
     } else {
-      // Context/container — reset navigation and load that level
+      // Context/container — reset navigation and load from cache (NAV-01)
       navigationStore.reset();
       const newType = `c4-${level}` as DiagramType;
       handleControlChange({ type: newType });
-      await onRegenerateDiagram({
-        ...currentOptions,
-        type: newType,
-        elementId: undefined,
-      });
+      if (onLoadDiagram) {
+        await onLoadDiagram({ type: newType, elementId: undefined });
+      }
     }
-  }, [navigationStore, currentOptions, onRegenerateDiagram, handleBreadcrumbNavigate]);
+  }, [navigationStore, onLoadDiagram, handleBreadcrumbNavigate]);
 
   const handleElementClick = useCallback(async (elementId: string) => {
     // Don't process clicks during generation or for non-C4 diagrams
@@ -265,10 +262,21 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
       elementName: elementName,
     });
 
-    // Update diagram type and regenerate
+    // Update diagram type
     const newType = `c4-${nextLevel}` as DiagramType;
     handleControlChange({ type: newType });
 
+    // NAV-01: try cache first on drill-down
+    if (onLoadDiagram) {
+      try {
+        const hit = await onLoadDiagram({ type: newType, elementId });
+        if (hit) return; // Cache hit — done, no generation needed
+      } catch (err) {
+        console.error('Cache load failed on drill-down:', err);
+      }
+    }
+
+    // Cache miss: generate for first-time drill-down
     try {
       await onRegenerateDiagram({
         ...currentOptions,
@@ -280,7 +288,7 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
       navigationStore.pop();
       console.error('Failed to drill down:', error);
     }
-  }, [isGenerating, currentOptions, navigationStore, onRegenerateDiagram, directChangedIds, inheritedChangedIds, changedFilePaths, handleNavigateToDiff]);
+  }, [isGenerating, currentOptions, navigationStore, onRegenerateDiagram, onLoadDiagram, directChangedIds, inheritedChangedIds, changedFilePaths, handleNavigateToDiff]);
 
   const handleCommandPaletteNavigate = useCallback(async (item: DiagramSearchItem) => {
     // Reset navigation to context first
@@ -299,13 +307,19 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
       });
     }
 
-    // Trigger regeneration with the target elementId
+    // NAV-01: try cache first
+    if (onLoadDiagram) {
+      const hit = await onLoadDiagram({ type: newType, elementId: item.elementId });
+      if (hit) return; // Cache hit — done
+    }
+
+    // Cache miss: generate
     await onRegenerateDiagram({
       ...currentOptions,
       type: newType,
       elementId: item.elementId,
     });
-  }, [navigationStore, currentOptions, onRegenerateDiagram]);
+  }, [navigationStore, currentOptions, onRegenerateDiagram, onLoadDiagram]);
 
   const isClickableLevel = useMemo(() => {
     if (!currentOptions.type.startsWith('c4-')) return false;
