@@ -4,10 +4,13 @@
  * UICL-01: VisualMapTab must NOT render the settings configuration landing page.
  * Specifically: no "Diagram Settings" heading, no "AI Model" label,
  * and no "Traditional File Tree" button.
+ *
+ * NAV-01/NAV-02: loadDiagram function is read-only (never generates/writes),
+ * and the skipLoadEffect ref prevents double-load race condition.
  */
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import { VisualMapTab } from '../../../../../src/renderer/components/tabs/VisualMapTab';
 
 // ---------------------------------------------------------------------------
@@ -76,10 +79,15 @@ vi.mock('../../../../../src/renderer/stores/diagramStateStore', () => ({
 }));
 
 // ---------------------------------------------------------------------------
-// Mock DiagramViewer (heavy component — not under test here)
+// Mock DiagramViewer — capture onLoadDiagram prop for testing
 // ---------------------------------------------------------------------------
+let capturedOnLoadDiagram: ((options: { type: string; elementId?: string }) => Promise<boolean>) | undefined;
+
 vi.mock('../../../../../src/renderer/components/DiagramViewer/DiagramViewer', () => ({
-  DiagramViewer: () => <div data-testid="diagram-viewer">DiagramViewer</div>,
+  DiagramViewer: (props: any) => {
+    capturedOnLoadDiagram = props.onLoadDiagram;
+    return <div data-testid="diagram-viewer">DiagramViewer</div>;
+  },
 }));
 
 // ---------------------------------------------------------------------------
@@ -139,6 +147,158 @@ describe('VisualMapTab (UICL-01)', () => {
 
     await waitFor(() => {
       expect(screen.queryByText('Traditional File Tree')).not.toBeInTheDocument();
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// NAV-01 / NAV-02: loadDiagram read-only invariants
+// ---------------------------------------------------------------------------
+describe('VisualMapTab loadDiagram (NAV-01, NAV-02)', () => {
+  const mockRepository = {
+    path: '/test/repo',
+    name: 'test-repo',
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    capturedOnLoadDiagram = undefined;
+    mockReefAPI.diagram.checkConfiguration.mockResolvedValue({ configured: true });
+    mockReefAPI.c4Storage.getDiagram.mockResolvedValue(null);
+    mockReefAPI.c4Storage.getSvg.mockResolvedValue(null);
+    mockReefAPI.c4Storage.getRepoStates.mockResolvedValue([]);
+    mockReefAPI.c4Storage.onStateChanged.mockReturnValue(() => {});
+    // Return a cached SVG so DiagramViewer renders (exposing onLoadDiagram)
+    mockReefAPI.c4Storage.getSvg.mockResolvedValue('<svg>cached</svg>');
+  });
+
+  test('loadDiagram returns true when getSvg returns cached SVG', async () => {
+    mockReefAPI.c4Storage.getSvg.mockResolvedValue('<svg>cached</svg>');
+
+    render(<VisualMapTab repository={mockRepository} />);
+
+    await waitFor(() => {
+      expect(capturedOnLoadDiagram).toBeDefined();
+    });
+
+    let result: boolean | undefined;
+    await act(async () => {
+      result = await capturedOnLoadDiagram!({ type: 'c4-container', elementId: undefined });
+    });
+
+    expect(result).toBe(true);
+    expect(mockReefAPI.c4Storage.getSvg).toHaveBeenCalledWith('/test/repo', 'container', undefined);
+  });
+
+  test('loadDiagram falls back to getDiagram when getSvg returns null, returns true on PlantUML hit', async () => {
+    mockReefAPI.c4Storage.getSvg
+      // First call: on-mount effect (returns SVG so DiagramViewer renders)
+      .mockResolvedValueOnce('<svg>mount</svg>')
+      // Subsequent calls: cache miss for loadDiagram
+      .mockResolvedValue(null);
+    mockReefAPI.c4Storage.getDiagram.mockResolvedValue({
+      diagramContent: '@startuml\ntest\n@enduml',
+      tokensUsed: 100,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      modelUsed: 'haiku',
+      generationCost: 0.001,
+    });
+
+    render(<VisualMapTab repository={mockRepository} />);
+
+    await waitFor(() => {
+      expect(capturedOnLoadDiagram).toBeDefined();
+    });
+
+    let result: boolean | undefined;
+    await act(async () => {
+      result = await capturedOnLoadDiagram!({ type: 'c4-context', elementId: undefined });
+    });
+
+    expect(result).toBe(true);
+    expect(mockReefAPI.c4Storage.getDiagram).toHaveBeenCalled();
+  });
+
+  test('loadDiagram returns false when both getSvg and getDiagram return null (cache miss)', async () => {
+    mockReefAPI.c4Storage.getSvg
+      .mockResolvedValueOnce('<svg>mount</svg>')
+      .mockResolvedValue(null);
+    mockReefAPI.c4Storage.getDiagram.mockResolvedValue(null);
+
+    render(<VisualMapTab repository={mockRepository} />);
+
+    await waitFor(() => {
+      expect(capturedOnLoadDiagram).toBeDefined();
+    });
+
+    let result: boolean | undefined;
+    await act(async () => {
+      result = await capturedOnLoadDiagram!({ type: 'c4-context', elementId: undefined });
+    });
+
+    expect(result).toBe(false);
+  });
+
+  test('loadDiagram NEVER calls window.reef.diagram.generate (NAV-02 read-only invariant)', async () => {
+    mockReefAPI.c4Storage.getSvg.mockResolvedValue('<svg>cached</svg>');
+    mockReefAPI.diagram.generate.mockClear();
+
+    render(<VisualMapTab repository={mockRepository} />);
+
+    await waitFor(() => {
+      expect(capturedOnLoadDiagram).toBeDefined();
+    });
+
+    await act(async () => {
+      await capturedOnLoadDiagram!({ type: 'c4-container', elementId: undefined });
+    });
+
+    expect(mockReefAPI.diagram.generate).not.toHaveBeenCalled();
+  });
+
+  test('loadDiagram NEVER calls window.reef.c4Storage.updateState (NAV-02 no state transitions)', async () => {
+    mockReefAPI.c4Storage.getSvg.mockResolvedValue('<svg>cached</svg>');
+    mockReefAPI.c4Storage.updateState.mockClear();
+
+    render(<VisualMapTab repository={mockRepository} />);
+
+    await waitFor(() => {
+      expect(capturedOnLoadDiagram).toBeDefined();
+    });
+
+    await act(async () => {
+      await capturedOnLoadDiagram!({ type: 'c4-container', elementId: undefined });
+    });
+
+    expect(mockReefAPI.c4Storage.updateState).not.toHaveBeenCalled();
+  });
+
+  test('loadDiagram NEVER calls window.reef.c4Storage.storeSvg (NAV-02 no writes during navigation)', async () => {
+    mockReefAPI.c4Storage.getSvg.mockResolvedValue('<svg>cached</svg>');
+    mockReefAPI.c4Storage.storeSvg.mockClear();
+
+    render(<VisualMapTab repository={mockRepository} />);
+
+    await waitFor(() => {
+      expect(capturedOnLoadDiagram).toBeDefined();
+    });
+
+    await act(async () => {
+      await capturedOnLoadDiagram!({ type: 'c4-container', elementId: undefined });
+    });
+
+    expect(mockReefAPI.c4Storage.storeSvg).not.toHaveBeenCalled();
+  });
+
+  test('VisualMapTab passes onLoadDiagram prop to DiagramViewer', async () => {
+    mockReefAPI.c4Storage.getSvg.mockResolvedValue('<svg>cached</svg>');
+
+    render(<VisualMapTab repository={mockRepository} />);
+
+    await waitFor(() => {
+      expect(capturedOnLoadDiagram).toBeDefined();
+      expect(typeof capturedOnLoadDiagram).toBe('function');
     });
   });
 });

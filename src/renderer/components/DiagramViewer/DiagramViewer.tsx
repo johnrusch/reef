@@ -51,6 +51,7 @@ interface DiagramViewerProps {
     elementId?: string;
     skipCache?: boolean;
   }) => Promise<void>;
+  onLoadDiagram?: (options: { type: DiagramType; elementId?: string }) => Promise<boolean>;
   onExport: (format: 'svg' | 'png') => void;
   showChanges?: boolean;
   preRenderedSvg?: string;
@@ -66,6 +67,7 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
   error,
   changedFiles = [],
   onRegenerateDiagram,
+  onLoadDiagram,
   onExport,
   showChanges: _showChangesProp = false,
   preRenderedSvg,

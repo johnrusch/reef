@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AlertCircle, Key } from 'lucide-react';
 import { useToastStore } from '../../stores/toastStore';
 import plantumlEncoder from 'plantuml-encoder';
@@ -30,6 +30,9 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
   const [elementId, setElementId] = useState<string | undefined>(undefined);
   const [svgContent, setSvgContent] = useState<string>('');
 
+  // Prevents Pitfall 5: double-load race when loadDiagram sets state before useEffect fires
+  const skipLoadEffect = useRef(false);
+
   const { getState, setState, loadStatesFromBackend } = useDiagramStateStore();
   const { addToast } = useToastStore();
 
@@ -53,6 +56,12 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
   // Load persisted diagram from storage on mount or repo/type change
   useEffect(() => {
     if (!repository) return;
+
+    // Guard against Pitfall 5: if loadDiagram already handled this update, skip
+    if (skipLoadEffect.current) {
+      skipLoadEffect.current = false;
+      return;
+    }
 
     const loadPersistedDiagram = async () => {
       try {
@@ -200,6 +209,82 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
       detectChangedFiles();
     }
   }, [repository, viewMode, detectChangedFiles]);
+
+  // NAV-01 / NAV-02: Cache-first load function — read-only, never generates or writes
+  const loadDiagram = useCallback(async (options: {
+    type: DiagramType;
+    elementId?: string;
+  }): Promise<boolean> => {
+    if (!repository) return false;
+    const level = options.type.replace('c4-', '');
+
+    // 1. SVG cache (LRU -> SQLite) — fastest path
+    try {
+      const cachedSvg = await window.reef.c4Storage.getSvg(
+        repository.path, level, options.elementId
+      );
+      if (cachedSvg) {
+        skipLoadEffect.current = true;
+        setSvgContent(cachedSvg);
+        setDiagram('');
+        setDiagramType(options.type);
+        setElementId(options.elementId);
+        setMetadata({
+          tokensUsed: undefined,
+          generatedAt: new Date().toISOString(),
+          diagramType: options.type,
+          detailLevel,
+          focusArea,
+          repository: repository.name,
+          model: modelType,
+          generationTime: 0,
+          estimatedCost: 0,
+          cached: true,
+          lastUpdated: new Date().toISOString(),
+        });
+        setIsGenerating(false);
+        return true;
+      }
+    } catch (err) {
+      console.error('SVG cache lookup failed:', err);
+    }
+
+    // 2. PlantUML source fallback (SQLite only)
+    try {
+      const storedDiagram = await window.reef.c4Storage.getDiagram(
+        repository.path, level, options.elementId
+      );
+      if (storedDiagram) {
+        skipLoadEffect.current = true;
+        setSvgContent('');
+        setDiagram(storedDiagram.diagramContent);
+        setDiagramType(options.type);
+        setElementId(options.elementId);
+        setMetadata({
+          tokensUsed: storedDiagram.tokensUsed
+            ? { input: storedDiagram.tokensUsed, output: 0 }
+            : undefined,
+          generatedAt: storedDiagram.createdAt || new Date().toISOString(),
+          diagramType: options.type,
+          detailLevel,
+          focusArea,
+          repository: repository.name,
+          model: (storedDiagram.modelUsed || 'haiku') as ModelType,
+          generationTime: 0,
+          estimatedCost: storedDiagram.generationCost || 0,
+          cached: true,
+          lastUpdated: storedDiagram.updatedAt || new Date().toISOString(),
+        });
+        setIsGenerating(false);
+        return true;
+      }
+    } catch (err) {
+      console.error('PlantUML storage lookup failed:', err);
+    }
+
+    // 3. Cache miss — caller decides whether to generate
+    return false;
+  }, [repository, detailLevel, focusArea, modelType]);
 
   const handleSvgGenerated = useCallback(async (svg: string) => {
     if (!repository) return;
@@ -680,6 +765,7 @@ export const VisualMapTab: React.FC<VisualMapTabProps> = ({ repository }) => {
         error={error}
         changedFiles={changedFiles}
         onRegenerateDiagram={generateDiagram}
+        onLoadDiagram={loadDiagram}
         onExport={handleExport}
         showChanges={showChanges}
         preRenderedSvg={svgContent || undefined}
