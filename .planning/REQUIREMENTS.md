@@ -17,7 +17,7 @@ Requirements for v1.5 Bug Fixes & Navigation Overhaul. Each maps to roadmap phas
 
 - [x] **SIDE-01**: User sees the active diagram level highlighted in the sidebar after any navigation action
 - [x] **SIDE-02**: User can resize the sidebar by dragging its edge to see full level names and element context
-- [ ] **SIDE-03**: User sees a nested tree of drillable elements under each C4 level in the sidebar, mirroring what's clickable in the diagram
+- [x] **SIDE-03**: User sees a nested tree of drillable elements under each C4 level in the sidebar, mirroring what's clickable in the diagram
 
 ### Breadcrumb
 
@@ -63,7 +63,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NAV-03 | Phase 21 | Complete |
 | SIDE-01 | Phase 22 | Complete |
 | SIDE-02 | Phase 22 | Complete |
-| SIDE-03 | Phase 22 | Pending |
+| SIDE-03 | Phase 22 | Complete |
 | BRCR-01 | Phase 22 | Complete |
 | QUAL-01 | Phase 23 | Pending |
 
