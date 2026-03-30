@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { DiagramPanel } from './DiagramPanel';
 import { DiagramControls } from './DiagramControls';
 import { StalenessBadge } from './StalenessBadge';
@@ -90,6 +91,7 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
   const [isRegeneratingFromBadge, setIsRegeneratingFromBadge] = useState(false);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Subscribe to navigation store
   const navigationStore = useNavigationStore();
@@ -596,17 +598,46 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
         />
       )}
 
-      <div className="flex flex-1 overflow-hidden">
-        {currentOptions.type.startsWith('c4-') && (
-          <C4HierarchyTree
-            onNavigate={handleTreeNavigate}
-            disabled={isGenerating}
-          />
-        )}
-        <div className="flex-1 min-w-0 relative">
-          {renderDiagramWithOverlay()}
+      {currentOptions.type.startsWith('c4-') ? (
+        <div className="flex flex-1 overflow-hidden">
+          {isSidebarCollapsed ? (
+            <>
+              <C4HierarchyTree
+                onNavigate={handleTreeNavigate}
+                disabled={isGenerating}
+                isCollapsed={true}
+                onCollapseToggle={() => setIsSidebarCollapsed(false)}
+              />
+              <div className="flex-1 min-w-0 relative">
+                {renderDiagramWithOverlay()}
+              </div>
+            </>
+          ) : (
+            <PanelGroup direction="horizontal" autoSaveId="c4-sidebar-width">
+              <Panel defaultSize={20} minSize={10} maxSize={30}>
+                <C4HierarchyTree
+                  onNavigate={handleTreeNavigate}
+                  disabled={isGenerating}
+                  isCollapsed={false}
+                  onCollapseToggle={() => setIsSidebarCollapsed(true)}
+                />
+              </Panel>
+              <PanelResizeHandle className="w-1 bg-gray-700 hover:bg-gray-500 active:bg-blue-500 cursor-col-resize transition-colors" />
+              <Panel defaultSize={80}>
+                <div className="flex-1 min-w-0 relative h-full">
+                  {renderDiagramWithOverlay()}
+                </div>
+              </Panel>
+            </PanelGroup>
+          )}
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-1 overflow-hidden">
+          <div className="flex-1 min-w-0 relative">
+            {renderDiagramWithOverlay()}
+          </div>
+        </div>
+      )}
       
       {error && diagram && (
         <div className="px-4 py-2 bg-red-900/20 border-t border-red-800/50">

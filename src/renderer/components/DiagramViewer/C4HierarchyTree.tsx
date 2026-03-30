@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Globe, Layers, Box, Code2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigationStore } from '../../stores/navigationStore';
 
@@ -20,14 +20,16 @@ const C4_LEVELS: C4LevelConfig[] = [
 interface C4HierarchyTreeProps {
   onNavigate: (level: C4Level, elementId?: string) => void;
   disabled?: boolean;
+  isCollapsed: boolean;
+  onCollapseToggle: () => void;
 }
 
 export const C4HierarchyTree: React.FC<C4HierarchyTreeProps> = ({
   onNavigate,
   disabled = false,
+  isCollapsed,
+  onCollapseToggle,
 }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-
   const stack = useNavigationStore(s => s.stack);
   const activeLevel = stack[stack.length - 1].level;
 
@@ -52,7 +54,7 @@ export const C4HierarchyTree: React.FC<C4HierarchyTreeProps> = ({
     return (
       <aside className="w-10 shrink-0 bg-gray-850 border-r border-gray-700 flex flex-col items-center pt-2 gap-1">
         <button
-          onClick={() => setIsCollapsed(false)}
+          onClick={onCollapseToggle}
           className="p-1.5 rounded hover:bg-gray-700 text-gray-400 hover:text-gray-200 transition-colors"
           title="Expand sidebar"
         >
@@ -84,14 +86,14 @@ export const C4HierarchyTree: React.FC<C4HierarchyTreeProps> = ({
   }
 
   return (
-    <aside className="w-56 shrink-0 bg-gray-850 border-r border-gray-700 flex flex-col">
+    <aside className="h-full bg-gray-850 border-r border-gray-700 flex flex-col">
       {/* Header with collapse toggle */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700">
-        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+        <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
           C4 Levels
         </span>
         <button
-          onClick={() => setIsCollapsed(true)}
+          onClick={onCollapseToggle}
           className="p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-gray-200 transition-colors"
           title="Collapse sidebar"
         >
@@ -114,7 +116,7 @@ export const C4HierarchyTree: React.FC<C4HierarchyTreeProps> = ({
               style={{ paddingLeft: `${12 + index * 12}px` }}
               className={`flex items-center gap-2 pr-3 py-2 text-sm text-left w-full transition-colors ${
                 isActive
-                  ? 'bg-blue-600/20 text-blue-300 font-medium'
+                  ? 'bg-blue-600/20 text-blue-300 font-medium border-l-2 border-blue-500'
                   : reachable
                     ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
                     : 'text-gray-600 cursor-default'
