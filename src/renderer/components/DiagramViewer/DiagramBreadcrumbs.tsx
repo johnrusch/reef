@@ -16,7 +16,7 @@ export const DiagramBreadcrumbs: React.FC<DiagramBreadcrumbsProps> = ({
   return (
     <nav
       aria-label="C4 diagram breadcrumb"
-      className={`px-4 py-1.5 bg-gray-800/90 border-b border-gray-700/50 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
+      className={`px-4 py-2 bg-gray-800/90 border-b border-gray-700/50 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
     >
       <ol className="flex items-center gap-1 list-none">
         {stack.map((level, index) => (
@@ -31,6 +31,7 @@ export const DiagramBreadcrumbs: React.FC<DiagramBreadcrumbsProps> = ({
                 type="button"
               >
                 {level.elementName}
+                <span className="text-xs text-gray-500 opacity-75 ml-1">({level.level})</span>
               </button>
             ) : (
               <span
@@ -38,6 +39,7 @@ export const DiagramBreadcrumbs: React.FC<DiagramBreadcrumbsProps> = ({
                 className="text-gray-200 font-medium text-sm"
               >
                 {level.elementName}
+                <span className="text-xs text-gray-500 opacity-75 ml-1">({level.level})</span>
               </span>
             )}
           </li>
