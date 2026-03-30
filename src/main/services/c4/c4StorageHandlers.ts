@@ -1,11 +1,14 @@
 import { ipcMain, BrowserWindow } from 'electron';
+import { readFile } from 'fs/promises';
+import { join } from 'path';
 import { C4StorageService } from './c4StorageService';
 import { MigrationService } from './migrationService';
 import { svgLruCache } from '../plantUmlService';
 import { ReefStorageService } from '../reef/reefStorageService';
 import { computeSourceHash } from '../reef/sourceHashService';
 import { getAnalyzedFilePaths, clearAnalyzedFilePaths } from './c4AnalyzerService';
-import { REEF_SCHEMA_VERSION, FLAT_LEVELS } from '../reef/reefStorageTypes';
+import { extractElementIds } from './generationQueueService';
+import { REEF_SCHEMA_VERSION, FLAT_LEVELS, REEF_DIR } from '../reef/reefStorageTypes';
 import { importReefArtifacts } from '../reef/reefImportService';
 import type { ReefMetaJson, FlatLevel, NestedLevel } from '../reef/reefStorageTypes';
 import type { DiagramState, StoredDiagram } from '../../../shared/types/diagramState';
@@ -215,6 +218,50 @@ export function registerC4StorageHandlers(): void {
   // Import .reef/ artifacts into SQLite + LRU cache (READ-01, READ-02)
   ipcMain.handle('reef-import:scan-and-import', async (_, repoPath: string) => {
     return importReefArtifacts(repoPath, getStorageService(), svgLruCache);
+  });
+
+  // Get element IDs from .reef/ .puml files for sidebar element tree (SIDE-03)
+  ipcMain.handle('c4-storage:get-elements', async (_, repoPath: string, level: string, elementId?: string): Promise<Array<{id: string, name: string}>> => {
+    try {
+      let pumlPath: string;
+      if (level === 'context' || level === 'container') {
+        // Flat levels: .reef/{level}.puml
+        pumlPath = join(repoPath, REEF_DIR, `${level}.puml`);
+      } else {
+        // Nested levels: .reef/{level}/{parentId}/diagram.puml
+        if (!elementId) return [];
+        pumlPath = join(repoPath, REEF_DIR, level, elementId, 'diagram.puml');
+      }
+
+      const pumlContent = await readFile(pumlPath, 'utf-8');
+
+      // Determine which level's elements to extract:
+      // If viewing context level, extract container elements from context.puml
+      // If viewing container level, extract component elements from container.puml
+      // extractElementIds only supports 'container' and 'component' as extraction targets
+      let extractLevel: C4Level;
+      if (level === 'context') {
+        extractLevel = 'container';
+      } else if (level === 'container') {
+        extractLevel = 'component';
+      } else {
+        // component/code level .puml doesn't have child macros to extract
+        return [];
+      }
+
+      const ids = extractElementIds(pumlContent, extractLevel);
+
+      // Convert IDs to {id, name} pairs — name is the humanized ID
+      return ids.map(id => ({
+        id,
+        name: id.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      }));
+    } catch (err: any) {
+      // File doesn't exist or can't be read — return empty (not an error for the UI)
+      if (err.code === 'ENOENT') return [];
+      console.error(`Failed to extract elements for ${repoPath}/${level}:`, err);
+      return [];
+    }
   });
 }
 

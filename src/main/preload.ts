@@ -101,6 +101,7 @@ export interface ReefAPI {
     clearChangeTracking: (repoPath: string, level: string) => Promise<{ success: boolean }>;
     getSvg: (repoPath: string, level: string, elementId?: string) => Promise<string | null>;
     storeSvg: (repoPath: string, level: string, svg: string, elementId?: string) => Promise<{ success: boolean }>;
+    getElements: (repoPath: string, level: string, elementId?: string) => Promise<Array<{id: string, name: string}>>;
   };
   reefImport: {
     scanAndImport: (repoPath: string) => Promise<{ importedLevels: string[]; missingLevels: string[] }>;
@@ -232,6 +233,8 @@ const reefAPI: ReefAPI = {
       ipcRenderer.invoke('c4-storage:get-svg', repoPath, level, elementId),
     storeSvg: (repoPath: string, level: string, svg: string, elementId?: string) =>
       ipcRenderer.invoke('c4-storage:store-svg', repoPath, level, svg, elementId),
+    getElements: (repoPath: string, level: string, elementId?: string) =>
+      ipcRenderer.invoke('c4-storage:get-elements', repoPath, level, elementId),
   },
   reefImport: {
     scanAndImport: (repoPath: string) => ipcRenderer.invoke('reef-import:scan-and-import', repoPath),
