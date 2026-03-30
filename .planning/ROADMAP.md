@@ -141,7 +141,7 @@ Plans:
 | 19. Read Path | v1.4 | 2/2 | Complete | 2026-03-27 |
 | 20. Regeneration and Stale Detection | v1.4 | 2/2 | Complete | 2026-03-28 |
 | 21. Cache-First Navigation | v1.5 | 2/2 | Complete    | 2026-03-29 |
-| 22. Sidebar & Breadcrumb Overhaul | v1.5 | 2/2 | Complete   | 2026-03-30 |
+| 22. Sidebar & Breadcrumb Overhaul | v1.5 | 2/2 | Complete    | 2026-03-30 |
 | 23. Code-Level Diagram Quality | v1.5 | 0/TBD | Not started | - |
 
 ---

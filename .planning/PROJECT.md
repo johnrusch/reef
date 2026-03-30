@@ -71,6 +71,10 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 - ✓ Cache-first navigation — all navigation checks SVG cache → PlantUML source before generating — Validated in Phase 21
 - ✓ Full Generate All — upfront generation of all 4 C4 levels with auto-discovered elementIds — Validated in Phase 21
 - ✓ .reef/ preservation during navigation — loadDiagram is read-only, never writes — Validated in Phase 21
+- ✓ Resizable sidebar with drag handle and persist width via localStorage — Validated in Phase 22
+- ✓ Active C4 level highlight with blue left-border accent strip — Validated in Phase 22
+- ✓ Breadcrumb level suffix showing C4 level in parentheses — Validated in Phase 22
+- ✓ Nested element tree in sidebar with drill-down from .reef/ PlantUML data — Validated in Phase 22
 
 ### Active
 
@@ -121,7 +125,7 @@ See `.planning/MILESTONES.md` for full details.
 - Storage: SQLite with WAL mode, diagram_storage (with svg_content column) + diagram_change_tracking tables
 - Generation: Background queue with IPC progress events, toast notifications
 - Caching: Two-tier cache (15-entry LRU in-process + SQLite SVG storage)
-- Navigation: C4HierarchyTree sidebar + breadcrumbs + Zustand selector pattern
+- Navigation: C4HierarchyTree sidebar (resizable via react-resizable-panels, element tree with IPC drill-down) + breadcrumbs with level suffix + Zustand selector pattern
 
 **C4 Generation Pipeline:**
 - Three-phase architecture: Static Analysis → AI Enrichment → PlantUML Generation
@@ -225,4 +229,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-29 after Phase 21 completion*
+*Last updated: 2026-03-30 after Phase 22 completion*
