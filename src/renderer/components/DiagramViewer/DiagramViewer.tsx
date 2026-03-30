@@ -217,26 +217,6 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
     }
   }, [navigationStore, onLoadDiagram]);
 
-  const handleTreeNavigate = useCallback(async (level: 'context' | 'container' | 'component' | 'code') => {
-    const targetIndex = navigationStore.stack.findIndex(l => l.level === level);
-    if (targetIndex >= 0) {
-      // Level exists in stack — navigate breadcrumb-style (cache-first via handleBreadcrumbNavigate)
-      await handleBreadcrumbNavigate(targetIndex);
-    } else if (level === 'component' || level === 'code') {
-      // Component/code levels require an elementId from drill-down.
-      // Can't navigate directly without having drilled into a container/component first.
-      return;
-    } else {
-      // Context/container — reset navigation and load from cache (NAV-01)
-      navigationStore.reset();
-      const newType = `c4-${level}` as DiagramType;
-      handleControlChange({ type: newType });
-      if (onLoadDiagram) {
-        await onLoadDiagram({ type: newType, elementId: undefined });
-      }
-    }
-  }, [navigationStore, onLoadDiagram, handleBreadcrumbNavigate]);
-
   const handleElementClick = useCallback(async (elementId: string) => {
     // Don't process clicks during generation or for non-C4 diagrams
     if (isGenerating || !currentOptions.type.startsWith('c4-')) return;
@@ -295,6 +275,32 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
       console.error('Failed to drill down:', error);
     }
   }, [isGenerating, currentOptions, navigationStore, onRegenerateDiagram, onLoadDiagram, directChangedIds, inheritedChangedIds, changedFilePaths, handleNavigateToDiff]);
+
+  const handleTreeNavigate = useCallback(async (level: 'context' | 'container' | 'component' | 'code', elementId?: string) => {
+    // D-10: If elementId provided, treat as drill-down (same as canvas element click)
+    if (elementId) {
+      await handleElementClick(elementId);
+      return;
+    }
+
+    const targetIndex = navigationStore.stack.findIndex(l => l.level === level);
+    if (targetIndex >= 0) {
+      // Level exists in stack — navigate breadcrumb-style (cache-first via handleBreadcrumbNavigate)
+      await handleBreadcrumbNavigate(targetIndex);
+    } else if (level === 'component' || level === 'code') {
+      // Component/code levels require an elementId from drill-down.
+      // Can't navigate directly without having drilled into a container/component first.
+      return;
+    } else {
+      // Context/container — reset navigation and load from cache (NAV-01)
+      navigationStore.reset();
+      const newType = `c4-${level}` as DiagramType;
+      handleControlChange({ type: newType });
+      if (onLoadDiagram) {
+        await onLoadDiagram({ type: newType, elementId: undefined });
+      }
+    }
+  }, [navigationStore, onLoadDiagram, handleBreadcrumbNavigate, handleElementClick]);
 
   const handleCommandPaletteNavigate = useCallback(async (item: DiagramSearchItem) => {
     // Reset navigation to context first
@@ -607,6 +613,7 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
                 disabled={isGenerating}
                 isCollapsed={true}
                 onCollapseToggle={() => setIsSidebarCollapsed(false)}
+                repoPath={_repository?.path}
               />
               <div className="flex-1 min-w-0 relative">
                 {renderDiagramWithOverlay()}
@@ -620,6 +627,7 @@ export const DiagramViewer: React.FC<DiagramViewerProps> = ({
                   disabled={isGenerating}
                   isCollapsed={false}
                   onCollapseToggle={() => setIsSidebarCollapsed(true)}
+                  repoPath={_repository?.path}
                 />
               </Panel>
               <PanelResizeHandle className="w-1 bg-gray-700 hover:bg-gray-500 active:bg-blue-500 cursor-col-resize transition-colors" />
