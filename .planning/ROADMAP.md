@@ -71,7 +71,7 @@ See: `.planning/milestones/v1.4-ROADMAP.md` for full details.
 
 </details>
 
-### 🚧 v1.5 Bug Fixes & Navigation Overhaul (In Progress)
+### v1.5 Bug Fixes & Navigation Overhaul (In Progress)
 
 **Milestone Goal:** Fix broken diagram navigation to load from cache instead of regenerating, overhaul the sidebar and breadcrumb UX, and improve code-level diagram quality.
 
@@ -101,7 +101,10 @@ Plans:
   2. User can drag the sidebar edge to resize it, and the new width persists across navigation actions
   3. User sees a nested tree of clickable elements under each C4 level in the sidebar that matches what is clickable in the diagram canvas
   4. User sees a breadcrumb trail where each segment appears exactly once with no duplicate level names, and the current level is clearly indicated
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 22-01-PLAN.md — PanelGroup resize layout, sidebar highlight fix, breadcrumb level suffix
+- [ ] 22-02-PLAN.md — Element tree in sidebar via IPC extraction from .reef/ .puml files
 **UI hint**: yes
 
 ### Phase 23: Code-Level Diagram Quality
@@ -138,8 +141,8 @@ Plans:
 | 19. Read Path | v1.4 | 2/2 | Complete | 2026-03-27 |
 | 20. Regeneration and Stale Detection | v1.4 | 2/2 | Complete | 2026-03-28 |
 | 21. Cache-First Navigation | v1.5 | 2/2 | Complete    | 2026-03-29 |
-| 22. Sidebar & Breadcrumb Overhaul | v1.5 | 0/TBD | Not started | - |
+| 22. Sidebar & Breadcrumb Overhaul | v1.5 | 0/2 | Not started | - |
 | 23. Code-Level Diagram Quality | v1.5 | 0/TBD | Not started | - |
 
 ---
-*Last updated: 2026-03-28 — Phase 21 plans created*
+*Last updated: 2026-03-30 — Phase 22 plans created*
