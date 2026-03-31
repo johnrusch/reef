@@ -25,7 +25,7 @@ Requirements for v1.5 Bug Fixes & Navigation Overhaul. Each maps to roadmap phas
 
 ### Diagram Quality
 
-- [ ] **QUAL-01**: User sees meaningful content in code-level diagrams (classes, public methods, key properties) from static analysis even when AI enrichment is unavailable
+- [x] **QUAL-01**: User sees meaningful content in code-level diagrams (classes, public methods, key properties) from static analysis even when AI enrichment is unavailable
 
 ## Future Requirements
 
@@ -65,7 +65,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SIDE-02 | Phase 22 | Complete |
 | SIDE-03 | Phase 22 | Complete |
 | BRCR-01 | Phase 22 | Complete |
-| QUAL-01 | Phase 23 | Pending |
+| QUAL-01 | Phase 23 | Complete |
 
 **Coverage:**
 - v1.5 requirements: 8 total
