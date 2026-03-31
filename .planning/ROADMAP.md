@@ -114,10 +114,10 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. User sees classes, public methods, and key properties in code-level diagrams generated from a TypeScript repository without AI enrichment
   2. User sees a non-empty code-level diagram for any repository that contains TypeScript source files with at least one class or exported function
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 23-01-PLAN.md — Extend static analyzer with function parameters and enum extraction
-- [ ] 23-02-PLAN.md — Rewrite generateCodeDiagram with directory matching, stereotypes, and empty fallback
+- [x] 23-02-PLAN.md — Rewrite generateCodeDiagram with directory matching, stereotypes, and empty fallback
 
 ## Progress
 
@@ -145,7 +145,7 @@ Plans:
 | 20. Regeneration and Stale Detection | v1.4 | 2/2 | Complete | 2026-03-28 |
 | 21. Cache-First Navigation | v1.5 | 2/2 | Complete    | 2026-03-29 |
 | 22. Sidebar & Breadcrumb Overhaul | v1.5 | 2/2 | Complete    | 2026-03-30 |
-| 23. Code-Level Diagram Quality | v1.5 | 1/2 | In Progress|  |
+| 23. Code-Level Diagram Quality | v1.5 | 2/2 | Complete   | 2026-03-31 |
 
 ---
 *Last updated: 2026-03-31 — Phase 23 plans created*
