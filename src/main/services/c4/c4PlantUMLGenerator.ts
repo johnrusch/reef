@@ -14,7 +14,7 @@
  * serve as fallback when enrichedData is null or contains empty arrays.
  */
 
-import type { AnalysisResult } from './types/analysisTypes';
+import type { AnalysisResult, FunctionInfo } from './types/analysisTypes';
 import type {
   EnrichedContextLevel,
   EnrichedContainerLevel,
@@ -376,6 +376,11 @@ export class C4PlantUMLGenerator {
    * Generates C4 Code diagram showing class-level details.
    * Uses static analysis exclusively — enrichedData is accepted for signature
    * consistency but NOT consumed at code level (UML class diagrams reflect actual code structure).
+   *
+   * Elements are matched to the component via directory path from componentGroups (D-04, D-05).
+   * Only exported elements appear (D-06). Functions, React components, and enums are rendered
+   * with appropriate UML stereotypes (D-01, D-02, D-03). Usage relationships are shown between
+   * all element types via import analysis (D-07). Empty components show a file-list note (D-08).
    */
   generateCodeDiagram(
     enrichedData: EnrichedArchitecture | null,  // eslint-disable-line @typescript-eslint/no-unused-vars
@@ -395,66 +400,139 @@ export class C4PlantUMLGenerator {
     lines.push(`title Code Diagram for ${componentId}`);
     lines.push('');
 
-    // Extract classes for this component
-    const classes = staticData.structure.classes.filter(cls => {
-      const fileName = cls.file.split('/').pop() || '';
-      return fileName.includes(componentId) || cls.name === componentId;
-    });
+    // ---- D-04, D-05: Directory-based matching via componentGroups ----
+    const matchedGroup = staticData.componentGroups?.find(
+      g => g.rawName === componentId || g.label === componentId
+    );
+    const groupFiles = matchedGroup ? new Set(matchedGroup.files) : new Set<string>();
 
-    const interfaces = staticData.structure.interfaces.filter(iface => {
-      const fileName = iface.file.split('/').pop() || '';
-      return fileName.includes(componentId) || iface.name.includes(componentId);
-    });
+    // D-05: Determine directory prefix for recursive subdirectory inclusion
+    // Use the directory portion of the first file in the group
+    const firstFile = matchedGroup?.files[0];
+    const groupDirPrefix = firstFile
+      ? firstFile.substring(0, firstFile.lastIndexOf('/') + 1)
+      : null;
 
-    // Generate class definitions
+    const isInComponent = (filePath: string, elementName?: string): boolean => {
+      if (groupFiles.has(filePath)) return true;
+      if (groupDirPrefix && filePath.startsWith(groupDirPrefix)) return true;
+      // Legacy fallback: filename contains componentId (case-insensitive)
+      const fileName = filePath.split('/').pop() || '';
+      if (fileName.toLowerCase().includes(componentId.toLowerCase())) return true;
+      // Legacy fallback: element name matches componentId exactly (for direct class/function lookup)
+      if (elementName && elementName === componentId) return true;
+      return false;
+    };
+
+    // ---- D-06: Exported-only filter for all element types ----
+    const classes = staticData.structure.classes.filter(c => c.isExported && isInComponent(c.file, c.name));
+    const interfaces = staticData.structure.interfaces.filter(i => i.isExported && isInComponent(i.file, i.name));
+    const functions = (staticData.structure.functions ?? []).filter(f => f.isExported && isInComponent(f.file));
+    const enums = (staticData.structure.enums ?? []).filter(e => e.isExported && isInComponent(e.file));
+
+    // ---- D-02: React component detection ----
+    const isReactComponent = (func: FunctionInfo): boolean => {
+      return /^[A-Z]/.test(func.name) && (
+        func.returnType.includes('JSX.Element') ||
+        func.returnType.includes('ReactElement') ||
+        func.returnType.includes('React.FC') ||
+        func.returnType.includes('ReactNode')
+      );
+    };
+
+    const reactComponents = functions.filter(isReactComponent);
+    const regularFunctions = functions.filter(f => !isReactComponent(f));
+
+    // ---- D-08: Empty fallback — no exportable code elements ----
+    if (classes.length === 0 && interfaces.length === 0 && functions.length === 0 && enums.length === 0) {
+      const fileList = Array.from(groupFiles);
+      const typeCount = fileList.filter(f => f.includes('.d.ts') || f.includes('types')).length;
+      const configCount = fileList.filter(f => f.includes('config') || f.includes('.json')).length;
+      const otherCount = fileList.length - typeCount - configCount;
+      lines.push(`note "No diagrammable code elements found.\\n${fileList.length} files: ${typeCount} type files, ${configCount} config files, ${otherCount} other files" as N1`);
+      lines.push('');
+      lines.push('@enduml');
+      return lines.join('\n');
+    }
+
+    // ---- Render classes ----
     for (const cls of classes) {
-      lines.push(`class ${cls.name} {`);
-
-      // Add properties
+      const abstractPrefix = cls.isAbstract ? 'abstract ' : '';
+      lines.push(`${abstractPrefix}class ${cls.name} {`);
       for (const prop of cls.properties) {
         lines.push(`  +${prop}`);
       }
-
-      // Add methods
       for (const method of cls.methods) {
         lines.push(`  +${method}()`);
       }
-
       lines.push('}');
       lines.push('');
     }
 
-    // Generate interface definitions
+    // ---- Render interfaces ----
     for (const iface of interfaces) {
       lines.push(`interface ${iface.name} {`);
-
-      // Add properties
       for (const prop of iface.properties) {
         const optional = prop.optional ? '?' : '';
         lines.push(`  ${prop.name}${optional}: ${prop.type}`);
       }
-
       lines.push('}');
       lines.push('');
     }
 
-    // Generate relationships
+    // ---- D-01: Render regular functions as stereotyped classes ----
+    for (const func of regularFunctions) {
+      lines.push(`class ${func.name} <<function>> {`);
+      for (const param of func.parameters) {
+        lines.push(`  +${param.name}: ${param.type}`);
+      }
+      lines.push('  ..');
+      lines.push(`  +returns: ${func.returnType}`);
+      lines.push('}');
+      lines.push('');
+    }
+
+    // ---- D-02: Render React components as stereotyped classes ----
+    for (const comp of reactComponents) {
+      lines.push(`class ${comp.name} <<component>> {`);
+      for (const param of comp.parameters) {
+        lines.push(`  +${param.name}: ${param.type}`);
+      }
+      lines.push('}');
+      lines.push('');
+    }
+
+    // ---- D-03: Render enums with enumeration stereotype ----
+    for (const en of enums) {
+      lines.push(`class ${en.name} <<enumeration>> {`);
+      for (const member of en.members) {
+        lines.push(`  ${member}`);
+      }
+      lines.push('}');
+      lines.push('');
+    }
+
+    // ---- Render class inheritance and interface implementation relationships ----
     for (const cls of classes) {
-      // Inheritance
       if (cls.extends) {
-        const parentName = cls.extends.split('<')[0].trim(); // Handle generics
+        const parentName = cls.extends.split('<')[0].trim();
         lines.push(`${parentName} <|-- ${cls.name}`);
       }
-
-      // Interface implementation
       for (const impl of cls.implements) {
-        const interfaceName = impl.split('<')[0].trim(); // Handle generics
+        const interfaceName = impl.split('<')[0].trim();
         lines.push(`${interfaceName} <|.. ${cls.name}`);
       }
     }
 
-    // Add usage relationships from imports
-    const usageRels = this.extractUsageRelationships(staticData, classes, interfaces);
+    // ---- D-07: Usage relationships via imports (all element types) ----
+    const allElements = [
+      ...classes.map(c => ({ name: c.name, file: c.file })),
+      ...regularFunctions.map(f => ({ name: f.name, file: f.file })),
+      ...reactComponents.map(f => ({ name: f.name, file: f.file })),
+      ...enums.map(e => ({ name: e.name, file: e.file })),
+      ...interfaces.map(i => ({ name: i.name, file: i.file })),
+    ];
+    const usageRels = this.extractUsageRelationships(staticData, allElements);
     for (const rel of usageRels) {
       lines.push(`${rel.from} --> ${rel.to} : uses`);
     }
@@ -703,27 +781,26 @@ export class C4PlantUMLGenerator {
   }
 
   /**
-   * Extracts usage relationships between classes
+   * Extracts usage relationships between code elements based on import analysis.
+   * Accepts a unified elements array covering classes, interfaces, functions, and enums (D-07).
    */
   private extractUsageRelationships(
     staticData: AnalysisResult,
-    classes: readonly { name: string; file: string }[],
-    interfaces: readonly { name: string; file: string }[]
+    elements: readonly { name: string; file: string }[]
   ): Array<{ from: string; to: string }> {
     const relationships: Array<{ from: string; to: string }> = [];
-    const classNames = new Set(classes.map(c => c.name));
-    const interfaceNames = new Set(interfaces.map(i => i.name));
+    const allNames = new Set(elements.map(e => e.name));
 
-    // Check imports from classes in scope
-    for (const cls of classes) {
-      const imports = staticData.structure.imports.filter(imp => imp.file === cls.file);
+    // Check imports from each element's file to find references to other in-scope elements
+    for (const element of elements) {
+      const imports = staticData.structure.imports.filter(imp => imp.file === element.file);
 
       for (const imp of imports) {
-        // Check if any imported symbol is a class or interface in scope
+        // Check if any imported symbol matches a known element name in scope
         for (const symbol of [...imp.namedImports, imp.defaultImport || '']) {
-          if (classNames.has(symbol) || interfaceNames.has(symbol)) {
+          if (symbol && allNames.has(symbol) && symbol !== element.name) {
             relationships.push({
-              from: cls.name,
+              from: element.name,
               to: symbol,
             });
           }
