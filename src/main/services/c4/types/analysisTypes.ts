@@ -7,6 +7,16 @@
  */
 
 /**
+ * Information about a function parameter
+ */
+export interface ParameterInfo {
+  /** Parameter name */
+  readonly name: string;
+  /** Parameter type text */
+  readonly type: string;
+}
+
+/**
  * Information about an exported function
  */
 export interface FunctionInfo {
@@ -24,6 +34,24 @@ export interface FunctionInfo {
   readonly isSignificant: boolean;
   /** JSDoc description if present */
   readonly jsDocDescription?: string;
+  /** Function parameters */
+  readonly parameters: readonly ParameterInfo[];
+}
+
+/**
+ * Information about a TypeScript enum
+ */
+export interface EnumInfo {
+  /** Enum name */
+  readonly name: string;
+  /** Absolute file path */
+  readonly file: string;
+  /** Enum member names */
+  readonly members: readonly string[];
+  /** Whether the enum is exported */
+  readonly isExported: boolean;
+  /** Whether the enum is a const enum */
+  readonly isConst: boolean;
 }
 
 /**
@@ -120,6 +148,8 @@ export interface ProjectStructure {
   readonly exports: readonly string[];
   /** All exported functions found in the project */
   readonly functions: readonly FunctionInfo[];
+  /** All enums found in the project */
+  readonly enums: readonly EnumInfo[];
 }
 
 /**

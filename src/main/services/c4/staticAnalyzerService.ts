@@ -22,6 +22,8 @@ import {
   InterfaceInfo,
   ImportInfo,
   FunctionInfo,
+  ParameterInfo,
+  EnumInfo,
   ComponentGroup,
   DependencyGraph,
   DependencyNode,
@@ -119,6 +121,7 @@ export class StaticAnalyzerService {
       const imports = this.extractImports(filesToAnalyze);
       const exports = this.extractExports(filesToAnalyze);
       const functions = this.extractFunctions(filesToAnalyze);
+      const enums = this.extractEnums(filesToAnalyze);
 
       const structure: ProjectStructure = {
         classes,
@@ -126,6 +129,7 @@ export class StaticAnalyzerService {
         imports,
         exports,
         functions,
+        enums,
       };
 
       // Build dependency graph
@@ -185,6 +189,7 @@ export class StaticAnalyzerService {
           imports: [],
           exports: [],
           functions: [],
+          enums: [],
         },
         dependencies: {
           nodes: [],
@@ -375,6 +380,11 @@ export class StaticAnalyzerService {
 
         const isSignificant = this.classifyFunctionSignificance(name, filePath);
 
+        const parameters: ParameterInfo[] = funcDecl.getParameters().map(p => ({
+          name: p.getName(),
+          type: p.getType().getText(),
+        }));
+
         functions.push({
           name,
           file: filePath,
@@ -383,6 +393,7 @@ export class StaticAnalyzerService {
           isExported: true,
           isSignificant,
           jsDocDescription,
+          parameters,
         });
       }
 
@@ -391,6 +402,35 @@ export class StaticAnalyzerService {
     }
 
     return functions;
+  }
+
+  /**
+   * Extracts all enums from source files
+   */
+  private extractEnums(sourceFiles: SourceFile[]): EnumInfo[] {
+    const enums: EnumInfo[] = [];
+
+    for (const sourceFile of sourceFiles) {
+      const enumDeclarations = sourceFile.getEnums();
+
+      for (const enumDecl of enumDeclarations) {
+        const name = enumDecl.getName();
+        const members = enumDecl.getMembers().map(m => m.getName());
+
+        enums.push({
+          name,
+          file: sourceFile.getFilePath(),
+          members,
+          isExported: enumDecl.isExported(),
+          isConst: enumDecl.isConstEnum(),
+        });
+      }
+
+      // Release memory after all data extracted
+      sourceFile.forgetDescendants();
+    }
+
+    return enums;
   }
 
   /**
@@ -675,8 +715,9 @@ export class StaticAnalyzerService {
     const imports = this.extractImports(sourceFiles);
     const exports = this.extractExports(sourceFiles);
     const functions = this.extractFunctions(sourceFiles);
+    const enums = this.extractEnums(sourceFiles);
 
-    const structure: ProjectStructure = { classes, interfaces, imports, exports, functions };
+    const structure: ProjectStructure = { classes, interfaces, imports, exports, functions, enums };
     const dependencies = this.buildDependencyGraph(imports, classes, interfaces);
     const technologies = await this.detectTechnologies(repoPath);
     const projectName = await this.getProjectName(repoPath);
@@ -742,7 +783,7 @@ export class StaticAnalyzerService {
     const technologies = await this.detectTechnologies(repoPath);
 
     return {
-      structure: { classes: [], interfaces: [], imports: [], exports: [], functions: [] },
+      structure: { classes: [], interfaces: [], imports: [], exports: [], functions: [], enums: [] },
       dependencies: { nodes: [], edges: [] },
       technologies,
       entryPoints: [],

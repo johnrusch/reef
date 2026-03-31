@@ -4,7 +4,6 @@ import { C4AnalyzerService } from './c4AnalyzerService';
 import { getStorageService } from './c4StorageHandlers';
 import type { C4Level } from './types/c4Types';
 
-const C4_LEVELS: C4Level[] = ['context', 'container', 'component', 'code'];
 
 /**
  * Extract element IDs from a C4 PlantUML diagram's source.
