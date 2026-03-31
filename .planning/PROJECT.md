@@ -75,6 +75,7 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 - ✓ Active C4 level highlight with blue left-border accent strip — Validated in Phase 22
 - ✓ Breadcrumb level suffix showing C4 level in parentheses — Validated in Phase 22
 - ✓ Nested element tree in sidebar with drill-down from .reef/ PlantUML data — Validated in Phase 22
+- ✓ Meaningful code-level diagrams from static analysis (function params, enums, React components) — Validated in Phase 23
 
 ### Active
 
@@ -129,7 +130,7 @@ See `.planning/MILESTONES.md` for full details.
 
 **C4 Generation Pipeline:**
 - Three-phase architecture: Static Analysis → AI Enrichment → PlantUML Generation
-- Static analysis: multi-pass extraction with functions, decorators, JSDoc, directory-based component grouping
+- Static analysis: multi-pass extraction with functions (params, return types), enums (members, values), decorators, JSDoc, directory-based component grouping
 - AI enrichment: structured Zod schemas per level, framework-aware prompts (React, Express, Electron, etc.)
 - Prompt caching with cache_control for 90% cost reduction
 - Persistent storage with pre-rendered SVG for sub-500ms cached display
@@ -229,4 +230,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-30 after Phase 22 completion*
+*Last updated: 2026-03-31 after Phase 23 completion*
