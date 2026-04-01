@@ -1,5 +1,5 @@
 ---
-status: partial
+status: diagnosed
 phase: 21-cache-first-navigation
 source: 21-01-SUMMARY.md, 21-02-SUMMARY.md
 started: 2026-03-31T16:00:00Z
@@ -60,7 +60,13 @@ blocked: 1
   reason: "User reported: no, still not showing. navigated all diagrams in screenshot (so they should already be generated) but they aren't listed in the sidebar — shows 'No elements cached'"
   severity: major
   test: 6
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "extractLevel mapping in c4StorageHandlers.ts:240-248 is inverted. Context diagram has System/System_Ext macros but code looks for Container macros. Container diagram has Container/ContainerDb macros but code looks for Component macros. Also extractElementIds lacks System/System_Ext regex pattern entirely."
+  artifacts:
+    - path: "src/main/services/c4/c4StorageHandlers.ts"
+      issue: "extractLevel mapping wrong — should extract current-level macros, not child-level"
+    - path: "src/main/services/c4/generationQueueService.ts"
+      issue: "extractElementIds missing 'context' pattern for System/System_Ext macros"
+  missing:
+    - "Fix extractLevel: context→'context', container→'container'"
+    - "Add 'context' regex pattern: /(?:System|System_Ext|Person)\\((\\w+)/g"
+  debug_session: ".planning/debug/sidebar-no-elements-cached.md"

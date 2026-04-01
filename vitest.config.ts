@@ -8,8 +8,6 @@ export default defineConfig({
     environment: 'jsdom',
     include: [
       'tests/unit/renderer/**/*.test.{ts,tsx}',
-      'tests/unit/main/**/*.test.{ts,tsx}',
-      'tests/integration/**/*.test.{ts,tsx}'
     ],
     setupFiles: ['./tests/setup.ts'],
     coverage: {

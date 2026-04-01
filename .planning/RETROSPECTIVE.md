@@ -127,6 +127,91 @@
 
 ---
 
+## Milestone: v1.4 — Repo-Stored Diagrams
+
+**Shipped:** 2026-03-28
+**Phases:** 4 | **Plans:** 8
+
+### What Was Built
+- ReefStorageService with atomic temp-then-rename writes, Zod schema validation, lazy `.reef/` directory creation
+- Auto-generated `.gitattributes` marking SVGs as binary for clean diffs
+- Write-through on every diagram generation (`.puml`, `.svg`, `.meta.json`)
+- Instant `.reef/` import on repo add — stored SVGs loaded into LRU + SQLite, bypassing PlantUML
+- SHA-256 source hash staleness detection with 2.5s debounced file change handling
+- Stale-aware regeneration UI with confirmation dialog showing stale level count
+
+### What Worked
+- Linear 4-phase structure (foundation → write → read → regen) with clean dependency chain
+- Atomic writes via temp-then-rename prevented corrupted `.reef/` files during interrupt
+- Dependency injection for ReefStorageService made testing straightforward without filesystem mocks
+- 2-day execution for 4 phases / 8 plans — tight scope maintained from v1.2 lesson
+
+### What Was Inefficient
+- STOR-03 partial: `hasNewerFiles` startup walk omits `.reef` from `IGNORED_DIRS` — discovered at audit, not during phase work
+- REGEN-01 partial: async write-back timing means toast fires before `.reef/` is actually updated — race condition discovered at audit
+- Pre-existing drill-down generation issue persisted through entire milestone — not addressed until v1.5
+
+### Patterns Established
+- `.reef/` folder convention for sharing diagram artifacts via git
+- Source hash (SHA-256) alongside mtime for staleness detection — hash for `.reef/`, mtime for SQLite
+- Additive feature patterns: new storage path added alongside existing SQLite, both coexist
+
+### Key Lessons
+1. Audit-discovered gaps (STOR-03, REGEN-01) are consistently timing/edge-case issues — main flows work, edges get missed
+2. Pre-existing issues should be explicitly deferred or addressed — the drill-down generation bug persisted across 3 milestones
+3. Two storage paths (SQLite + `.reef/`) create consistency challenges — need clear source-of-truth hierarchy
+
+### Cost Observations
+- Model mix: opus for planning/audit, sonnet for execution
+- Notable: Matched v1.2's 2-day timeline with similar scope (4 phases, 8 plans)
+
+---
+
+## Milestone: v1.5 — Bug Fixes & Navigation Overhaul
+
+**Shipped:** 2026-04-01
+**Phases:** 3 | **Plans:** 6
+
+### What Was Built
+- Cache-first loadDiagram function — read-only path checking `.reef/` → LRU → SQLite, never generates
+- Full Generate All for all 4 C4 levels with auto-discovered elementIds via PlantUML macro parsing
+- Resizable sidebar via react-resizable-panels PanelGroup with persisted width
+- Active level highlight with blue left-border accent strip
+- Nested element tree in sidebar with drillable elements extracted from `.reef/` PlantUML files via IPC
+- Breadcrumb level suffix showing C4 level in parentheses
+- Code-level diagram rewrite with stereotyped rendering (`<<function>>`, `<<component>>`, `<<enumeration>>`)
+- Static analyzer extended with ParameterInfo, EnumInfo types and extraction methods
+
+### What Worked
+- TDD RED-GREEN pattern used consistently across Phase 23 — tests written before implementation caught design issues early
+- Three independent phases with clear ownership: navigation (21), UI (22), quality (23) — minimal cross-phase interference
+- .reef/ as source of truth design principle (from v1.4) guided all Phase 21 decisions — loadDiagram is purely read-only
+- Milestone audit passed on first attempt: 8/8 requirements, 3/3 phases, 12/12 integration checks
+
+### What Was Inefficient
+- SIDE-03 "by design" limitation not anticipated during requirements — sidebar element tree can't show component/code level elements because PlantUML macros don't expose child IDs
+- Phase 22 had overlapping commits (22-01 appears twice in git log) — likely a rebase artifact
+- SUMMARY one-liner fields inconsistently formatted across phases — CLI extraction failed for 4/6 summaries
+
+### Patterns Established
+- Cache-first navigation with skipLoadEffect ref to prevent double-load race conditions
+- extractElementIds parsing PlantUML macros for elementId discovery — no storage lookup needed
+- Two-phase generation (context+container fatal, component+code non-fatal) for resilient full generation
+- Lifted collapse state pattern for PanelGroup to bypass minimum Panel size constraints
+- Stereotyped PlantUML classes with directory-prefix matching for code-level diagrams
+
+### Key Lessons
+1. "By design" limitations should be identified during requirements, not discovered at audit — SIDE-03 partial was avoidable
+2. Cache-first is the right default for navigation — read-only load eliminates an entire class of race conditions and data corruption bugs
+3. SUMMARY files need consistent formatting for CLI extraction to work — frontmatter tooling should enforce structure
+4. 3 phases with TDD coverage shipped cleanly in 4 days — the right size for a bug-fix milestone
+
+### Cost Observations
+- Model mix: opus for planning/audit/milestone, sonnet for execution
+- Notable: First milestone where audit passed on first attempt with zero requirement gaps
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -137,11 +222,15 @@
 | v1.1 | 6 | 19 | 4 days | Gap closure phases, audit-driven completion |
 | v1.2 | 4 | 9 | 2 days | Tight scope per phase, dependency-driven ordering |
 | v1.3 | 2 | 4 | 3 days | Remove-then-build phasing, visual verification checkpoints |
+| v1.4 | 4 | 8 | 2 days | Atomic writes, hash-based staleness, .reef/ convention |
+| v1.5 | 3 | 6 | 4 days | Cache-first navigation, TDD consistency, first clean audit |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. Audit before milestone completion catches integration gaps that individual phase verification misses (v1.1, v1.2, v1.3)
-2. Small, focused phases (1-3 plans) execute faster and more reliably than large phases (v1.1 Phase 5 vs v1.2/v1.3 all phases)
+1. Audit before milestone completion catches integration gaps that individual phase verification misses (v1.1, v1.2, v1.3, v1.4)
+2. Small, focused phases (1-3 plans) execute faster and more reliably than large phases (v1.1 Phase 5 vs v1.2-v1.5 all phases)
 3. Gap closure plans after UAT are predictable and cheap — budget one per milestone (v1.1 Phase 10, v1.2 Plan 13-03)
 4. Human verification tests accumulate without a forcing function — need process change (v1.1: 20 items, v1.2: 7 items, v1.3: test regressions)
 5. Visual verification checkpoints catch bugs that automated tests miss — worth the overhead (v1.3: 2 bugs found)
+6. Cache-first/read-only navigation eliminates entire classes of race conditions and data corruption (v1.5 lesson, applicable broadly)
+7. "By design" limitations should be identified during requirements, not discovered at audit (v1.5 SIDE-03)

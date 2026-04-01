@@ -408,7 +408,7 @@ export const mockWebContents = {
 // Helper functions for test scenarios
 export const setupIPCMocks = () => {
   // Setup main process mocks
-  mockIPCMain.handle.mockImplementation((channel: IPCChannel, handler: Function) => {
+  mockIPCMain.handle.mockImplementation((channel: IPCChannel, _handler: (...args: unknown[]) => unknown) => {
     // Store the handler for testing purposes
     return;
   });
@@ -538,13 +538,13 @@ export const resetIPCMocks = () => {
 
 // Integration test helpers
 export const createIPCIntegrationTest = (
-  mainHandler: (channel: string, handler: Function) => void,
+  mainHandler: (channel: string, handler: (...args: unknown[]) => unknown) => void,
   rendererInvoke: (channel: string, ...args: any[]) => Promise<any>
 ) => {
   const testChannel = 'test:integration' as IPCChannel;
   
   return {
-    setupHandler: (handler: Function) => {
+    setupHandler: (handler: (...args: unknown[]) => unknown) => {
       mainHandler(testChannel, handler);
     },
     invoke: (...args: any[]) => {

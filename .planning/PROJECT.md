@@ -79,16 +79,7 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 
 ### Active
 
-## Current Milestone: v1.5 Bug Fixes & Navigation Overhaul
-
-**Goal:** Fix broken diagram navigation to load from cache instead of regenerating, and overhaul the sidebar/breadcrumb UX.
-
-**Target features:**
-- Cache-first navigation — all navigation checks .reef/ → LRU → SQLite before generating
-- Full Generate All — upfront generation of all 4 C4 levels
-- Sidebar overhaul — highlight tracking, resizability, drillable element tree
-- Breadcrumb fix — remove redundant segments, clear level context
-- Code-level diagram quality — fix empty static analysis output
+(None — planning next milestone)
 
 ### Out of Scope
 
@@ -113,20 +104,22 @@ Users can quickly grasp unfamiliar codebase architecture through AI-generated C4
 - v1.2 Diagrams That Deliver (2026-03-03)
 - v1.3 Diagram Explorer (2026-03-06)
 - v1.4 Repo-Stored Diagrams (2026-03-28)
+- v1.5 Bug Fixes & Navigation Overhaul (2026-04-01)
 
 See `.planning/MILESTONES.md` for full details.
 
 ## Context
 
-**Current State (v1.4 shipped):**
-- ~40,000 lines of TypeScript
+**Current State (v1.5 shipped):**
+- ~45,000 lines of TypeScript
 - Tech stack: Electron, React, Vite, Tailwind, Zustand, simple-git, Octokit
 - C4 stack: ts-morph, @anthropic-ai/sdk v0.78.0, better-sqlite3, chokidar, zod
 - UI stack: react-hotkeys-hook, cmdk, fuse.js, Radix UI, lucide-react
 - Storage: SQLite with WAL mode, diagram_storage (with svg_content column) + diagram_change_tracking tables
 - Generation: Background queue with IPC progress events, toast notifications
 - Caching: Two-tier cache (15-entry LRU in-process + SQLite SVG storage)
-- Navigation: C4HierarchyTree sidebar (resizable via react-resizable-panels, element tree with IPC drill-down) + breadcrumbs with level suffix + Zustand selector pattern
+- Navigation: Cache-first loadDiagram (read-only, never generates), C4HierarchyTree sidebar (resizable via react-resizable-panels, element tree with IPC drill-down) + breadcrumbs with level suffix + Zustand selector pattern
+- Code diagrams: Stereotyped rendering (<<function>>, <<component>>, <<enumeration>>) with directory-prefix matching and empty fallback
 
 **C4 Generation Pipeline:**
 - Three-phase architecture: Static Analysis → AI Enrichment → PlantUML Generation
@@ -164,6 +157,7 @@ See `.planning/MILESTONES.md` for full details.
 - v1.2: modelUsed hardcoded as 'haiku', Anthropic SDK type cast workaround, better-sqlite3 native module mismatch, SUMMARY frontmatter bookkeeping gaps
 - v1.3: GEN-01 partial (component/code generation needs elementId from drill-down), DiagramViewer.uicl.test.tsx Zustand mock regression, VisualMapTab.gen01.test.tsx timeout, DiagramInfo.tsx dead code not deleted
 - v1.4: STOR-03 hasNewerFiles startup walk omits .reef, REGEN-01 async write-back timing (toast fires before .reef/ updated)
+- v1.5: SIDE-03 partial — sidebar element tree shows "No elements cached" at component/code levels (by design, PlantUML macros don't expose child IDs)
 
 ## Constraints
 
@@ -230,4 +224,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-31 after Phase 23 completion*
+*Last updated: 2026-04-01 after v1.5 milestone*

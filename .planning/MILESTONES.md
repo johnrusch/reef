@@ -1,5 +1,32 @@
 # Milestones
 
+## v1.5 Bug Fixes & Navigation Overhaul (Shipped: 2026-04-01)
+
+**Delivered:** Fixed diagram navigation to load from cache instead of regenerating, overhauled sidebar/breadcrumb UX, and improved code-level diagram quality with stereotyped rendering.
+
+**Phases completed:** 3 phases (21-23), 6 plans
+**Timeline:** 4 days (2026-03-28 → 2026-04-01)
+**Commits:** 30
+**Files modified:** 43 (+5,298 insertions, -265 deletions)
+**Requirements:** 8/8 satisfied (all verified in milestone audit)
+
+**Key accomplishments:**
+
+1. Cache-first navigation — all navigation reads from .reef/ → LRU → SQLite, never regenerates; loadDiagram is purely read-only
+2. Full Generate All — upfront generation of all 4 C4 levels with auto-discovered elementIds via PlantUML macro parsing
+3. Resizable sidebar with PanelGroup drag handle and active level highlight with blue accent strip
+4. Nested element tree in sidebar with drillable elements extracted from .reef/ PlantUML files via IPC
+5. Breadcrumb level suffix showing C4 level in parentheses with no redundant segments
+6. Code-level diagram quality rewrite — stereotyped rendering for functions, React components, and enums from static analysis
+
+**Known Gaps (from audit):**
+
+- SIDE-03 partial (by design): sidebar element tree shows "No elements cached" at component/code levels — PlantUML macros don't expose child IDs at those levels
+- Pre-existing: generateAllDiagrams delegates to regenerateStaleLevels (legacy path) when staleLevels non-empty
+- Pre-existing: C4_LEVELS unused variable in generationQueueService.ts (TS6133)
+
+---
+
 ## v1.4 Repo-Stored Diagrams (Shipped: 2026-03-28)
 
 **Delivered:** Store C4 diagram artifacts (`.puml`, `.svg`, `.meta.json`) in a `.reef/` folder within each repository — diagrams are shared via git, version-controlled, and render instantly on import.

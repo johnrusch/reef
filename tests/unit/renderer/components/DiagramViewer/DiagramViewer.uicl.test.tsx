@@ -20,6 +20,7 @@ const mockReefAPI = {
     getChangeTracking: vi.fn(() => Promise.resolve(null)),
     updateState: vi.fn(() => Promise.resolve()),
     getSvg: vi.fn(() => Promise.resolve(null)),
+    getElements: vi.fn(() => Promise.resolve([])),
   },
   fileWatcher: {
     start: vi.fn(),
@@ -37,17 +38,21 @@ Object.defineProperty(window, 'reef', {
 // Mock zustand stores
 // ---------------------------------------------------------------------------
 vi.mock('../../../../../src/renderer/stores/navigationStore', () => ({
-  useNavigationStore: vi.fn(() => ({
-    stack: [{ level: 'context', elementId: 'system', elementName: 'System' }],
-    repositoryPath: '/test/repo',
-    currentLevel: () => ({ level: 'context', elementId: 'system', elementName: 'System' }),
-    canDrillUp: () => false,
-    push: vi.fn(),
-    pop: vi.fn(),
-    navigateTo: vi.fn(),
-    reset: vi.fn(),
-    setRepository: vi.fn(),
-  })),
+  useNavigationStore: vi.fn((selector?: any) => {
+    const store = {
+      stack: [{ level: 'context', elementId: 'system', elementName: 'System' }],
+      repositoryPath: '/test/repo',
+      currentLevel: () => ({ level: 'context', elementId: 'system', elementName: 'System' }),
+      canDrillUp: () => false,
+      push: vi.fn(),
+      pop: vi.fn(),
+      navigateTo: vi.fn(),
+      reset: vi.fn(),
+      setRepository: vi.fn(),
+    };
+    if (selector) return selector(store);
+    return store;
+  }),
   getNextLevel: vi.fn(() => 'container'),
 }));
 
@@ -112,6 +117,16 @@ vi.mock('../../../../../src/renderer/components/DiagramViewer/CommandPalette', (
 
 vi.mock('../../../../../src/renderer/components/DiagramViewer/GeneratePromptCard', () => ({
   GeneratePromptCard: () => <div data-testid="generate-prompt-card">GeneratePromptCard</div>,
+}));
+
+vi.mock('../../../../../src/renderer/components/DiagramViewer/C4HierarchyTree', () => ({
+  C4HierarchyTree: () => <div data-testid="c4-hierarchy-tree">C4HierarchyTree</div>,
+}));
+
+vi.mock('react-resizable-panels', () => ({
+  Panel: ({ children }: any) => <div>{children}</div>,
+  PanelGroup: ({ children }: any) => <div>{children}</div>,
+  PanelResizeHandle: () => <div />,
 }));
 
 // ---------------------------------------------------------------------------
