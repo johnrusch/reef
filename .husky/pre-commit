@@ -33,12 +33,15 @@ fi
 # Check if there are any uncommitted changes to critical files
 echo "📋 Checking for critical file changes..."
 
-# Check if package.json was modified and package-lock.json is in sync
+# Check if package.json dependencies were modified and package-lock.json is in sync
 if git diff --cached --name-only | grep -q "package.json"; then
-  if ! git diff --cached --name-only | grep -q "package-lock.json"; then
-    echo "⚠️  Warning: package.json was modified but package-lock.json was not updated."
-    echo "   Please run 'npm install' to update package-lock.json"
-    exit 1
+  # Only warn if dependencies changed (not just scripts or metadata)
+  if git diff --cached package.json | grep -qE '^\+.*"(dependencies|devDependencies|peerDependencies|optionalDependencies)"'; then
+    if ! git diff --cached --name-only | grep -q "package-lock.json"; then
+      echo "⚠️  Warning: package.json dependencies were modified but package-lock.json was not updated."
+      echo "   Please run 'npm install' to update package-lock.json"
+      exit 1
+    fi
   fi
 fi
 
